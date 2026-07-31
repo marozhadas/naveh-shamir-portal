@@ -1,0 +1,20 @@
+.wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.toast {
+  position: absolute;
+  inset-block-end: calc(100% + 8px);
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  background: var(--color-bg-inverse);
+  color: #fff;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-demibold);
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  box-shadow: var(--shadow-modal);
+  z-index: 5;
+}

@@ -1,0 +1,126 @@
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-10) 24px var(--space-16);
+}
+
+.title {
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-black);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-3);
+}
+
+.subtitle {
+  font-size: var(--fs-body);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-8);
+}
+
+.features {
+  list-style: none;
+  margin: 0 0 var(--space-8);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.features li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-primary);
+}
+
+.featureIcon {
+  color: var(--green-700);
+  flex-shrink: 0;
+}
+
+.billingBox {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  margin-bottom: var(--space-8);
+}
+
+.billingRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: var(--fw-demibold);
+  color: var(--color-text-primary);
+  font-size: var(--fs-body-sm);
+  margin-bottom: var(--space-3);
+}
+
+.billingDetail {
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+  line-height: var(--lh-body);
+  margin: 0 0 var(--space-2);
+}
+
+.billingDetail:last-child {
+  margin-bottom: 0;
+}
+
+.actionBox {
+  margin-bottom: var(--space-6);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.consentRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.checkbox {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  accent-color: var(--color-brand-accent);
+}
+
+.error {
+  font-size: var(--fs-body-sm);
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  margin: 0;
+}
+
+.notice {
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-primary);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin: 0;
+}
+
+.legalLinks {
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.legalLinks a {
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+}

@@ -1,0 +1,77 @@
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border-bottom: 1px solid var(--color-border-default);
+}
+
+.titles {
+  min-width: 0;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+  flex-wrap: wrap;
+}
+
+.regionName {
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-bold);
+  margin-top: 2px;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-demibold);
+  margin-top: var(--space-2);
+}
+
+.statusDotSaved {
+  color: var(--green-700);
+}
+
+.statusDotDirty {
+  color: var(--yellow-hover, var(--yellow-500));
+}
+
+.statusDotSaving {
+  color: var(--color-text-secondary);
+}
+
+.statusDotError {
+  color: var(--color-danger);
+}
+
+.lastSaved {
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.closeButton {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.closeButton:hover {
+  background: var(--slate-100);
+  color: var(--color-text-primary);
+}

@@ -1,0 +1,38 @@
+.banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  align-items: flex-start;
+  padding: var(--space-6);
+  background: var(--color-bg-inverse);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-8);
+}
+
+.title {
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-bold);
+  color: #fff;
+  margin: 0 0 var(--space-2);
+}
+
+.description {
+  font-size: var(--fs-body-sm);
+  color: var(--slate-200);
+  margin: 0;
+  max-width: 480px;
+}
+
+.fineprint {
+  font-size: var(--fs-caption);
+  color: var(--slate-400);
+  margin: var(--space-2) 0 0;
+}
+
+@media (min-width: 641px) {
+  .banner {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}

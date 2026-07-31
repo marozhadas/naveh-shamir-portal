@@ -1,0 +1,54 @@
+.previewBanner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  background: var(--color-highlight-bg);
+  color: #7a5200;
+  font-size: var(--fs-body-sm);
+  font-weight: var(--fw-demibold);
+  padding: var(--space-3) var(--space-4);
+  text-align: center;
+}
+
+.previewViewer {
+  font-weight: var(--fw-regular);
+  color: #7a5200;
+  opacity: 0.85;
+}
+
+.previewBackLink {
+  color: #7a5200;
+  text-decoration: underline;
+  font-weight: var(--fw-demibold);
+}
+
+.main {
+  padding-bottom: var(--space-12);
+}
+
+.container {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: var(--space-6) 24px 0;
+}
+
+.twoColumn {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-8);
+  margin-bottom: 0;
+}
+
+@media (min-width: 641px) {
+  .twoColumn {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 880px) {
+  .main {
+    padding-bottom: 88px;
+  }
+}

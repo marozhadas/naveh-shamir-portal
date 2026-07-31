@@ -1,0 +1,51 @@
+/*
+ * Deliberately pinned to the physical left edge (not inset-inline-start):
+ * the spec asks for screen-left regardless of RTL reading direction, so it
+ * never collides with the start of Hebrew text/content.
+ */
+.launcher {
+  position: fixed;
+  left: 20px;
+  bottom: max(20px, calc(env(safe-area-inset-bottom, 0px) + 12px));
+  z-index: 200;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: var(--color-bg-inverse);
+  color: #fff;
+  box-shadow: var(--shadow-modal);
+  cursor: pointer;
+  transition:
+    background var(--duration-base) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+}
+
+.launcher:hover {
+  background: var(--color-navy-hover);
+}
+
+.launcher:active {
+  transform: scale(0.96);
+}
+
+.exitPreview {
+  composes: launcher;
+  width: auto;
+  height: 44px;
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-pill);
+  gap: var(--space-2);
+  font-size: var(--fs-body-sm);
+  font-weight: var(--fw-demibold);
+  background: var(--color-brand-accent);
+  color: var(--color-text-on-accent);
+}
+
+.exitPreview:hover {
+  background: var(--color-accent-hover);
+  color: var(--color-text-inverse);
+}

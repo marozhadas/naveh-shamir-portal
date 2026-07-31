@@ -1,0 +1,20 @@
+.hiddenPreview {
+  position: relative;
+  opacity: 0.45;
+  filter: grayscale(0.3);
+}
+
+.hiddenBadge {
+  position: absolute;
+  inset-block-start: 8px;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  background: var(--navy-900);
+  color: #fff;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-demibold);
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  pointer-events: none;
+}

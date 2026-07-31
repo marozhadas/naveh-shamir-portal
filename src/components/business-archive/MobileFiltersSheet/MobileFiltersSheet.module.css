@@ -1,0 +1,100 @@
+/* display is set only on .dialog[open] below — a bare `display: flex` here would override the
+   browser's native `dialog:not([open]) { display: none }` default (author styles always beat
+   the UA stylesheet, regardless of specificity) and leave the sheet visible while closed. */
+.dialog {
+  position: fixed;
+  inset-inline: 0;
+  inset-block-end: 0;
+  top: auto;
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: 85vh;
+  border: none;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 0;
+  box-shadow: var(--shadow-modal);
+  font-family: var(--font-family-base);
+}
+
+.dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog::backdrop {
+  background: rgba(29, 51, 74, 0.45);
+}
+
+.dialog[open] {
+  animation: slideUp 180ms var(--ease-standard);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog[open] {
+    animation: none;
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border-default);
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.closeButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: none;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.closeButton:focus-visible {
+  outline: 2px solid var(--color-border-strong);
+  outline-offset: 1px;
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-5);
+}
+
+.footer {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--color-border-default);
+  padding-bottom: max(var(--space-4), env(safe-area-inset-bottom, 0px));
+  flex-shrink: 0;
+}
+
+.footer > * {
+  flex: 1;
+}

@@ -1,0 +1,66 @@
+.wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--search-bar-radius, var(--radius-pill));
+  box-shadow: var(--search-bar-shadow, none);
+  padding: 10px 20px;
+  width: 100%;
+  box-sizing: border-box;
+  transition:
+    box-shadow var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+  font-family: var(--font-family-base);
+}
+
+.wrapper:focus-within {
+  border-color: var(--color-border-strong);
+  box-shadow: 0 0 0 3px rgba(29, 51, 74, 0.12);
+}
+
+.icon {
+  color: var(--slate-400);
+  flex-shrink: 0;
+  display: flex;
+}
+
+.input {
+  border: none;
+  outline: none;
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-body);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-family: var(--font-family-base);
+}
+
+.input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.clearButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: var(--slate-100);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.clearButton:hover {
+  background: var(--slate-200);
+}
+
+.clearButton:focus-visible {
+  outline: 2px solid var(--color-border-strong);
+  outline-offset: 1px;
+}
+

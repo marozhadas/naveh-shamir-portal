@@ -1,0 +1,50 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 640px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.eyebrow {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-demibold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 4px;
+}
+
+.title {
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.statusBadge {
+  flex-shrink: 0;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-demibold);
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--slate-100);
+  color: var(--color-text-primary);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.notice {
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-secondary);
+}

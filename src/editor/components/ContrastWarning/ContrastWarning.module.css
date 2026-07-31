@@ -1,0 +1,17 @@
+.warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: var(--fs-caption);
+  color: #92620a;
+  background: var(--color-highlight-bg);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  margin: -2px 0 var(--space-4);
+  line-height: 1.4;
+}
+
+.severe {
+  color: var(--color-danger);
+  background: #fdecec;
+}

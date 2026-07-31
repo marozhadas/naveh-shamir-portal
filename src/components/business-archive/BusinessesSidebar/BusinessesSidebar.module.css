@@ -1,0 +1,18 @@
+.sidebar {
+  display: none;
+}
+
+@media (min-width: 881px) {
+  .sidebar {
+    display: block;
+    align-self: start;
+    position: sticky;
+    top: calc(var(--space-5) + 72px);
+    max-height: calc(100vh - var(--space-8) - 72px);
+    overflow-y: auto;
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+  }
+}

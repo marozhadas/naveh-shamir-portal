@@ -1,0 +1,118 @@
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+}
+
+.image,
+.tag,
+.title,
+.line,
+.lineShort,
+.button,
+.sectionTitle,
+.card {
+  background: var(--slate-200);
+  border-radius: var(--radius-sm);
+  animation: pulse 1.6s var(--ease-standard) infinite;
+}
+
+.image {
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-lg);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.tag {
+  width: 100px;
+  height: 24px;
+  border-radius: var(--radius-pill);
+}
+
+.title {
+  width: 60%;
+  height: 32px;
+}
+
+.line {
+  width: 100%;
+  height: 14px;
+}
+
+.lineShort {
+  width: 50%;
+  height: 14px;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.button {
+  width: 120px;
+  height: 44px;
+  border-radius: var(--radius-md);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sectionTitle {
+  width: 140px;
+  height: 24px;
+}
+
+.cardsRow {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.card {
+  flex: 1;
+  height: 90px;
+}
+
+@media (min-width: 881px) {
+  .hero {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .image,
+  .tag,
+  .title,
+  .line,
+  .lineShort,
+  .button,
+  .sectionTitle,
+  .card {
+    animation: none;
+  }
+}

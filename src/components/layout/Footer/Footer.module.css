@@ -1,0 +1,110 @@
+.footer {
+  background: var(--footer-bg, var(--color-bg-inverse));
+  color: var(--footer-text-color, #fff);
+  padding: var(--footer-padding-block-start, var(--space-12)) 24px 28px;
+}
+
+.grid {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(var(--footer-columns-desktop, 3), 1fr);
+  justify-content: var(--footer-content-justify, space-between);
+  gap: var(--footer-gap, var(--space-8));
+}
+
+.brandLogo {
+  height: var(--footer-logo-size, 36px);
+  width: auto;
+  margin-bottom: var(--space-3);
+}
+
+.brandDescription {
+  font-size: var(--fs-body-sm);
+  color: var(--slate-400);
+  line-height: var(--lh-body);
+  max-width: 260px;
+  margin: 0;
+}
+
+.columnTitle {
+  font-weight: var(--fw-bold);
+  font-size: 14px;
+  margin-bottom: 14px;
+  color: var(--yellow-500);
+}
+
+.linkList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.linkList a {
+  color: var(--footer-link-color, var(--slate-200));
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.linkList a:hover {
+  color: var(--footer-link-hover-color, var(--yellow-300));
+}
+
+.essentialList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--slate-200);
+}
+
+.essentialItem {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  max-width: 220px;
+}
+
+.essentialItem a {
+  color: var(--slate-200);
+  font-weight: var(--fw-demibold);
+}
+
+.bottomBar {
+  max-width: 1280px;
+  margin: var(--space-8) auto 0;
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--footer-border-color, var(--navy-700));
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  font-size: 13px;
+  color: var(--slate-400);
+}
+
+.legalLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.legalLinks a {
+  color: var(--slate-400);
+}
+
+.legalLinks a:hover {
+  color: var(--slate-200);
+}
+
+@media (max-width: 880px) {
+  .grid {
+    grid-template-columns: repeat(var(--footer-columns-tablet, 2), 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

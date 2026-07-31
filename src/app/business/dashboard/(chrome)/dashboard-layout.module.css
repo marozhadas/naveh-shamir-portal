@@ -1,0 +1,6 @@
+.main {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: var(--space-8) 24px var(--space-16);
+  min-height: 50vh;
+}

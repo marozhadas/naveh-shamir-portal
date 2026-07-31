@@ -1,0 +1,86 @@
+.section {
+  max-width: var(--quicklinks-container-max-width, 1280px);
+  margin: -48px auto 0;
+  padding: var(--quicklinks-padding-block, 0) var(--quicklinks-padding-inline, 24px);
+  position: relative;
+  z-index: 5;
+}
+
+.sectionTitle {
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-bold);
+  color: var(--quicklinks-text-color, var(--color-text-primary));
+  margin: 0 0 var(--space-4);
+}
+
+.panel {
+  background: var(--quicklinks-panel-bg, #fff);
+  border-radius: var(--quicklinks-panel-radius, var(--radius-lg));
+  box-shadow: var(--quicklinks-panel-shadow, var(--shadow-card));
+  padding: var(--space-6);
+  display: grid;
+  grid-template-columns: repeat(var(--quicklinks-columns-desktop, 6), 1fr);
+  justify-content: var(--quicklinks-justify, start);
+  gap: var(--quicklinks-gap, var(--space-2));
+}
+
+.link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: var(--quicklinks-item-padding, var(--space-4)) var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--quicklinks-card-color, transparent);
+  color: var(--quicklinks-text-color, var(--color-text-primary));
+  transition: background var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard);
+  min-height: 44px;
+}
+
+.link:hover {
+  background: var(--quicklinks-hover-bg, var(--slate-50));
+  transform: var(--quicklinks-hover-transform, none);
+}
+
+.iconWrap {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.yellow {
+  background: var(--yellow-100);
+  color: var(--navy-900);
+}
+
+.green {
+  background: var(--green-100);
+  color: var(--green-700);
+}
+
+.blue {
+  background: var(--color-highlight-blue-bg);
+  color: var(--navy-700);
+}
+
+.label {
+  font-size: 13.5px;
+  font-weight: var(--fw-bold);
+  text-align: center;
+}
+
+@media (max-width: 880px) {
+  .panel {
+    grid-template-columns: repeat(var(--quicklinks-columns-tablet, 3), 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .panel {
+    grid-template-columns: repeat(var(--quicklinks-columns-mobile, 2), 1fr);
+  }
+}

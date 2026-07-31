@@ -1,0 +1,31 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.labelRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+}
+
+.dayCount {
+  direction: ltr;
+  unicode-bidi: plaintext;
+}
+
+.track {
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--slate-100);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  background: var(--color-brand-accent);
+  border-radius: var(--radius-pill);
+  transition: width var(--duration-base) var(--ease-standard);
+}

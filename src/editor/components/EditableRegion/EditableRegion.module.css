@@ -1,0 +1,46 @@
+.wrapper {
+  position: relative;
+}
+
+.interactive {
+  cursor: pointer;
+}
+
+.interactive:hover {
+  outline: 2px dashed var(--color-border-strong);
+  outline-offset: -2px;
+}
+
+.selected {
+  outline: 2px solid var(--color-brand-accent) !important;
+  outline-offset: -2px;
+}
+
+.label {
+  position: absolute;
+  top: 8px;
+  inset-inline-start: 8px;
+  z-index: 50;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-inverse);
+  color: #fff;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-demibold);
+  border: none;
+  cursor: pointer;
+}
+
+.interactive:hover .label,
+.interactive:focus-within .label,
+.labelVisible {
+  display: inline-flex;
+}
+
+.selected .label {
+  background: var(--color-brand-accent);
+  color: var(--color-text-on-accent);
+}

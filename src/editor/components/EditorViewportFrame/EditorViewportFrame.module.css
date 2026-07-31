@@ -1,0 +1,32 @@
+.frameWrap {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-8) 0;
+  background: var(--slate-100);
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.frame {
+  border: 1px solid var(--color-border-default);
+  background: #fff;
+  box-shadow: var(--shadow-modal);
+  height: calc(100vh - var(--space-16));
+}
+
+.note {
+  position: fixed;
+  top: var(--space-3);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 205;
+  background: var(--color-bg-inverse);
+  color: #fff;
+  font-size: var(--fs-caption);
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+}
+
+.hiddenLive {
+  display: none;
+}

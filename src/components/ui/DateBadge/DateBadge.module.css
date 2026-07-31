@@ -1,0 +1,31 @@
+.badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  overflow: hidden;
+  font-family: var(--font-family-base);
+}
+
+.month {
+  width: 100%;
+  background: var(--date-badge-accent, var(--color-brand-accent));
+  color: var(--color-text-on-accent);
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  text-align: center;
+  padding: 2px 0;
+}
+
+.day {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--color-brand-primary);
+  line-height: 1.4;
+}

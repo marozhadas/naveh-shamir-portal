@@ -1,0 +1,43 @@
+.section {
+  margin-bottom: var(--space-8);
+}
+
+.heading {
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-bold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-4);
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  max-width: 480px;
+}
+
+.icon {
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.details {
+  flex: 1;
+  min-width: 0;
+}
+
+.address {
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.serviceArea {
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+  margin: 4px 0 0;
+}

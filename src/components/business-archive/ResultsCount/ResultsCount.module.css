@@ -1,0 +1,6 @@
+.count {
+  font-size: var(--fs-body-sm);
+  font-weight: var(--fw-demibold);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
