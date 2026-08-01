@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { SearchBar } from "@/components/ui/SearchBar";
 import {
   colorTokenToCssVar,
@@ -33,14 +34,16 @@ type HeroSectionProps = {
 export function HeroSection({ settings }: HeroSectionProps) {
   const [query, setQuery] = useState("");
   const [feedback, setFeedback] = useState("");
+  const router = useRouter();
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setFeedback(
-      query.trim()
-        ? `החיפוש עדיין לא מחובר למאגר — בינתיים אפשר לעיין בעסקים ובאירועים בהמשך העמוד.`
-        : "כתבו מה מחפשים כדי לחפש בפורטל.",
-    );
+    const trimmed = query.trim();
+    if (!trimmed) {
+      setFeedback("כתבו מה מחפשים כדי לחפש בפורטל.");
+      return;
+    }
+    router.push(`/businesses?q=${encodeURIComponent(trimmed)}`);
   }
 
   const heroStyle = {

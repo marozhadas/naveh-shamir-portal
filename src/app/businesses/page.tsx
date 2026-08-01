@@ -6,6 +6,7 @@ import { Footer } from "@/components/layout/Footer";
 import { defaultHeaderSettings, defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { BusinessesArchive } from "@/components/business-archive/BusinessesArchive/BusinessesArchive";
 import { BusinessesGridSkeleton } from "@/components/business-archive/BusinessesGridSkeleton/BusinessesGridSkeleton";
+import { businessRepository } from "@/repositories/mock-business-repository";
 import styles from "./businesses.module.css";
 
 const PAGE_TITLE = "עסקים בנווה שמיר | הפורטל של השכונה";
@@ -23,6 +24,15 @@ export const metadata: Metadata = {
     type: "website",
   },
 };
+
+// Reads live, admin-approved registrations from Supabase on every request — must not be frozen
+// into a static build (a newly-approved business should show up without a redeploy).
+export const dynamic = "force-dynamic";
+
+async function BusinessesArchiveLoader() {
+  const businesses = await businessRepository.getAllPublished();
+  return <BusinessesArchive businesses={businesses} />;
+}
 
 export default function BusinessesPage() {
   return (
@@ -50,7 +60,7 @@ export default function BusinessesPage() {
 
         <div className={styles.container}>
           <Suspense fallback={<BusinessesGridSkeleton />}>
-            <BusinessesArchive />
+            <BusinessesArchiveLoader />
           </Suspense>
         </div>
       </main>

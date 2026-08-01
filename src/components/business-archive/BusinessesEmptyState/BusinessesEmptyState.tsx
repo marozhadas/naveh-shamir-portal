@@ -16,7 +16,7 @@ export function BusinessesEmptyState({ onClearFilters }: BusinessesEmptyStatePro
         <Button variant="secondary" onClick={onClearFilters}>
           ניקוי כל הסינונים
         </Button>
-        <Button href="/business/new" variant="primary">
+        <Button href="/business/register" variant="primary">
           הוספת עסק לפורטל
         </Button>
       </div>

@@ -14,13 +14,19 @@ import { BusinessesEmptyState } from "@/components/business-archive/BusinessesEm
 import { useBusinessSearchParams } from "@/hooks/use-business-search-params";
 import { filterBusinesses, getCategoryCounts, sortBusinesses } from "@/utils/business-filters";
 import { ALL_BUSINESSES } from "@/data/all-businesses";
+import type { Business } from "@/types/business";
 import type { BusinessFilters } from "@/types/business-filters";
 import styles from "./BusinessesArchive.module.css";
 
 const PAGE_SIZE = 12;
 const SEARCH_DEBOUNCE_MS = 300;
 
-export function BusinessesArchive() {
+type BusinessesArchiveProps = {
+  /** Defaults to the static demo list when omitted (e.g. in isolated stories/tests). The real page always passes the repository-resolved list, which also includes any admin-approved Supabase registrations. */
+  businesses?: Business[];
+};
+
+export function BusinessesArchive({ businesses = ALL_BUSINESSES }: BusinessesArchiveProps) {
   const { filters, setFilters } = useBusinessSearchParams();
   const [searchDraft, setSearchDraft] = useState(filters.query);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -76,16 +82,16 @@ export function BusinessesArchive() {
   // Visible + query-matched, but not yet category-filtered — the base both the sidebar's
   // "הכל" count and the mobile sheet's live preview count are computed from.
   const queryFilteredBusinesses = useMemo(
-    () => filterBusinesses(ALL_BUSINESSES, { query: filters.query, categoryIds: [], sort: filters.sort }),
-    [filters.query, filters.sort],
+    () => filterBusinesses(businesses, { query: filters.query, categoryIds: [], sort: filters.sort }),
+    [businesses, filters.query, filters.sort],
   );
 
-  const categoryCounts = useMemo(() => getCategoryCounts(ALL_BUSINESSES, filters.query), [filters.query]);
+  const categoryCounts = useMemo(() => getCategoryCounts(businesses, filters.query), [businesses, filters.query]);
 
   const filteredSorted = useMemo(() => {
-    const filtered = filterBusinesses(ALL_BUSINESSES, filters);
+    const filtered = filterBusinesses(businesses, filters);
     return sortBusinesses(filtered, filters.sort);
-  }, [filters]);
+  }, [businesses, filters]);
 
   const visibleBusinesses = filteredSorted.slice(0, visibleCount);
   const activeCategoryCount = filters.categoryIds.length;

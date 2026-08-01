@@ -17,7 +17,7 @@ export function BusinessOwnerCTA() {
           {BUSINESS_MONTHLY_PLAN.priceAmount === null && "פרטי המחיר יוצגו לפני ההצטרפות."}
         </p>
       </div>
-      <Button href="/business/trial" variant="accent">
+      <Button href="/business/register" variant="accent">
         מתחילים חודש חינם
       </Button>
     </section>
