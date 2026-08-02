@@ -1,5 +1,16 @@
 import { startBusinessTrial } from "@/domain/start-business-trial";
+import { checkTrialEligibility as checkMockTrialEligibility } from "@/domain/check-trial-eligibility";
+import { businessRepository } from "./mock-business-repository";
+import {
+  checkRealTrialEligibility,
+  expireDueRealTrials,
+  getRealSubscriptionByBusinessId,
+  startRealBusinessTrial,
+} from "./supabase-subscription-service";
+import { isSupabaseBusinessId } from "@/utils/business-id";
+import type { AuthenticatedUser } from "@/types/auth";
 import type { BusinessSubscription, SubscriptionStatus } from "@/types/subscription";
+import type { TrialEligibility } from "@/types/trial";
 import type { SubscriptionRepository } from "./subscription-repository";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -84,7 +95,25 @@ export class MockSubscriptionRepository implements SubscriptionRepository {
   );
 
   async getByBusinessId(businessId: string): Promise<BusinessSubscription | null> {
+    if (isSupabaseBusinessId(businessId)) return getRealSubscriptionByBusinessId(businessId);
     return this.store.get(businessId) ?? null;
+  }
+
+  /**
+   * Routes to the real, DB-verified check for Supabase-backed businesses (auth/ownership/approval/
+   * one-time-use all re-checked server-side against business_registrations + business_subscriptions
+   * — see supabase-subscription-service.ts) or to the existing sync domain check for demo
+   * businesses, which have no separate "approval" concept and are looked up from the in-memory
+   * store instead.
+   */
+  async checkTrialEligibility(businessId: string, user: AuthenticatedUser): Promise<TrialEligibility> {
+    if (isSupabaseBusinessId(businessId)) {
+      return checkRealTrialEligibility(businessId, user.id);
+    }
+    const business = await businessRepository.getDraftById(businessId, user.id);
+    if (!business) return { eligible: false, reason: "business-not-owned" };
+    const existingSubscription = await this.getByBusinessId(businessId);
+    return checkMockTrialEligibility(business, existingSubscription, user);
   }
 
   /**
@@ -93,6 +122,15 @@ export class MockSubscriptionRepository implements SubscriptionRepository {
    * silently overwrite an existing record, as a last line of defense against re-entrant misuse.
    */
   async createTrial(businessId: string, ownerId: string): Promise<BusinessSubscription> {
+    if (isSupabaseBusinessId(businessId)) {
+      const result = await startRealBusinessTrial(businessId, ownerId);
+      if (result.success) return result.subscription;
+      throw new Error(
+        result.reason === "already-exists"
+          ? `A subscription already exists for business "${businessId}" — a trial can only be used once.`
+          : "Unable to start trial for this business right now.",
+      );
+    }
     if (this.store.has(businessId)) {
       throw new Error(`A subscription already exists for business "${businessId}" — a trial can only be used once.`);
     }
@@ -120,6 +158,24 @@ export class MockSubscriptionRepository implements SubscriptionRepository {
     };
     this.store.set(existing.businessId, updated);
     return updated;
+  }
+
+  /**
+   * The in-memory half of expiry (for the static demo businesses) plus a call into the real
+   * Postgres function used by the hourly pg_cron job (see supabase-subscription-service.ts) —
+   * this lets an admin/ops action or a test trigger the exact same expiry logic on demand,
+   * instead of only ever running on the cron schedule.
+   */
+  async expireDueTrials(now: Date): Promise<number> {
+    let mockExpiredCount = 0;
+    for (const [businessId, subscription] of this.store.entries()) {
+      if (subscription.status === "trialing" && new Date(subscription.trialEndsAt).getTime() <= now.getTime()) {
+        this.store.set(businessId, { ...subscription, status: "expired", updatedAt: now.toISOString() });
+        mockExpiredCount++;
+      }
+    }
+    const realExpiredCount = await expireDueRealTrials();
+    return mockExpiredCount + realExpiredCount;
   }
 }
 

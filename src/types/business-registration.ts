@@ -21,6 +21,8 @@ export type BusinessRegistrationRow = {
   created_at: string;
   reviewed_at: string | null;
   rejection_reason: string | null;
+  /** Set once the owner claims this registration via the magic-link callback (email match) — see /auth/callback. Null until then. */
+  owner_id: string | null;
 };
 
 /** Fields the public registration form is allowed to submit — status/featured/verified are never client-supplied (RLS also enforces this server-side). */

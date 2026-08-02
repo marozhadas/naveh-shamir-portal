@@ -1,7 +1,9 @@
 import { ALL_BUSINESSES } from "@/data/all-businesses";
 import { getRelatedBusinesses } from "@/utils/get-related-businesses";
 import { createPublicSupabaseClient } from "@/lib/supabase/public-client";
+import { createAdminSupabaseClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin-client";
 import { mapRegistrationToBusiness } from "@/utils/map-registration-to-business";
+import { isSupabaseBusinessId, toRegistrationId } from "@/utils/business-id";
 import type { Business } from "@/types/business";
 import type { BusinessPublicationStatus } from "@/types/business-status";
 import type { BusinessRepository } from "./business-repository";
@@ -29,6 +31,20 @@ async function getApprovedSupabaseBusinesses(): Promise<Business[]> {
 }
 
 /**
+ * Owner-scoped read of a Supabase registration regardless of status (pending/approved/rejected) —
+ * used by the real trial/dashboard flow, which must show an owner their own registration even
+ * before it's approved. Uses the service-role client with an explicit owner_id filter (rather than
+ * a session-bound RLS client) to match this codebase's established pattern for server-only reads.
+ */
+async function getSupabaseBusinessForOwner(registrationId: string, ownerId: string): Promise<Business | null> {
+  if (!isSupabaseAdminConfigured()) return null;
+  const admin = createAdminSupabaseClient();
+  const { data, error } = await admin.from("business_registrations").select("*").eq("id", registrationId).eq("owner_id", ownerId).maybeSingle();
+  if (error || !data) return null;
+  return mapRegistrationToBusiness(data);
+}
+
+/**
  * In-memory static demo data (see src/data/all-businesses.ts) merged with real, admin-approved
  * registrations from Supabase — the static list is unaffected either way, so the already-shipped
  * demo experience keeps working even if Supabase is briefly unreachable.
@@ -44,16 +60,31 @@ export class MockBusinessRepository implements BusinessRepository {
     return approved.find((entry) => entry.slug === slug) ?? null;
   }
 
-  /** Returns the business regardless of status — used by owner/admin preview, which must see drafts too. Supabase registrations aren't tied to a mock owner account, so only the static store is checked here (their pending/rejected state is only visible on the /admin page). */
+  /** Returns the business regardless of status — used by owner/admin preview, which must see drafts too. */
   async getBySlugUnfiltered(slug: string): Promise<Business | null> {
-    return this.store.find((entry) => entry.slug === slug) ?? null;
+    const mockMatch = this.store.find((entry) => entry.slug === slug);
+    if (mockMatch) return mockMatch;
+
+    if (!isSupabaseAdminConfigured()) return null;
+    const admin = createAdminSupabaseClient();
+    const { data, error } = await admin.from("business_registrations").select("*").eq("slug", slug).maybeSingle();
+    if (error || !data) return null;
+    return mapRegistrationToBusiness(data);
   }
 
   async getByOwnerId(ownerId: string): Promise<Business[]> {
-    return this.store.filter((entry) => entry.ownerId === ownerId);
+    const mockMatches = this.store.filter((entry) => entry.ownerId === ownerId);
+    if (!isSupabaseAdminConfigured()) return mockMatches;
+
+    const admin = createAdminSupabaseClient();
+    const { data } = await admin.from("business_registrations").select("*").eq("owner_id", ownerId);
+    return [...mockMatches, ...(data ?? []).map(mapRegistrationToBusiness)];
   }
 
   async getDraftById(businessId: string, ownerId: string): Promise<Business | null> {
+    if (isSupabaseBusinessId(businessId)) {
+      return getSupabaseBusinessForOwner(toRegistrationId(businessId), ownerId);
+    }
     const business = this.store.find((entry) => entry.id === businessId);
     if (!business || business.ownerId !== ownerId) return null;
     return business;
@@ -72,7 +103,8 @@ export class MockBusinessRepository implements BusinessRepository {
   /**
    * Not part of the BusinessRepository interface (spec's suggested shape doesn't include a
    * write path) — added because the dashboard's profile-edit form needs somewhere real to save
-   * to. Ownership is re-checked here too, not just by the caller.
+   * to. Ownership is re-checked here too, not just by the caller. Mock businesses only for now —
+   * editing a real Supabase-backed profile isn't part of this phase.
    */
   async updateBusiness(businessId: string, ownerId: string, patch: Partial<EditableBusinessFields>): Promise<Business | null> {
     const index = this.store.findIndex((entry) => entry.id === businessId && entry.ownerId === ownerId);

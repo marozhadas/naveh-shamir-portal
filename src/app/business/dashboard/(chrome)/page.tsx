@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Button } from "@/components/ui/Button";
 import { SubscriptionStatusCard } from "@/components/business-dashboard/SubscriptionStatusCard/SubscriptionStatusCard";
+import { isSupabaseBusinessId } from "@/utils/business-id";
+import { getLatestUnreadTrialNotification } from "@/repositories/business-notifications";
 import { resolveDashboardViewer } from "../resolve-dashboard-viewer";
 import { submitForReviewAction } from "../actions";
 import styles from "./dashboard.module.css";
@@ -28,6 +30,8 @@ export default async function BusinessDashboardPage() {
 
   const { business, subscription, access } = view;
   const canSubmitForReview = business.status === "draft" && access?.canPublish === true;
+  const isRealBusiness = isSupabaseBusinessId(business.id);
+  const trialNotification = isRealBusiness ? await getLatestUnreadTrialNotification(view.viewer.id) : null;
 
   return (
     <div className={styles.wrap}>
@@ -39,7 +43,19 @@ export default async function BusinessDashboardPage() {
         <span className={styles.statusBadge}>{STATUS_LABEL[business.status ?? "draft"]}</span>
       </div>
 
-      <SubscriptionStatusCard subscription={subscription} access={access} variant="compact" />
+      {trialNotification && (
+        <p className={styles.trialNotice} role="status">
+          {trialNotification.message}
+        </p>
+      )}
+
+      <SubscriptionStatusCard
+        subscription={subscription}
+        access={access}
+        variant="compact"
+        isRealSubscription={isRealBusiness}
+        businessSlug={business.slug}
+      />
 
       <div className={styles.actions}>
         <Button href="/business/dashboard/profile" variant="secondary">

@@ -17,6 +17,22 @@ function canPreviewAs(viewer: AuthenticatedUser | null, business: Business): vie
 }
 
 /**
+ * Next.js's dynamic route params are supposed to already be URL-decoded, but for a non-ASCII
+ * (e.g. Hebrew) slug this build inconsistently hands the page component the still-percent-encoded
+ * string while generateMetadata gets the decoded one for the exact same request — every real
+ * Hebrew-slugged business would 404 for visitors despite existing and being premium. Decoding
+ * here is safe either way: a slug that's already decoded (plain Hebrew, no "%" sequences) passes
+ * through decodeURIComponent unchanged.
+ */
+export function normalizeSlug(slug: string): string {
+  try {
+    return decodeURIComponent(slug);
+  } catch {
+    return slug;
+  }
+}
+
+/**
  * The single place that decides what a given slug resolves to for a given viewer. Two
  * independent gates apply, in order:
  *
@@ -29,7 +45,8 @@ function canPreviewAs(viewer: AuthenticatedUser | null, business: Business): vie
  *    an admin can still preview it, everyone else gets the same generic "unavailable" message
  *    (never the real reason — no payment status, no expiry date, spec section 9/25).
  */
-export async function resolveBusinessView(slug: string): Promise<BusinessProfileView> {
+export async function resolveBusinessView(rawSlug: string): Promise<BusinessProfileView> {
+  const slug = normalizeSlug(rawSlug);
   const published = await businessRepository.getPublishedBySlug(slug);
   if (published) {
     const subscription = await subscriptionRepository.getByBusinessId(published.id);

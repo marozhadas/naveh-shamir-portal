@@ -11,13 +11,28 @@ type SubscriptionStatusCardProps = {
   access: SubscriptionAccess | null;
   /** "compact" (dashboard overview) hides the mock-payment fine print and secondary actions. */
   variant?: "compact" | "full";
+  /**
+   * true for a real, Supabase-backed business (see isSupabaseBusinessId). No real billing exists
+   * yet (spec: "no fake checkout"), so real businesses never see the demo mock-payment
+   * checkout/cancel forms below — only navigation to real pages (trial, profile editor, public
+   * page, or a "coming soon" subscription screen).
+   */
+  isRealSubscription?: boolean;
+  /** The business's public slug, when it has one — used for the "view public page" link during an active trial. */
+  businessSlug?: string | null;
 };
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("he-IL", { year: "numeric", month: "long", day: "numeric" });
 }
 
-export function SubscriptionStatusCard({ subscription, access, variant = "full" }: SubscriptionStatusCardProps) {
+export function SubscriptionStatusCard({
+  subscription,
+  access,
+  variant = "full",
+  isRealSubscription = false,
+  businessSlug = null,
+}: SubscriptionStatusCardProps) {
   if (!subscription || !access) {
     return (
       <div className={`${styles.card} ${styles.neutral}`}>
@@ -25,8 +40,8 @@ export function SubscriptionStatusCard({ subscription, access, variant = "full" 
         <p className={styles.description}>
           הפעילו עמוד עסק מלא כדי להציג שירותים, תמונות, שעות פעילות ותגית עסק מאומת.
         </p>
-        <Button href="/business/register" variant="accent">
-          מתחילים חודש חינם
+        <Button href={isRealSubscription ? "/business/trial" : "/business/register"} variant="accent">
+          הפעלת 30 ימי ניסיון
         </Button>
       </div>
     );
@@ -37,7 +52,19 @@ export function SubscriptionStatusCard({ subscription, access, variant = "full" 
       <div className={`${styles.card} ${styles.positive}`}>
         <p className={styles.title}>החודש הראשון שלכם פעיל</p>
         <TrialProgressBar daysRemaining={access.daysRemainingInTrial} />
-        {variant === "full" && (
+        {variant === "full" && isRealSubscription && (
+          <div className={styles.ctaRow}>
+            <Button href="/business/dashboard/profile" variant="secondary" size="compact">
+              עריכת עמוד העסק
+            </Button>
+            {businessSlug && (
+              <Button href={`/businesses/${businessSlug}`} variant="secondary" size="compact">
+                צפייה בעמוד הציבורי
+              </Button>
+            )}
+          </div>
+        )}
+        {variant === "full" && !isRealSubscription && (
           <>
             <form action={startCheckoutAction} className={styles.formInline}>
               <Button type="submit" variant="accent">
@@ -57,7 +84,7 @@ export function SubscriptionStatusCard({ subscription, access, variant = "full" 
       <div className={`${styles.card} ${styles.positive}`}>
         <p className={styles.title}>המנוי פעיל</p>
         {nextBilling && <p className={styles.description}>החיוב הבא בתאריך {nextBilling}</p>}
-        {variant === "full" && (
+        {variant === "full" && !isRealSubscription && (
           <form action={cancelSubscriptionAction} className={styles.formInline}>
             <Button type="submit" variant="secondary" size="compact">
               ביטול המנוי
@@ -73,7 +100,7 @@ export function SubscriptionStatusCard({ subscription, access, variant = "full" 
       <div className={`${styles.card} ${styles.warning}`}>
         <p className={styles.title}>לא הצלחנו להשלים את התשלום</p>
         <p className={styles.description}>עדכנו את אמצעי התשלום כדי לשמור על העמוד פעיל.</p>
-        {variant === "full" && (
+        {variant === "full" && !isRealSubscription && (
           <form action={startCheckoutAction} className={styles.formInline}>
             <Button type="submit" variant="accent">
               עדכון אמצעי תשלום
@@ -90,7 +117,7 @@ export function SubscriptionStatusCard({ subscription, access, variant = "full" 
       <div className={`${styles.card} ${styles.warning}`}>
         <p className={styles.title}>{endDate ? `המנוי יבוטל בתאריך ${endDate}` : "המנוי יבוטל בסוף התקופה הנוכחית"}</p>
         <p className={styles.description}>העמוד שלכם ימשיך להיות מוצג עד לתאריך זה. ניתן לבטל את בקשת הביטול בכל שלב.</p>
-        {variant === "full" && (
+        {variant === "full" && !isRealSubscription && (
           <form action={reactivateSubscriptionAction} className={styles.formInline}>
             <Button type="submit" variant="secondary">
               ביטול בקשת הביטול
@@ -106,9 +133,16 @@ export function SubscriptionStatusCard({ subscription, access, variant = "full" 
       <div className={`${styles.card} ${styles.warning}`}>
         <p className={styles.title}>תקופת הניסיון הסתיימה</p>
         <p className={styles.description}>
-          כל התוכן שלכם שמור, וניתן להחזיר את העמוד לאוויר באמצעות הפעלת מנוי.
+          כל התוכן שלכם שמור, ולא נמחק. העמוד הציבורי אינו מוצג כרגע עד להפעלת מנוי.
         </p>
-        {variant === "full" && (
+        {variant === "full" && isRealSubscription && (
+          <div className={styles.ctaRow}>
+            <Button href="/business/dashboard/subscription" variant="accent">
+              אפשרויות מנוי (בקרוב)
+            </Button>
+          </div>
+        )}
+        {variant === "full" && !isRealSubscription && (
           <>
             <form action={startCheckoutAction} className={styles.formInline}>
               <Button type="submit" variant="accent">

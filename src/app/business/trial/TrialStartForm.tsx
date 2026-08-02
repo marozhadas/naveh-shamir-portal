@@ -25,7 +25,7 @@ export function TrialStartForm() {
       )}
 
       <Button type="submit" variant="accent" disabled={isPending} fullWidth>
-        {isPending ? "פותח עמוד עסק…" : "פתיחת עמוד עסק"}
+        {isPending ? "מפעילים..." : "הפעלת 30 ימי ניסיון"}
       </Button>
     </form>
   );

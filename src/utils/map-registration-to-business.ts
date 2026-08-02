@@ -1,5 +1,7 @@
 import type { Business, BusinessCategory } from "@/types/business";
-import type { BusinessRegistrationRow } from "@/types/business-registration";
+import type { BusinessPublicationStatus } from "@/types/business-status";
+import type { BusinessRegistrationRow, BusinessRegistrationStatus } from "@/types/business-registration";
+import { toBusinessId } from "@/utils/business-id";
 
 /**
  * The registration form uses the archive's richer category taxonomy (src/data/business-categories.ts),
@@ -25,10 +27,28 @@ function buildWhatsappUrl(phone: string | null): string | undefined {
   return digits ? `https://wa.me/${digits}` : undefined;
 }
 
-/** Only ever called with an approved row — the caller (business repository) is responsible for that filter. */
+/**
+ * Registration status and publication status are deliberately different vocabularies (admin
+ * approval workflow vs. public-listing lifecycle) — this is the one place that translates between
+ * them. "rejected" maps to "archived" (permanently not shown, distinct from a temporary
+ * suspension) since there's no separate rejected-equivalent in BusinessPublicationStatus.
+ */
+const REGISTRATION_TO_PUBLICATION_STATUS: Record<BusinessRegistrationStatus, BusinessPublicationStatus> = {
+  pending: "pending-review",
+  approved: "published",
+  rejected: "archived",
+};
+
+/**
+ * Safe to call with a row of any status — the mapped `status` field reflects the real
+ * registration status (not hardcoded to "published"), so getBusinessListingAccess() correctly
+ * refuses archive/profile visibility for a still-pending or rejected registration even if a
+ * caller forgets to pre-filter (e.g. the owner's own dashboard, which must show a pending
+ * registration to its owner without exposing it publicly).
+ */
 export function mapRegistrationToBusiness(row: BusinessRegistrationRow): Business {
   return {
-    id: `reg-${row.id}`,
+    id: toBusinessId(row.id),
     slug: row.slug,
     name: row.business_name,
     category: toLegacyCategory(row.category_id),
@@ -46,7 +66,8 @@ export function mapRegistrationToBusiness(row: BusinessRegistrationRow): Busines
     verified: row.verified,
     visible: true,
     createdAt: row.created_at,
-    status: "published",
+    status: REGISTRATION_TO_PUBLICATION_STATUS[row.status],
+    ownerId: row.owner_id ?? undefined,
     contact: {
       phone: row.phone ?? undefined,
       whatsappUrl: buildWhatsappUrl(row.whatsapp_phone),

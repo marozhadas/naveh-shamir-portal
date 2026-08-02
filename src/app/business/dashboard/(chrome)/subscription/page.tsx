@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { SubscriptionStatusCard } from "@/components/business-dashboard/SubscriptionStatusCard/SubscriptionStatusCard";
 import { BUSINESS_MONTHLY_PLAN } from "@/types/subscription-plan";
+import { isSupabaseBusinessId } from "@/utils/business-id";
 import { resolveDashboardViewer } from "../../resolve-dashboard-viewer";
 import styles from "./subscription.module.css";
 
@@ -17,7 +18,8 @@ export default async function BusinessSubscriptionPage() {
     return <p className={styles.notice}>יש להיכנס במצב הדגמה כבעל/ת עסק כדי לנהל את המנוי.</p>;
   }
 
-  const { subscription } = view;
+  const { subscription, business } = view;
+  const isRealSubscription = isSupabaseBusinessId(business.id);
 
   return (
     <div className={styles.wrap}>
@@ -37,7 +39,19 @@ export default async function BusinessSubscriptionPage() {
         </ul>
       </div>
 
-      <SubscriptionStatusCard subscription={subscription} access={view.access} variant="full" />
+      {isRealSubscription && (
+        <p className={styles.notice} role="status">
+          חיוב אמיתי טרם הופעל בפורטל. בשלב זה ניתן להפעיל רק את 30 ימי הניסיון החינמיים; אפשרות תשלום חודשי תתווסף בהמשך, וכל בעלי העסקים יקבלו הודעה מראש לפני שתופעל.
+        </p>
+      )}
+
+      <SubscriptionStatusCard
+        subscription={subscription}
+        access={view.access}
+        variant="full"
+        isRealSubscription={isRealSubscription}
+        businessSlug={business.slug}
+      />
 
       {subscription && (
         <dl className={styles.detailsList}>

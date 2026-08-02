@@ -5,8 +5,7 @@ import { getRegistrationById } from "@/lib/admin/business-registrations";
 import { getNotificationForEntity } from "@/lib/admin/notifications";
 import { getCategoryLabel } from "@/data/business-categories";
 import { formatNotificationDateTime } from "@/utils/admin-notification-format";
-import { mapRegistrationToBusiness } from "@/utils/map-registration-to-business";
-import { getBusinessListingAccess } from "@/domain/get-business-listing-access";
+import { getAdminSubscriptionSummary, SUBSCRIPTION_STATUS_LABEL } from "@/lib/admin/subscription-summary";
 import { Button } from "@/components/ui/Button";
 import { ApproveRejectPanel } from "./ApproveRejectPanel";
 import { retryNotificationEmailAction } from "./actions";
@@ -43,6 +42,7 @@ export default async function AdminBusinessDetailPage({ params }: BusinessDetail
   if (!registration) notFound();
 
   const notification = await getNotificationForEntity("business-registration", id);
+  const subscriptionSummary = registration.status === "approved" ? await getAdminSubscriptionSummary(registration, new Date()) : null;
 
   return (
     <div className={styles.page}>
@@ -120,42 +120,64 @@ export default async function AdminBusinessDetailPage({ params }: BusinessDetail
         </dl>
       </section>
 
-      {registration.status === "approved" &&
-        (() => {
-          const access = getBusinessListingAccess(mapRegistrationToBusiness(registration), null, new Date());
-          return (
-            <section className={styles.section}>
-              <h2 className={styles.sectionTitle}>מצב הופעה באתר</h2>
-              <dl className={styles.detailsGrid}>
+      {subscriptionSummary && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>מצב הופעה באתר ומנוי</h2>
+          <dl className={styles.detailsGrid}>
+            <div>
+              <dt>סוג כרטיס</dt>
+              <dd>{subscriptionSummary.access.tier === "premium" ? "עמוד מלא (Premium)" : "רישום בסיסי"}</dd>
+            </div>
+            <div>
+              <dt>סטטוס מנוי</dt>
+              <dd>
+                {subscriptionSummary.subscription
+                  ? (SUBSCRIPTION_STATUS_LABEL[subscriptionSummary.subscription.status] ?? subscriptionSummary.subscription.status)
+                  : "לא הופעל ניסיון עדיין"}
+              </dd>
+            </div>
+            {subscriptionSummary.subscription && (
+              <>
                 <div>
-                  <dt>סוג כרטיס</dt>
-                  <dd>{access.canOpenProfile ? "עמוד מלא (Premium)" : "רישום בסיסי"}</dd>
+                  <dt>תחילת תקופת ניסיון</dt>
+                  <dd>{formatNotificationDateTime(subscriptionSummary.subscription.trialStartedAt)}</dd>
                 </div>
                 <div>
-                  <dt>מנוי</dt>
-                  <dd>אין מנוי מחובר להרשמה זו</dd>
+                  <dt>סיום תקופת ניסיון</dt>
+                  <dd>{formatNotificationDateTime(subscriptionSummary.subscription.trialEndsAt)}</dd>
                 </div>
+                {subscriptionSummary.daysRemaining !== null && (
+                  <div>
+                    <dt>ימים שנותרו לניסיון</dt>
+                    <dd>{subscriptionSummary.daysRemaining}</dd>
+                  </div>
+                )}
                 <div>
-                  <dt>עמוד ציבורי</dt>
-                  <dd>{access.canOpenProfile ? "פעיל" : "לא פעיל — מוצג בארכיון ככרטיס בסיסי בלבד"}</dd>
+                  <dt>ניסיון נוצל</dt>
+                  <dd>כן — לא ניתן להפעיל ניסיון נוסף להרשמה זו</dd>
                 </div>
-                <div>
-                  <dt>תגית &quot;עסק מאומת&quot;</dt>
-                  <dd>{access.canShowVerifiedBadge ? "מוצגת" : "אינה מוצגת"}</dd>
-                </div>
-              </dl>
-              {access.canOpenProfile ? (
-                <Link href={`/businesses/${registration.slug}`} target="_blank" rel="noreferrer" className={styles.previewLink}>
-                  פתיחת עמוד העסק באתר ↗
-                </Link>
-              ) : (
-                <p className={styles.meta}>
-                  אין עדיין עמוד עסק ציבורי — יופעל אוטומטית כאשר יחובר מנוי פעיל או תקופת ניסיון להרשמה זו.
-                </p>
-              )}
-            </section>
-          );
-        })()}
+              </>
+            )}
+            <div>
+              <dt>עמוד ציבורי</dt>
+              <dd>{subscriptionSummary.access.canOpenProfile ? "פעיל" : "לא פעיל — מוצג בארכיון ככרטיס בסיסי בלבד"}</dd>
+            </div>
+            <div>
+              <dt>תגית &quot;עסק מאומת&quot;</dt>
+              <dd>{subscriptionSummary.access.canShowVerifiedBadge ? "מוצגת" : "אינה מוצגת"}</dd>
+            </div>
+          </dl>
+          {subscriptionSummary.access.canOpenProfile ? (
+            <Link href={`/businesses/${registration.slug}`} target="_blank" rel="noreferrer" className={styles.previewLink}>
+              פתיחת עמוד העסק באתר ↗
+            </Link>
+          ) : (
+            <p className={styles.meta}>
+              אין עדיין עמוד עסק ציבורי — יופעל אוטומטית כאשר בעל/ת העסק יפעילו ניסיון או מנוי פעיל להרשמה זו.
+            </p>
+          )}
+        </section>
+      )}
 
       {notification && (
         <section className={styles.section} aria-labelledby="email-heading">

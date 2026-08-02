@@ -2,21 +2,33 @@
 
 import { redirect } from "next/navigation";
 import { authAdapter } from "@/adapters/mock-auth-adapter";
-import { businessRepository } from "@/repositories/mock-business-repository";
 import { subscriptionRepository } from "@/repositories/mock-subscription-repository";
-import { checkTrialEligibility } from "@/domain/check-trial-eligibility";
 
 export type StartTrialActionState = { error: string | null };
 
+const ELIGIBILITY_ERROR_MESSAGES: Record<string, string> = {
+  "not-authenticated": "יש להתחבר כבעל/ת העסק כדי להפעיל את הניסיון.",
+  "business-not-found": "העסק לא נמצא.",
+  "business-not-owned": "העסק הזה אינו רשום תחת החשבון המחובר.",
+  "business-not-approved": "העסק טרם אושר על ידי הצוות שלנו. יש להמתין לאישור הרישום לפני הפעלת הניסיון.",
+  "trial-already-used": "תקופת הניסיון החינמית כבר נוצלה עבור העסק הזה בעבר, ולא ניתן להפעיל אותה שוב.",
+  "active-subscription": "כבר קיים מנוי פעיל לעסק הזה.",
+  "subscription-not-eligible": "אירעה תקלה בבדיקת הזכאות. נסו שוב בעוד כמה רגעים.",
+};
+const GENERIC_ERROR_MESSAGE = "אירעה תקלה בהפעלת הניסיון. נסו שוב בעוד כמה רגעים.";
+
 /**
- * Every check the domain layer defines is re-verified here, server-side, before anything is
- * written (spec section 11: never trust the client) — the consent checkbox is enforced here too,
- * not just in the form's HTML `required` attribute.
+ * Every check is re-verified here, server-side, right before anything is written (spec section
+ * 11: never trust the client) — the consent checkbox is enforced here too, not just via the
+ * form's HTML `required` attribute. Eligibility now goes through subscriptionRepository, which
+ * re-derives ownership/approval/one-time-use straight from the database for real Supabase
+ * businesses (see checkRealTrialEligibility) rather than trusting anything computed earlier in
+ * the request.
  */
 export async function startTrialAction(_prevState: StartTrialActionState, formData: FormData): Promise<StartTrialActionState> {
   const user = await authAdapter.getCurrentUser();
   if (!user) {
-    return { error: "יש להיכנס במצב הדגמה כבעל/ת עסק כדי להתחיל ניסיון." };
+    return { error: ELIGIBILITY_ERROR_MESSAGES["not-authenticated"] };
   }
 
   const consent = formData.get("consent");
@@ -29,23 +41,16 @@ export async function startTrialAction(_prevState: StartTrialActionState, formDa
     return { error: "לא נמצא עסק המשויך לחשבון זה." };
   }
 
-  const business = await businessRepository.getDraftById(businessId, user.id);
-  if (!business) {
-    return { error: "העסק לא נמצא או שאינו בבעלותך." };
-  }
-
-  const existingSubscription = await subscriptionRepository.getByBusinessId(businessId);
-  const eligibility = checkTrialEligibility(business, existingSubscription, user);
+  const eligibility = await subscriptionRepository.checkTrialEligibility(businessId, user);
   if (!eligibility.eligible) {
-    const messages: Record<string, string> = {
-      "active-subscription": "כבר קיים מנוי פעיל לעסק הזה.",
-      "trial-already-used": "תקופת הניסיון החינמית כבר נוצלה עבור העסק הזה בעבר.",
-      "business-not-owned": "העסק הזה אינו בבעלותך.",
-      "not-authenticated": "יש להיכנס כדי להתחיל ניסיון.",
-    };
-    return { error: messages[eligibility.reason] ?? "לא ניתן להתחיל ניסיון כרגע." };
+    return { error: ELIGIBILITY_ERROR_MESSAGES[eligibility.reason] ?? GENERIC_ERROR_MESSAGE };
   }
 
-  await subscriptionRepository.createTrial(businessId, user.id);
+  try {
+    await subscriptionRepository.createTrial(businessId, user.id);
+  } catch {
+    return { error: GENERIC_ERROR_MESSAGE };
+  }
+
   redirect("/business/dashboard");
 }

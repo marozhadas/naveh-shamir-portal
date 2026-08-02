@@ -48,3 +48,13 @@
   font-size: var(--fs-body-sm);
   color: var(--color-text-secondary);
 }
+
+.trialNotice {
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-primary);
+  background: var(--color-highlight-bg);
+  border: 1px solid var(--yellow-300);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  margin: 0;
+}
