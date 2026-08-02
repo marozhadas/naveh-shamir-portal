@@ -209,7 +209,7 @@ export const defaultWhatsAppBannerSettings: WhatsAppBannerEditorSettings = {
   },
   visibility: {
     showIcon: true,
-    iconName: "message-circle",
+    iconName: "whatsapp",
     hideOnMobile: false,
   },
 };

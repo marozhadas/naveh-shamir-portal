@@ -1,9 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, GraduationCap, HandHeart, MapPin, MessageCircle, Phone, Utensils, Wrench } from "lucide-react";
+import { ArrowLeft, GraduationCap, HandHeart, MapPin, Phone, Utensils, Wrench } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { CategoryTag } from "@/components/ui/CategoryTag";
 import { Button } from "@/components/ui/Button";
+import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 import { VerifiedBusinessBadge } from "@/components/ui/VerifiedBusinessBadge/VerifiedBusinessBadge";
 import { getCategoryLabel } from "@/data/business-categories";
 import type { Business } from "@/types/business";
@@ -109,7 +110,7 @@ export function BusinessCard({ business, access }: BusinessCardProps) {
               href={business.whatsappUrl}
               variant="whatsapp"
               size="compact"
-              icon={<MessageCircle size={15} aria-hidden="true" />}
+              icon={<WhatsAppIcon size={15} aria-hidden="true" />}
               target="_blank"
               rel="noopener noreferrer"
               data-analytics-event="archive-business-whatsapp-click"

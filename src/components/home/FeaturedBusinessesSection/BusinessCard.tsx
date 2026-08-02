@@ -1,9 +1,10 @@
 import type { CSSProperties } from "react";
 import Image from "next/image";
-import { GraduationCap, HandHeart, MessageCircle, Phone, Utensils, Wrench } from "lucide-react";
+import { GraduationCap, HandHeart, Phone, Utensils, Wrench } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { CategoryTag } from "@/components/ui/CategoryTag";
 import { Button } from "@/components/ui/Button";
+import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 import { colorTokenToCssVar, radiusTokenToCssVar, shadowTokenToCssVar } from "@/styles/token-to-css-variable";
 import type { BusinessCardContentSettings, FeaturedBusinessesEditorSettings } from "@/editor/schemas/businesses.schema";
 import styles from "./BusinessCard.module.css";
@@ -88,7 +89,7 @@ export function BusinessCard({ card, appearance }: BusinessCardProps) {
               href={card.whatsappUrl}
               variant="whatsapp"
               size="compact"
-              icon={<MessageCircle size={15} aria-hidden="true" />}
+              icon={<WhatsAppIcon size={15} aria-hidden="true" />}
               target="_blank"
               rel="noopener noreferrer"
               data-analytics-event="business-whatsapp-click"

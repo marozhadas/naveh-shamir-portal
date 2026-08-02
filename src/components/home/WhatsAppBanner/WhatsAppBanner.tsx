@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
-import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 import { colorTokenToCssVar, containerWidthTokenToCssValue, radiusTokenToCssVar, shadowTokenToCssVar, spacingTokenToCssVar } from "@/styles/token-to-css-variable";
 import { ICON_TOKEN_COMPONENT } from "@/styles/icon-token-map";
 import type { WhatsAppBannerEditorSettings } from "@/editor/schemas/whatsapp.schema";
@@ -11,7 +11,7 @@ type WhatsAppBannerProps = {
 };
 
 export function WhatsAppBanner({ settings }: WhatsAppBannerProps) {
-  const Icon = ICON_TOKEN_COMPONENT[settings.visibility.iconName] ?? MessageCircle;
+  const Icon = ICON_TOKEN_COMPONENT[settings.visibility.iconName] ?? WhatsAppIcon;
 
   const sectionStyle = {
     "--whatsapp-display-mobile": settings.visibility.hideOnMobile ? "none" : "block",

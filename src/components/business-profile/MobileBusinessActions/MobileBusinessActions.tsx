@@ -1,5 +1,6 @@
-import { MapPin, MessageCircle, Phone } from "lucide-react";
+import { MapPin, Phone } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 import { createMapLink } from "@/utils/create-map-link";
 import { createWhatsappLink } from "@/utils/create-whatsapp-link";
 import { getBusinessContact } from "@/utils/business-profile";
@@ -22,7 +23,7 @@ export function MobileBusinessActions({ business }: MobileBusinessActionsProps) 
   return (
     <div className={styles.bar}>
       {whatsappLink && (
-        <Button href={whatsappLink} variant="whatsapp" target="_blank" rel="noopener noreferrer" icon={<MessageCircle size={16} aria-hidden="true" />} fullWidth>
+        <Button href={whatsappLink} variant="whatsapp" target="_blank" rel="noopener noreferrer" icon={<WhatsAppIcon size={16} aria-hidden="true" />} fullWidth>
           וואטסאפ
         </Button>
       )}

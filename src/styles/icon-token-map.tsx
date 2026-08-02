@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { ComponentType } from "react";
 import type { IconToken } from "@/editor/types/editor.types";
+import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 
 /**
  * Every icon selectable from the editor's icon picker, in one place — shared by every site
@@ -33,6 +34,7 @@ export const ICON_TOKEN_COMPONENT: Record<IconToken, ComponentType<{ size?: numb
   heart: Heart,
   "book-open": BookOpen,
   gift: Gift,
+  whatsapp: WhatsAppIcon,
 };
 
 export const ICON_TOKEN_LABEL: Record<IconToken, string> = {
@@ -48,4 +50,5 @@ export const ICON_TOKEN_LABEL: Record<IconToken, string> = {
   heart: "לב",
   "book-open": "ספר פתוח",
   gift: "מתנה",
+  whatsapp: "וואטסאפ",
 };

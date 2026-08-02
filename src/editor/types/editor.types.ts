@@ -56,7 +56,7 @@ export type ButtonVariantToken = "primary" | "secondary" | "accent" | "whatsapp"
 
 export type ContainerWidthToken = "md" | "lg" | "xl";
 
-/** Curated icon names — a subset of lucide-react actually shipped in this project. */
+/** Curated icon names — mostly a subset of lucide-react actually shipped in this project, plus "whatsapp" for the brand SVG in WhatsAppIcon. */
 export type IconToken =
   | "phone"
   | "calendar-days"
@@ -69,7 +69,8 @@ export type IconToken =
   | "home"
   | "heart"
   | "book-open"
-  | "gift";
+  | "gift"
+  | "whatsapp";
 
 export type EditableImage = {
   src: string;

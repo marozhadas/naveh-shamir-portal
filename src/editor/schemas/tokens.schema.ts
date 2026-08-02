@@ -64,6 +64,7 @@ export const iconTokenSchema = z.enum([
   "heart",
   "book-open",
   "gift",
+  "whatsapp",
 ]);
 
 const HTTPS_OR_LOCAL_PATTERN = /^(https:\/\/|\/)/;

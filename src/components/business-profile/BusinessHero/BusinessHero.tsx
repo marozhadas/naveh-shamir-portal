@@ -1,6 +1,7 @@
 import Image from "next/image";
-import { Globe, MapPin, MessageCircle, Phone } from "lucide-react";
+import { Globe, MapPin, Phone } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 import { CategoryTag } from "@/components/ui/CategoryTag";
 import { VerifiedBusinessBadge } from "@/components/ui/VerifiedBusinessBadge/VerifiedBusinessBadge";
 import { ShareButton } from "@/components/business-profile/ShareButton/ShareButton";
@@ -65,7 +66,7 @@ export function BusinessHero({ business, access }: BusinessHeroProps) {
 
         <div className={styles.actions}>
           {whatsappLink && (
-            <Button href={whatsappLink} variant="whatsapp" target="_blank" rel="noopener noreferrer" icon={<MessageCircle size={16} aria-hidden="true" />}>
+            <Button href={whatsappLink} variant="whatsapp" target="_blank" rel="noopener noreferrer" icon={<WhatsAppIcon size={16} aria-hidden="true" />}>
               וואטסאפ
             </Button>
           )}
