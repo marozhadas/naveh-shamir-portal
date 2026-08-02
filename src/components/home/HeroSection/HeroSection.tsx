@@ -15,11 +15,6 @@ import {
 import type { HeroEditorSettings } from "@/editor/schemas/hero.schema";
 import styles from "./HeroSection.module.css";
 
-const SKYLINE_BARS = [42, 68, 30, 90, 54, 36, 72, 48, 26, 60, 84, 40, 58, 32].map((height, index) => ({
-  height,
-  width: 24 + (index % 3) * 6,
-}));
-
 /** Hero's own "content column width" scale — distinct from the shared section ContainerWidthToken. */
 const MAX_CONTENT_WIDTH_PX: Record<HeroEditorSettings["layout"]["maxContentWidth"], string> = {
   sm: "600px",
@@ -64,18 +59,10 @@ export function HeroSection({ settings }: HeroSectionProps) {
     "--hero-search-gap": spacingTokenToCssVar(settings.layout.descriptionToSearchGap),
     "--search-bar-radius": radiusTokenToCssVar(settings.appearance.searchBarRadiusToken),
     "--search-bar-shadow": shadowTokenToCssVar(settings.appearance.searchBarShadowToken),
-    "--hero-illustration-display": settings.visibility.showIllustration ? "flex" : "none",
-    "--hero-illustration-display-mobile": settings.responsive.showIllustrationMobile ? "flex" : "none",
   } as CSSProperties;
 
   return (
     <section id="top" className={styles.hero} style={heroStyle}>
-      <div className={styles.skyline} aria-hidden="true">
-        {SKYLINE_BARS.map((bar, index) => (
-          <div key={index} className={styles.skylineBar} style={{ width: bar.width, height: bar.height }} />
-        ))}
-      </div>
-
       <div className={styles.content}>
         <h1 className={styles.title}>{settings.content.title}</h1>
         {settings.content.description && <p className={styles.subtitle}>{settings.content.description}</p>}

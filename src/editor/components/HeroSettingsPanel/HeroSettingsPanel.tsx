@@ -214,13 +214,6 @@ export function HeroSettingsPanel({ tab }: HeroSettingsPanelProps) {
           checked={hero.visibility.showSearch}
           onChange={(checked) => onDiscreteChange({ ...hero, visibility: { ...hero.visibility, showSearch: checked } })}
         />
-        <ToggleField
-          label="הצגת האיור (קו הרקיע)"
-          checked={hero.visibility.showIllustration}
-          onChange={(checked) =>
-            onDiscreteChange({ ...hero, visibility: { ...hero.visibility, showIllustration: checked } })
-          }
-        />
       </>
     );
   }
@@ -268,13 +261,6 @@ export function HeroSettingsPanel({ tab }: HeroSettingsPanelProps) {
         labels={ALIGN_LABELS}
         onChange={(value) =>
           onDiscreteChange({ ...hero, responsive: { ...hero.responsive, contentAlignmentMobile: value } })
-        }
-      />
-      <ToggleField
-        label="הצגת האיור במובייל"
-        checked={hero.responsive.showIllustrationMobile}
-        onChange={(checked) =>
-          onDiscreteChange({ ...hero, responsive: { ...hero.responsive, showIllustrationMobile: checked } })
         }
       />
     </>
