@@ -5,6 +5,7 @@ import { ConnectedMovableSections } from "@/editor/connected/ConnectedMovableSec
 import { isEditorEnabled } from "@/editor/config/editor-capabilities";
 import { EditableRegion } from "@/editor/components/EditableRegion/EditableRegion";
 import { EditorHost } from "@/editor/EditorHost";
+import { isAdminAuthenticated } from "@/lib/admin-session";
 
 type HomeProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -20,7 +21,8 @@ function toURLSearchParams(resolved: Record<string, string | string[] | undefine
 }
 
 export default async function Home({ searchParams }: HomeProps) {
-  const editorEnabled = isEditorEnabled(toURLSearchParams(await searchParams));
+  const [resolvedSearchParams, isAdmin] = await Promise.all([searchParams, isAdminAuthenticated()]);
+  const editorEnabled = isEditorEnabled(toURLSearchParams(resolvedSearchParams), isAdmin);
 
   return (
     <EditorHost enabled={editorEnabled}>

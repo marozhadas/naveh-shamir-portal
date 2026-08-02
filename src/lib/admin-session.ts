@@ -46,14 +46,18 @@ export async function createAdminSession(): Promise<void> {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    path: "/admin",
+    // Path is "/" (not "/admin") so isAdminAuthenticated() can also gate things outside the
+    // /admin area — e.g. the homepage's visual editor, which must only open for a logged-in
+    // admin (see isEditorEnabled()). httpOnly + secure(prod) + sameSite=lax already protect the
+    // cookie regardless of path scope, so widening it doesn't weaken anything.
+    path: "/",
     maxAge: SESSION_MAX_AGE_SECONDS,
   });
 }
 
 export async function destroyAdminSession(): Promise<void> {
   const store = await cookies();
-  store.delete({ name: ADMIN_SESSION_COOKIE, path: "/admin" });
+  store.delete({ name: ADMIN_SESSION_COOKIE, path: "/" });
 }
 
 export async function isAdminAuthenticated(): Promise<boolean> {

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Building2, Clock, Bell, MessageSquare, CreditCard, Search, Settings } from "lucide-react";
+import { Building2, Clock, Bell, MessageSquare, CreditCard, Search, Settings, Paintbrush } from "lucide-react";
 import { getAdminId } from "@/lib/admin-session";
 import { countOpenNotifications, listRecentNotifications } from "@/lib/admin/notifications";
 import { countApprovedRegistrations, countPendingRegistrations, listPendingRegistrations } from "@/lib/admin/business-registrations";
@@ -71,6 +71,9 @@ export default async function AdminDashboardPage() {
           </Button>
           <Button href="/admin/settings/notifications" variant="secondary" icon={<Settings size={16} aria-hidden="true" />}>
             הגדרות התראות
+          </Button>
+          <Button href="/?editor=true" target="_blank" rel="noopener noreferrer" variant="secondary" icon={<Paintbrush size={16} aria-hidden="true" />}>
+            פתיחת העורך החזותי
           </Button>
         </div>
       </section>

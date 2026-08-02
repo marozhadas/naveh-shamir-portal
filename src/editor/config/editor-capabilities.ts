@@ -5,12 +5,16 @@
  * real permission check (login, role) only needs to change in one place.
  *
  * - In development, `?editor=true` enables it (see the dev-default note below).
- * - In production, it's hidden unless BOTH are true: the explicit
- *   `?editor=true` query param AND the NEXT_PUBLIC_ENABLE_VISUAL_EDITOR=true
- *   env var. Neither one alone is enough in production — this is the "env
- *   var required in addition to the query param" gate the spec asks for.
+ * - In production, it's hidden unless BOTH are true: the caller has a real,
+ *   server-verified admin session (see isAdminAuthenticated() in
+ *   src/lib/admin-session.ts) AND the explicit `?editor=true` query param is
+ *   present. A NEXT_PUBLIC_* env var was deliberately dropped from this
+ *   check — it ships in the client bundle, so it can never be a real
+ *   authorization boundary, only a config toggle. `isAdmin` must be resolved
+ *   server-side by the caller (a query param or client-visible flag can't be
+ *   trusted to prove who's asking) and passed in here.
  */
-export function isEditorEnabled(searchParams?: URLSearchParams | null): boolean {
+export function isEditorEnabled(searchParams: URLSearchParams | null | undefined, isAdmin: boolean): boolean {
   const isProduction = process.env.NODE_ENV === "production";
   const queryFlag = searchParams?.get("editor") === "true";
 
@@ -21,6 +25,5 @@ export function isEditorEnabled(searchParams?: URLSearchParams | null): boolean 
     return searchParams?.get("editor") !== "false";
   }
 
-  const envAllows = process.env.NEXT_PUBLIC_ENABLE_VISUAL_EDITOR === "true";
-  return queryFlag && envAllows;
+  return queryFlag && isAdmin;
 }
