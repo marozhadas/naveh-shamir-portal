@@ -1,9 +1,14 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
+import { after } from "next/server";
 import { createPublicSupabaseClient } from "@/lib/supabase/public-client";
 import { isSafeHrefOrEmpty } from "@/utils/validate-href";
 import { slugify } from "@/utils/slugify";
 import { BUSINESS_CATEGORIES } from "@/data/business-categories";
+import { isSupabaseAdminConfigured } from "@/lib/supabase/admin-client";
+import { getOpenNotificationForEntity } from "@/lib/admin/notifications";
+import { sendRegistrationNotificationEmail } from "@/lib/email/send-registration-notification-email";
 
 export type RegisterBusinessActionState = { error: string | null; success: boolean };
 
@@ -63,7 +68,13 @@ export async function registerBusinessAction(
   // (the unique constraint is the real guard — this just makes success on the first try common).
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const slug = attempt === 0 ? baseSlug : slugify(businessName, randomSuffix());
+    // Generated here (not read back via `.select()`) on purpose: the anon role's SELECT policy on
+    // this table only covers status="approved" rows, so asking PostgREST to return the just-inserted
+    // "pending" row would itself get rejected by RLS. Knowing the id upfront avoids needing that read.
+    const registrationId = randomUUID();
+    const createdAt = new Date().toISOString();
     const { error } = await supabase.from("business_registrations").insert({
+      id: registrationId,
       slug,
       business_name: businessName,
       category_id: categoryId,
@@ -81,7 +92,25 @@ export async function registerBusinessAction(
       verified: false,
     });
 
-    if (!error) return { error: null, success: true };
+    if (!error) {
+      // Fire-and-forget: a slow or failed email must never delay or fail the registration itself,
+      // which already succeeded above. `after()` runs this once the response has been sent.
+      if (isSupabaseAdminConfigured()) {
+        after(async () => {
+          const notification = await getOpenNotificationForEntity("business-registration", registrationId);
+          if (!notification) return;
+          await sendRegistrationNotificationEmail({
+            notificationId: notification.id,
+            registrationId,
+            businessName,
+            categoryId,
+            contactName,
+            createdAt,
+          });
+        });
+      }
+      return { error: null, success: true };
+    }
     // Postgres unique_violation — retry with a different slug.
     if (error.code !== "23505") {
       return { error: "לא ניתן היה לשלוח את ההרשמה כרגע. נסו שוב בעוד רגע.", success: false };

@@ -3,7 +3,7 @@
 import { useActionState, useId } from "react";
 import { Button } from "@/components/ui/Button";
 import { adminLoginAction, type AdminLoginActionState } from "./actions";
-import styles from "./admin.module.css";
+import styles from "./login.module.css";
 
 const INITIAL_STATE: AdminLoginActionState = { error: null };
 

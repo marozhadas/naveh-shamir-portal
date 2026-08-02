@@ -1,0 +1,12 @@
+.notConfigured {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+}
+
+.notConfiguredTitle {
+  font-weight: var(--fw-bold);
+  margin: 0 0 var(--space-2);
+}

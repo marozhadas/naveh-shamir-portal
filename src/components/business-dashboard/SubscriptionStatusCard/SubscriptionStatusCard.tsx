@@ -23,7 +23,7 @@ export function SubscriptionStatusCard({ subscription, access, variant = "full" 
       <div className={`${styles.card} ${styles.neutral}`}>
         <p className={styles.title}>עדיין לא הפעלתם ניסיון</p>
         <p className={styles.description}>התחילו חודש חינם כדי לפרסם את העמוד שלכם בפורטל.</p>
-        <Button href="/business/trial" variant="accent">
+        <Button href="/business/register" variant="accent">
           התחלת חודש חינם
         </Button>
       </div>

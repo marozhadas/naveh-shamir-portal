@@ -1,0 +1,158 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.title {
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.filterGroup {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.filterLabel {
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+  margin-inline-end: 6px;
+}
+
+.chip {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-demibold);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-pill);
+  padding: 5px 12px;
+  text-decoration: none;
+}
+
+.chipActive {
+  background: var(--navy-900, #10213e);
+  color: #fff;
+  border-color: transparent;
+}
+
+.empty {
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-8);
+  text-align: center;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-bg-surface);
+}
+
+.itemUnread {
+  background: var(--color-highlight-bg, #fef9e7);
+}
+
+.itemIcon {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.itemBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.itemTop {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.itemTitle {
+  font-size: var(--fs-body-sm);
+  font-weight: var(--fw-bold);
+  color: var(--color-text-primary);
+}
+
+.itemMessage {
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-primary);
+}
+
+.itemMeta {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+}
+
+.pill {
+  font-size: 10px;
+  font-weight: var(--fw-bold);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+}
+
+.pillUnread {
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger);
+}
+
+.pillStatusOpen {
+  background: var(--yellow-100, #fef3c7);
+  color: var(--yellow-800, #92400e);
+}
+
+.pillStatusResolved {
+  background: var(--green-100, #dcfce7);
+  color: var(--green-700, #15803d);
+}
+
+.pillStatusDismissed {
+  background: var(--slate-100);
+  color: var(--color-text-secondary);
+}
+
+.pillPriorityUrgent,
+.pillPriorityHigh {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.itemAction {
+  flex-shrink: 0;
+}

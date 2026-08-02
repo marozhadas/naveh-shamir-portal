@@ -20,6 +20,7 @@ export type BusinessRegistrationRow = {
   verified: boolean;
   created_at: string;
   reviewed_at: string | null;
+  rejection_reason: string | null;
 };
 
 /** Fields the public registration form is allowed to submit — status/featured/verified are never client-supplied (RLS also enforces this server-side). */

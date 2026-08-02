@@ -1,0 +1,119 @@
+/* Rendered first in DOM order inside a row flexbox — in this RTL app that places it at the
+   visual start (right side), matching the "sidebar on the right" requirement without hardcoding
+   a physical `right:` offset. */
+
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--color-bg-surface);
+  border-inline-end: 1px solid var(--color-border-default);
+  min-height: 100vh;
+  padding: var(--space-5) var(--space-3);
+}
+
+.mobileHeader {
+  display: none;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: var(--fs-body-sm);
+  font-weight: var(--fw-demibold);
+  text-decoration: none;
+}
+
+.link:hover {
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+}
+
+.active {
+  background: var(--navy-900, #10213e);
+  color: #fff;
+}
+
+.label {
+  flex: 1;
+}
+
+.badge {
+  flex-shrink: 0;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.backdrop {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .sidebar {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    z-index: 60;
+    min-height: 100vh;
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+    box-shadow: var(--shadow-lg, 0 8px 24px rgba(0, 0, 0, 0.2));
+  }
+
+  html[dir="rtl"] .sidebar {
+    transform: translateX(-100%);
+  }
+
+  .sidebar.mobileOpen {
+    transform: translateX(0);
+  }
+
+  .mobileHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-4);
+  }
+
+  .brand {
+    font-weight: var(--fw-bold);
+    color: var(--color-text-primary);
+  }
+
+  .closeButton {
+    background: none;
+    border: none;
+    padding: 6px;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+  }
+
+  .backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 50;
+  }
+}
