@@ -7,6 +7,7 @@ import { EditableRegion } from "@/editor/components/EditableRegion/EditableRegio
 import { EditorHost } from "@/editor/EditorHost";
 import { isAdminAuthenticated } from "@/lib/admin-session";
 import { listHeroGalleryImages } from "@/repositories/hero-gallery-service";
+import { getPublishedPageContent } from "@/repositories/site-content-service";
 
 type HomeProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -22,15 +23,16 @@ function toURLSearchParams(resolved: Record<string, string | string[] | undefine
 }
 
 export default async function Home({ searchParams }: HomeProps) {
-  const [resolvedSearchParams, isAdmin, galleryImages] = await Promise.all([
+  const [resolvedSearchParams, isAdmin, galleryImages, publishedContent] = await Promise.all([
     searchParams,
     isAdminAuthenticated(),
     listHeroGalleryImages(),
+    getPublishedPageContent("home"),
   ]);
   const editorEnabled = isEditorEnabled(toURLSearchParams(resolvedSearchParams), isAdmin);
 
   return (
-    <EditorHost enabled={editorEnabled}>
+    <EditorHost enabled={editorEnabled} publishedContent={publishedContent}>
       <a href="#main-content" className="skip-link">
         דלגו לתוכן הראשי
       </a>

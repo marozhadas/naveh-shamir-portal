@@ -88,7 +88,7 @@ export function EditorPanel() {
           disabled={saveDisabled}
           onClick={() => void saveNow()}
         >
-          שמירת טיוטה
+          פרסום שינויים
         </Button>
         <Button
           variant="secondary"
@@ -104,7 +104,7 @@ export function EditorPanel() {
       <EditorConfirmDialog
         open={resetConfirmOpen}
         title="איפוס כל השינויים?"
-        description="הפעולה תמחק את השינויים המקומיים ותחזיר את כל עמוד הבית לעיצוב ברירת המחדל המקורי. אפשר לבטל בכל שלב לפני האישור."
+        description="הפעולה תפרסם מיד לכל המבקרים באתר את עיצוב ברירת המחדל המקורי של כל עמוד הבית, במקום השינויים הקיימים. אפשר לבטל בכל שלב לפני האישור."
         confirmLabel="איפוס לברירת המחדל"
         onConfirm={() => {
           setResetConfirmOpen(false);

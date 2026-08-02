@@ -4,9 +4,12 @@ import type { ReactNode } from "react";
 import { EditorProvider } from "@/editor/context/EditorProvider";
 import { EditorChrome } from "@/editor/EditorChrome";
 import { EditorViewportFrame } from "@/editor/components/EditorViewportFrame/EditorViewportFrame";
+import type { PageEditorState } from "@/editor/schemas/page-editor.schema";
 
 type EditorRuntimeProps = {
   children: ReactNode;
+  /** The same server-fetched published content page.tsx already resolved — passed straight through so EditorProvider doesn't need a redundant client-side fetch just to show what's already known. */
+  initialContent: PageEditorState | null;
 };
 
 /**
@@ -19,9 +22,9 @@ type EditorRuntimeProps = {
  * than rendering alongside them, because EditableRegion reads EditorProvider's
  * React Context — a provider mounted as a sibling would never reach it.
  */
-export default function EditorRuntime({ children }: EditorRuntimeProps) {
+export default function EditorRuntime({ children, initialContent }: EditorRuntimeProps) {
   return (
-    <EditorProvider>
+    <EditorProvider initialContent={initialContent}>
       <EditorViewportFrame>{children}</EditorViewportFrame>
       <EditorChrome />
     </EditorProvider>

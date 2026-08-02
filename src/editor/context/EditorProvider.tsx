@@ -5,7 +5,7 @@ import { createInitialEditorState, editorReducer } from "@/editor/state/editor-r
 import type { PageEditorState } from "@/editor/schemas/page-editor.schema";
 import { defaultHomeEditorState } from "@/editor/config/editor-defaults";
 import type { EditorStorageAdapter } from "@/editor/storage/editor-storage-adapter";
-import { LocalStorageEditorAdapter } from "@/editor/storage/local-storage-editor-adapter";
+import { SupabaseEditorStorageAdapter } from "@/editor/storage/supabase-editor-storage-adapter";
 import { cloneEditorState } from "@/editor/utils/clone-editor-state";
 import { EditorCommandsContext, EditorDispatchContext, EditorStateContext, type EditorCommands } from "./EditorContext";
 
@@ -13,50 +13,24 @@ const AUTOSAVE_DEBOUNCE_MS = 1500;
 
 type EditorProviderProps = {
   children: ReactNode;
+  /** The real published content, already fetched server-side (page.tsx -> EditorHost -> EditorRuntime) — the editor starts from exactly what every other visitor already sees, never from a stale localStorage copy or hardcoded defaults. `null` means nothing has ever been published yet, which is the only case defaults are used. */
+  initialContent: PageEditorState | null;
   storageAdapter?: EditorStorageAdapter;
 };
 
-export function EditorProvider({ children, storageAdapter }: EditorProviderProps) {
-  const adapter = useMemo(() => storageAdapter ?? new LocalStorageEditorAdapter(), [storageAdapter]);
-  const [state, dispatch] = useReducer(editorReducer, defaultHomeEditorState, (defaults) =>
-    createInitialEditorState(cloneEditorState(defaults)),
-  );
+export function EditorProvider({ children, initialContent, storageAdapter }: EditorProviderProps) {
+  const adapter = useMemo(() => storageAdapter ?? new SupabaseEditorStorageAdapter(), [storageAdapter]);
+  const [state, dispatch] = useReducer(editorReducer, initialContent, (content) => {
+    const seed = cloneEditorState(content ?? defaultHomeEditorState);
+    // Already know the real content synchronously (server-fetched in page.tsx) — no separate
+    // load-on-mount round trip needed, and no "flash of defaults, then real content" gap.
+    return { ...createInitialEditorState(seed), isLoaded: true };
+  });
 
-  // Load persisted state once on mount.
-  useEffect(() => {
-    let cancelled = false;
-
-    adapter
-      .load("home")
-      .then((loaded) => {
-        if (cancelled) return;
-        if (loaded) {
-          dispatch({ type: "LOAD_STATE_SUCCESS", state: loaded });
-        } else {
-          dispatch({ type: "LOAD_STATE_SUCCESS", state: cloneEditorState(defaultHomeEditorState) });
-        }
-      })
-      .catch((error) => {
-        if (cancelled) return;
-        if (process.env.NODE_ENV !== "production") console.error("[editor] failed to load saved state:", error);
-        dispatch({
-          type: "LOAD_STATE_FAILED",
-          state: cloneEditorState(defaultHomeEditorState),
-          message: "נתוני העורך לא היו תקינים ונטענו ברירות המחדל.",
-        });
-      });
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Managed autosave: debounced, only after the initial load completed and only when there are unsaved changes.
+  // Managed autosave: debounced, only when there are unsaved changes.
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!state.isLoaded) return;
     const isDirty = state.currentState !== state.persistedState;
     if (!isDirty) return;
 
@@ -70,14 +44,14 @@ export function EditorProvider({ children, storageAdapter }: EditorProviderProps
         dispatch({ type: "SAVE_SUCCESS", state: nextState });
       } catch (error) {
         if (process.env.NODE_ENV !== "production") console.error("[editor] autosave failed:", error);
-        dispatch({ type: "SAVE_ERROR", message: "שמירת ההגדרות נכשלה. נסו שוב." });
+        dispatch({ type: "SAVE_ERROR", message: "פרסום השינויים נכשל. נסו שוב." });
       }
     }, AUTOSAVE_DEBOUNCE_MS);
 
     return () => {
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     };
-  }, [state.currentState, state.persistedState, state.isLoaded, adapter]);
+  }, [state.currentState, state.persistedState, adapter]);
 
   // Not memoized with useCallback: these close over the current `state` from this render,
   // which is exactly what a "save/reset right now" command should do. The few buttons that
@@ -94,7 +68,7 @@ export function EditorProvider({ children, storageAdapter }: EditorProviderProps
       dispatch({ type: "SAVE_SUCCESS", state: nextState });
     } catch (error) {
       if (process.env.NODE_ENV !== "production") console.error("[editor] save failed:", error);
-      dispatch({ type: "SAVE_ERROR", message: "שמירת ההגדרות נכשלה. נסו שוב." });
+      dispatch({ type: "SAVE_ERROR", message: "פרסום השינויים נכשל. נסו שוב." });
     }
   }
 

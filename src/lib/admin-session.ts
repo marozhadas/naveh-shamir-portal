@@ -58,6 +58,11 @@ export async function createAdminSession(): Promise<void> {
 export async function destroyAdminSession(): Promise<void> {
   const store = await cookies();
   store.delete({ name: ADMIN_SESSION_COOKIE, path: "/" });
+  // Belt-and-suspenders for anyone whose session predates the "/" path change above (their
+  // browser may still be holding the old "/admin"-scoped cookie, which a Path="/" delete can't
+  // remove — a cookie's identity includes its path, so the two are different cookies as far as
+  // the browser is concerned) — clear that variant too so logout is never partial.
+  store.delete({ name: ADMIN_SESSION_COOKIE, path: "/admin" });
 }
 
 export async function isAdminAuthenticated(): Promise<boolean> {

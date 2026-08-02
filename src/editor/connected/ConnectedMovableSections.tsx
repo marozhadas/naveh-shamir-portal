@@ -2,6 +2,7 @@
 
 import type { ComponentType } from "react";
 import { useOptionalEditorState } from "@/editor/context/EditorContext";
+import { usePublishedContent } from "@/editor/context/PublishedContentContext";
 import { EditableRegion } from "@/editor/components/EditableRegion/EditableRegion";
 import { MOVABLE_SECTION_IDS } from "@/editor/schemas/page-editor.schema";
 import type { HomeRegionId, HomeSectionId } from "@/editor/types/editor.types";
@@ -21,13 +22,15 @@ const SECTION_MAP: Record<HomeSectionId, { Component: ComponentType; regionId: H
 /**
  * Renders the four reorderable/hideable homepage sections in the author's chosen order.
  * Header/Hero/Footer are structural and never pass through here (spec: they can't move or hide).
- * With no EditorProvider mounted (the normal case for every visitor) this reads as the default
- * order with nothing hidden — identical to how the page rendered before Phase C.
+ * Order/hidden-state resolve the same way useResolvedSectionSettings() does: the live in-progress
+ * editor draft when it's mounted, otherwise the real published content, otherwise (nothing ever
+ * published) the built-in default order with nothing hidden.
  */
 export function ConnectedMovableSections() {
   const state = useOptionalEditorState();
-  const order = state?.currentState.sectionsOrder ?? MOVABLE_SECTION_IDS;
-  const hiddenSet = new Set(state?.currentState.hiddenSections ?? []);
+  const published = usePublishedContent();
+  const order = state?.currentState.sectionsOrder ?? published?.sectionsOrder ?? MOVABLE_SECTION_IDS;
+  const hiddenSet = new Set(state?.currentState.hiddenSections ?? published?.hiddenSections ?? []);
   const isAuthoringView = Boolean(state?.editorOpen && !state.previewMode);
 
   return (
