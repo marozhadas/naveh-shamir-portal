@@ -3,18 +3,40 @@
 import { randomUUID } from "node:crypto";
 import { after } from "next/server";
 import { createPublicSupabaseClient } from "@/lib/supabase/public-client";
-import { isSafeHrefOrEmpty } from "@/utils/validate-href";
 import { slugify } from "@/utils/slugify";
-import { BUSINESS_CATEGORIES } from "@/data/business-categories";
 import { isSupabaseAdminConfigured } from "@/lib/supabase/admin-client";
 import { getOpenNotificationForEntity } from "@/lib/admin/notifications";
 import { sendRegistrationNotificationEmail } from "@/lib/email/send-registration-notification-email";
+import { businessRegistrationSchema, EMPTY_FORM_VALUES, type BusinessRegistrationFormValues } from "./schema";
 
-export type RegisterBusinessActionState = { error: string | null; success: boolean };
+export type BusinessRegistrationActionState = {
+  status: "idle" | "validation-error" | "server-error" | "success";
+  message?: string;
+  fieldErrors?: Partial<Record<keyof BusinessRegistrationFormValues, string[]>>;
+  values: BusinessRegistrationFormValues;
+};
+
+const GENERIC_SERVER_ERROR_MESSAGE = "לא הצלחנו לשמור את העסק כרגע. הפרטים שמילאת נשמרו, ואפשר לנסות שוב בעוד רגע.";
 
 function readField(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === "string" ? value.trim() : "";
+}
+
+function readFormValues(formData: FormData): BusinessRegistrationFormValues {
+  return {
+    businessName: readField(formData, "businessName"),
+    categoryId: readField(formData, "categoryId"),
+    shortDescription: readField(formData, "shortDescription"),
+    description: readField(formData, "description"),
+    contactName: readField(formData, "contactName"),
+    phone: readField(formData, "phone"),
+    whatsappPhone: readField(formData, "whatsappPhone"),
+    email: readField(formData, "email"),
+    websiteUrl: readField(formData, "websiteUrl"),
+    address: readField(formData, "address"),
+    serviceArea: readField(formData, "serviceArea"),
+  };
 }
 
 /** A short random suffix for slug de-duplication — not a security token, just a disambiguator. */
@@ -26,48 +48,34 @@ function randomSuffix(): string {
  * Inserts a new registration as "pending" (RLS enforces this regardless of what we send — see
  * the create_business_registrations migration). It never becomes visible on the site until an
  * admin approves it from the hidden /admin page.
+ *
+ * On any failure (validation or server), the submitted values are always returned in `values` so
+ * the client never has to guess-and-refill — see RegisterBusinessForm.tsx for how that's used.
  */
 export async function registerBusinessAction(
-  _prevState: RegisterBusinessActionState,
+  _prevState: BusinessRegistrationActionState,
   formData: FormData,
-): Promise<RegisterBusinessActionState> {
-  const businessName = readField(formData, "businessName");
-  const categoryId = readField(formData, "categoryId");
-  const description = readField(formData, "description");
-  const shortDescription = readField(formData, "shortDescription");
-  const contactName = readField(formData, "contactName");
-  const phone = readField(formData, "phone");
-  const whatsappPhone = readField(formData, "whatsappPhone");
-  const email = readField(formData, "email");
-  const websiteUrl = readField(formData, "websiteUrl");
-  const address = readField(formData, "address");
-  const serviceArea = readField(formData, "serviceArea");
+): Promise<BusinessRegistrationActionState> {
+  const raw = readFormValues(formData);
+  const result = businessRegistrationSchema.safeParse(raw);
 
-  if (!businessName) return { error: "שם העסק לא יכול להיות ריק.", success: false };
-  if (!BUSINESS_CATEGORIES.some((category) => category.id === categoryId)) {
-    return { error: "יש לבחור קטגוריה מהרשימה.", success: false };
-  }
-  if (!description) return { error: "יש להוסיף תיאור לעסק.", success: false };
-  if (!contactName) return { error: "יש להזין שם איש/אשת קשר.", success: false };
-  if (!phone && !whatsappPhone && !email) {
-    return { error: "יש להזין לפחות דרך התקשרות אחת (טלפון, וואטסאפ או אימייל).", success: false };
-  }
-  if (phone && !/^\+?[0-9-\s]{6,}$/.test(phone)) return { error: "מספר הטלפון אינו תקין.", success: false };
-  if (whatsappPhone && !/^\+?[0-9-\s]{6,}$/.test(whatsappPhone)) {
-    return { error: "מספר הוואטסאפ אינו תקין.", success: false };
-  }
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "כתובת האימייל אינה תקינה.", success: false };
-  if (websiteUrl && !isSafeHrefOrEmpty(websiteUrl)) {
-    return { error: "כתובת האתר אינה תקינה — יש להשתמש בקישור https://", success: false };
+  if (!result.success) {
+    return {
+      status: "validation-error",
+      message: "יש כמה פרטים שצריך לתקן",
+      fieldErrors: result.error.flatten().fieldErrors,
+      values: raw,
+    };
   }
 
+  const values = result.data;
   const supabase = createPublicSupabaseClient();
-  const baseSlug = slugify(businessName);
+  const baseSlug = slugify(values.businessName);
 
   // Try the plain slug first; retry a couple of times with a random suffix on a collision
   // (the unique constraint is the real guard — this just makes success on the first try common).
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const slug = attempt === 0 ? baseSlug : slugify(businessName, randomSuffix());
+    const slug = attempt === 0 ? baseSlug : slugify(values.businessName, randomSuffix());
     // Generated here (not read back via `.select()`) on purpose: the anon role's SELECT policy on
     // this table only covers status="approved" rows, so asking PostgREST to return the just-inserted
     // "pending" row would itself get rejected by RLS. Knowing the id upfront avoids needing that read.
@@ -76,17 +84,17 @@ export async function registerBusinessAction(
     const { error } = await supabase.from("business_registrations").insert({
       id: registrationId,
       slug,
-      business_name: businessName,
-      category_id: categoryId,
-      description,
-      short_description: shortDescription || null,
-      contact_name: contactName,
-      phone: phone || null,
-      whatsapp_phone: whatsappPhone || null,
-      email: email || null,
-      website_url: websiteUrl || null,
-      address: address || null,
-      service_area: serviceArea || null,
+      business_name: values.businessName,
+      category_id: values.categoryId,
+      description: values.description,
+      short_description: values.shortDescription || null,
+      contact_name: values.contactName,
+      phone: values.phone || null,
+      whatsapp_phone: values.whatsappPhone || null,
+      email: values.email || null,
+      website_url: values.websiteUrl || null,
+      address: values.address || null,
+      service_area: values.serviceArea || null,
       status: "pending",
       featured: false,
       verified: false,
@@ -102,20 +110,24 @@ export async function registerBusinessAction(
           await sendRegistrationNotificationEmail({
             notificationId: notification.id,
             registrationId,
-            businessName,
-            categoryId,
-            contactName,
+            businessName: values.businessName,
+            categoryId: values.categoryId,
+            contactName: values.contactName,
             createdAt,
           });
         });
       }
-      return { error: null, success: true };
+      return { status: "success", values: EMPTY_FORM_VALUES };
     }
-    // Postgres unique_violation — retry with a different slug.
+
+    // Postgres unique_violation — retry with a different slug, not a real error to report.
     if (error.code !== "23505") {
-      return { error: "לא ניתן היה לשלוח את ההרשמה כרגע. נסו שוב בעוד רגע.", success: false };
+      // Technical detail stays server-side only — never surfaced to the visitor.
+      console.error("[registerBusinessAction] insert failed:", error.code, error.message);
+      return { status: "server-error", message: GENERIC_SERVER_ERROR_MESSAGE, values: raw };
     }
   }
 
-  return { error: "לא ניתן היה לשלוח את ההרשמה כרגע. נסו שוב בעוד רגע.", success: false };
+  console.error("[registerBusinessAction] exhausted slug-collision retries");
+  return { status: "server-error", message: GENERIC_SERVER_ERROR_MESSAGE, values: raw };
 }
