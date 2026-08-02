@@ -6,6 +6,8 @@ import { defaultFooterSettings, defaultHeaderSettings } from "@/editor/config/ed
 import { BusinessProfilePage } from "@/components/business-profile/BusinessProfilePage/BusinessProfilePage";
 import { BusinessUnavailableState } from "@/components/business-profile/BusinessUnavailableState/BusinessUnavailableState";
 import { businessRepository } from "@/repositories/mock-business-repository";
+import { subscriptionRepository } from "@/repositories/mock-subscription-repository";
+import { getListingAccessByBusinessId } from "@/domain/get-business-listing-access";
 import { getBusinessDescription, getBusinessHeroImage } from "@/utils/business-profile";
 import { createLocalBusinessStructuredData } from "@/utils/create-local-business-json-ld";
 import { SITE_CONFIG } from "@/data/config";
@@ -74,7 +76,12 @@ export default async function BusinessPage({ params }: BusinessPageProps) {
     );
   }
 
-  const relatedBusinesses = await businessRepository.getRelated(view.business, 4);
+  // Related businesses are only ever suggested if they're themselves premium (spec section 13) —
+  // a non-clickable basic card inside "עסקים דומים" would look broken, and this component isn't
+  // meant to render a non-clickable variant.
+  const relatedCandidates = await businessRepository.getRelated(view.business, 8);
+  const relatedAccessByBusinessId = await getListingAccessByBusinessId(relatedCandidates, subscriptionRepository, new Date());
+  const relatedBusinesses = relatedCandidates.filter((business) => relatedAccessByBusinessId[business.id]?.canOpenProfile).slice(0, 4);
 
   return (
     <>
@@ -87,7 +94,9 @@ export default async function BusinessPage({ params }: BusinessPageProps) {
       )}
       <BusinessProfilePage
         business={view.business}
+        access={view.access}
         relatedBusinesses={relatedBusinesses}
+        relatedAccessByBusinessId={relatedAccessByBusinessId}
         viewer={view.viewer}
         isPreview={view.kind === "preview"}
       />

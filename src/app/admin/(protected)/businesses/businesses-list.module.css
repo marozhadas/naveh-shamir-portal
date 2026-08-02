@@ -114,6 +114,13 @@
   white-space: nowrap;
 }
 
+.tierBadge {
+  flex-shrink: 0;
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
 .cardActions {
   flex-shrink: 0;
 }

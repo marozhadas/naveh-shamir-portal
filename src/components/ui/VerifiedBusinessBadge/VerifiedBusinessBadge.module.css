@@ -1,0 +1,12 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-success-bg);
+  color: var(--green-700);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-demibold);
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}

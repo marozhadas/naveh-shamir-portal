@@ -21,10 +21,12 @@ export function SubscriptionStatusCard({ subscription, access, variant = "full" 
   if (!subscription || !access) {
     return (
       <div className={`${styles.card} ${styles.neutral}`}>
-        <p className={styles.title}>עדיין לא הפעלתם ניסיון</p>
-        <p className={styles.description}>התחילו חודש חינם כדי לפרסם את העמוד שלכם בפורטל.</p>
+        <p className={styles.title}>העסק שלך מופיע כרגע ברישום בסיסי</p>
+        <p className={styles.description}>
+          הפעילו עמוד עסק מלא כדי להציג שירותים, תמונות, שעות פעילות ותגית עסק מאומת.
+        </p>
         <Button href="/business/register" variant="accent">
-          התחלת חודש חינם
+          מתחילים חודש חינם
         </Button>
       </div>
     );

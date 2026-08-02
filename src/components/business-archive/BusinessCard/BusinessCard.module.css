@@ -35,20 +35,26 @@
   object-fit: cover;
 }
 
-.verifiedBadge {
+.verifiedBadgeOverlay {
   position: absolute;
   inset-block-start: 10px;
   inset-inline-end: 10px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--color-bg-surface);
-  color: var(--green-700);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Never implies clickability: no pointer cursor, no hover affordance beyond what Card's own
+   hoverable=false already removes. */
+.basicCard {
+  cursor: default;
+}
+
+.basicTag {
   font-size: var(--fs-caption);
   font-weight: var(--fw-demibold);
+  color: var(--color-text-secondary);
+  background: var(--slate-100);
   padding: 4px 10px;
   border-radius: var(--radius-pill);
-  box-shadow: var(--shadow-sm);
 }
 
 .body {

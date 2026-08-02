@@ -1,5 +1,6 @@
 import type { Business } from "@/types/business";
 import type { BusinessFilters, BusinessSort } from "@/types/business-filters";
+import type { BusinessListingAccess } from "@/types/business-listing-access";
 import { getCategoryLabel } from "@/data/business-categories";
 
 /** Trims and lowercases so matching is both whitespace- and case-insensitive. */
@@ -54,19 +55,34 @@ export function filterBusinesses(businesses: Business[], filters: BusinessFilter
 
 const HEBREW_COLLATOR = new Intl.Collator("he");
 
-/** Always returns a new array — never mutates or sorts `businesses` in place. */
-export function sortBusinesses(businesses: Business[], sort: BusinessSort): Business[] {
+/** 0 for premium (canOpenProfile), 1 for basic/unknown — lower sorts first. Never ranks a basic listing above a premium one (spec section 14). */
+function tierRank(business: Business, accessByBusinessId?: Record<string, BusinessListingAccess>): number {
+  return accessByBusinessId?.[business.id]?.canOpenProfile ? 0 : 1;
+}
+
+/**
+ * Always returns a new array — never mutates or sorts `businesses` in place. `accessByBusinessId`
+ * is optional so existing call sites (and tests) that don't care about tier keep working
+ * unchanged; when provided, premium listings never rank below basic ones for a given sort.
+ */
+export function sortBusinesses(businesses: Business[], sort: BusinessSort, accessByBusinessId?: Record<string, BusinessListingAccess>): Business[] {
   const copy = [...businesses];
   switch (sort) {
     case "name-asc":
-      return copy.sort((a, b) => HEBREW_COLLATOR.compare(a.name, b.name));
+      return copy.sort((a, b) => tierRank(a, accessByBusinessId) - tierRank(b, accessByBusinessId) || HEBREW_COLLATOR.compare(a.name, b.name));
     case "name-desc":
-      return copy.sort((a, b) => HEBREW_COLLATOR.compare(b.name, a.name));
+      return copy.sort((a, b) => tierRank(a, accessByBusinessId) - tierRank(b, accessByBusinessId) || HEBREW_COLLATOR.compare(b.name, a.name));
     case "newest":
-      return copy.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+      return copy.sort(
+        (a, b) => tierRank(a, accessByBusinessId) - tierRank(b, accessByBusinessId) || (b.createdAt ?? "").localeCompare(a.createdAt ?? ""),
+      );
     case "featured":
     default:
+      // Recommended order (spec section 11): premium+featured, then premium, then basic — tier is
+      // the primary key here, featured only breaks ties within the same tier.
       return copy.sort((a, b) => {
+        const tierDiff = tierRank(a, accessByBusinessId) - tierRank(b, accessByBusinessId);
+        if (tierDiff !== 0) return tierDiff;
         if (Boolean(a.featured) !== Boolean(b.featured)) return a.featured ? -1 : 1;
         return HEBREW_COLLATOR.compare(a.name, b.name);
       });

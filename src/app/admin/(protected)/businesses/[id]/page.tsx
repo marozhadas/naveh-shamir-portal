@@ -5,6 +5,8 @@ import { getRegistrationById } from "@/lib/admin/business-registrations";
 import { getNotificationForEntity } from "@/lib/admin/notifications";
 import { getCategoryLabel } from "@/data/business-categories";
 import { formatNotificationDateTime } from "@/utils/admin-notification-format";
+import { mapRegistrationToBusiness } from "@/utils/map-registration-to-business";
+import { getBusinessListingAccess } from "@/domain/get-business-listing-access";
 import { Button } from "@/components/ui/Button";
 import { ApproveRejectPanel } from "./ApproveRejectPanel";
 import { retryNotificationEmailAction } from "./actions";
@@ -118,14 +120,42 @@ export default async function AdminBusinessDetailPage({ params }: BusinessDetail
         </dl>
       </section>
 
-      {registration.status === "approved" && (
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>תצוגה מקדימה</h2>
-          <Link href={`/businesses/${registration.slug}`} target="_blank" rel="noreferrer" className={styles.previewLink}>
-            פתיחת עמוד העסק באתר ↗
-          </Link>
-        </section>
-      )}
+      {registration.status === "approved" &&
+        (() => {
+          const access = getBusinessListingAccess(mapRegistrationToBusiness(registration), null, new Date());
+          return (
+            <section className={styles.section}>
+              <h2 className={styles.sectionTitle}>מצב הופעה באתר</h2>
+              <dl className={styles.detailsGrid}>
+                <div>
+                  <dt>סוג כרטיס</dt>
+                  <dd>{access.canOpenProfile ? "עמוד מלא (Premium)" : "רישום בסיסי"}</dd>
+                </div>
+                <div>
+                  <dt>מנוי</dt>
+                  <dd>אין מנוי מחובר להרשמה זו</dd>
+                </div>
+                <div>
+                  <dt>עמוד ציבורי</dt>
+                  <dd>{access.canOpenProfile ? "פעיל" : "לא פעיל — מוצג בארכיון ככרטיס בסיסי בלבד"}</dd>
+                </div>
+                <div>
+                  <dt>תגית &quot;עסק מאומת&quot;</dt>
+                  <dd>{access.canShowVerifiedBadge ? "מוצגת" : "אינה מוצגת"}</dd>
+                </div>
+              </dl>
+              {access.canOpenProfile ? (
+                <Link href={`/businesses/${registration.slug}`} target="_blank" rel="noreferrer" className={styles.previewLink}>
+                  פתיחת עמוד העסק באתר ↗
+                </Link>
+              ) : (
+                <p className={styles.meta}>
+                  אין עדיין עמוד עסק ציבורי — יופעל אוטומטית כאשר יחובר מנוי פעיל או תקופת ניסיון להרשמה זו.
+                </p>
+              )}
+            </section>
+          );
+        })()}
 
       {notification && (
         <section className={styles.section} aria-labelledby="email-heading">

@@ -1,7 +1,8 @@
 import Image from "next/image";
-import { BadgeCheck, Globe, MapPin, MessageCircle, Phone } from "lucide-react";
+import { Globe, MapPin, MessageCircle, Phone } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { CategoryTag } from "@/components/ui/CategoryTag";
+import { VerifiedBusinessBadge } from "@/components/ui/VerifiedBusinessBadge/VerifiedBusinessBadge";
 import { ShareButton } from "@/components/business-profile/ShareButton/ShareButton";
 import { getCategoryLabel } from "@/data/business-categories";
 import { SITE_CONFIG } from "@/data/config";
@@ -9,13 +10,15 @@ import { createWhatsappLink } from "@/utils/create-whatsapp-link";
 import { getBusinessAddressLine, getBusinessContact, getBusinessHeroImage, getBusinessServiceArea } from "@/utils/business-profile";
 import { getBusinessOpenStatus } from "@/utils/get-business-open-status";
 import type { Business } from "@/types/business";
+import type { BusinessListingAccess } from "@/types/business-listing-access";
 import styles from "./BusinessHero.module.css";
 
 type BusinessHeroProps = {
   business: Business;
+  access: BusinessListingAccess;
 };
 
-export function BusinessHero({ business }: BusinessHeroProps) {
+export function BusinessHero({ business, access }: BusinessHeroProps) {
   const primaryCategoryId = business.categoryIds?.[0];
   const primaryCategoryLabel = primaryCategoryId ? (getCategoryLabel(primaryCategoryId) ?? business.category) : business.category;
   const heroImage = getBusinessHeroImage(business);
@@ -39,12 +42,7 @@ export function BusinessHero({ business }: BusinessHeroProps) {
       <div className={styles.content}>
         <div className={styles.tagsRow}>
           <CategoryTag label={primaryCategoryLabel} category={business.category} />
-          {business.verified && (
-            <span className={styles.verifiedBadge}>
-              <BadgeCheck size={14} aria-hidden="true" />
-              עסק מאומת
-            </span>
-          )}
+          {access.canShowVerifiedBadge && <VerifiedBusinessBadge />}
           {openStatus && (
             <span className={`${styles.openBadge} ${openStatus.isOpenNow ? styles.openNow : styles.closedNow}`}>
               {openStatus.label}

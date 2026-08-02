@@ -7,6 +7,8 @@ import { defaultHeaderSettings, defaultFooterSettings } from "@/editor/config/ed
 import { BusinessesArchive } from "@/components/business-archive/BusinessesArchive/BusinessesArchive";
 import { BusinessesGridSkeleton } from "@/components/business-archive/BusinessesGridSkeleton/BusinessesGridSkeleton";
 import { businessRepository } from "@/repositories/mock-business-repository";
+import { subscriptionRepository } from "@/repositories/mock-subscription-repository";
+import { getListingAccessByBusinessId } from "@/domain/get-business-listing-access";
 import styles from "./businesses.module.css";
 
 const PAGE_TITLE = "עסקים בנווה שמיר | הפורטל של השכונה";
@@ -31,7 +33,8 @@ export const dynamic = "force-dynamic";
 
 async function BusinessesArchiveLoader() {
   const businesses = await businessRepository.getAllPublished();
-  return <BusinessesArchive businesses={businesses} />;
+  const accessByBusinessId = await getListingAccessByBusinessId(businesses, subscriptionRepository, new Date());
+  return <BusinessesArchive businesses={businesses} accessByBusinessId={accessByBusinessId} />;
 }
 
 export default function BusinessesPage() {

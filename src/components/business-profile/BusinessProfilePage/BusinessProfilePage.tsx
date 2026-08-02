@@ -18,11 +18,14 @@ import { MobileBusinessActions } from "@/components/business-profile/MobileBusin
 import { getBusinessDescription } from "@/utils/business-profile";
 import type { Business } from "@/types/business";
 import type { AuthenticatedUser } from "@/types/auth";
+import type { BusinessListingAccess } from "@/types/business-listing-access";
 import styles from "./BusinessProfilePage.module.css";
 
 type BusinessProfilePageProps = {
   business: Business;
+  access: BusinessListingAccess;
   relatedBusinesses: Business[];
+  relatedAccessByBusinessId: Record<string, BusinessListingAccess>;
   viewer: AuthenticatedUser | null;
   isPreview: boolean;
 };
@@ -31,8 +34,13 @@ type BusinessProfilePageProps = {
  * Pure presentational composition root — receives fully-resolved data via props (spec section
  * 41: "site components work outside the editor too"), never reaches into a repository or auth
  * adapter itself. The page component (app/businesses/[slug]/page.tsx) does that resolution.
+ *
+ * `isPreview` already means only the owner/admin ever reaches this component for a basic-tier
+ * business (see resolve-business-view.ts) — the full saved content (gallery/services/hours) is
+ * still shown to them in preview, since nothing is deleted when premium access lapses. Only the
+ * verified badge is gated by `access.canShowVerifiedBadge`, never by `business.verified`.
  */
-export function BusinessProfilePage({ business, relatedBusinesses, viewer, isPreview }: BusinessProfilePageProps) {
+export function BusinessProfilePage({ business, access, relatedBusinesses, relatedAccessByBusinessId, viewer, isPreview }: BusinessProfilePageProps) {
   const description = getBusinessDescription(business);
 
   return (
@@ -51,7 +59,7 @@ export function BusinessProfilePage({ business, relatedBusinesses, viewer, isPre
       <main id="main-content" className={styles.main}>
         <div className={styles.container}>
           <BusinessBreadcrumbs businessName={business.name} />
-          <BusinessHero business={business} />
+          <BusinessHero business={business} access={access} />
           {business.promotion && <BusinessPromotionBanner promotion={business.promotion} />}
           {business.gallery && business.gallery.length > 0 && <BusinessGallery images={business.gallery} />}
           <BusinessAbout description={description} highlights={business.highlights} />
@@ -63,7 +71,7 @@ export function BusinessProfilePage({ business, relatedBusinesses, viewer, isPre
             {business.location && <BusinessLocationCard location={business.location} />}
           </div>
           <BusinessSocialLinksRow socialLinks={business.socialLinks} />
-          <RelatedBusinesses businesses={relatedBusinesses} />
+          <RelatedBusinesses businesses={relatedBusinesses} accessByBusinessId={relatedAccessByBusinessId} />
           <BusinessOwnerCTA />
         </div>
       </main>

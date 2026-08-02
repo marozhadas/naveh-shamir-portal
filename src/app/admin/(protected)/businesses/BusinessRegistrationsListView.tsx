@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/Button";
 import { getCategoryLabel } from "@/data/business-categories";
 import { formatNotificationDateTime } from "@/utils/admin-notification-format";
+import { getBusinessListingAccess } from "@/domain/get-business-listing-access";
+import { mapRegistrationToBusiness } from "@/utils/map-registration-to-business";
 import type { BusinessRegistrationRow, BusinessRegistrationStatus } from "@/types/business-registration";
 import styles from "./businesses-list.module.css";
 
@@ -9,6 +11,19 @@ const STATUS_LABEL: Record<BusinessRegistrationStatus, string> = {
   approved: "מאושר — מוצג באתר",
   rejected: "נדחה",
 };
+
+/**
+ * The public registration flow has no subscription/trial mechanism wired to it at all yet (only
+ * the separate mock owner-dashboard demo does) — so every approved registration always computes
+ * to "basic" here. Still computed via the real access function (not hardcoded) so this stays
+ * correct automatically if that ever changes.
+ */
+function getTierLabel(registration: BusinessRegistrationRow): string {
+  if (registration.status !== "approved") return "—";
+  const business = mapRegistrationToBusiness(registration);
+  const access = getBusinessListingAccess(business, null, new Date());
+  return access.canOpenProfile ? "עמוד מלא" : "בסיסי";
+}
 
 type BusinessRegistrationsListViewProps = {
   registrations: BusinessRegistrationRow[];
@@ -32,6 +47,7 @@ export function BusinessRegistrationsListView({ registrations, emptyMessage }: B
             </span>
           </div>
           <span className={styles.statusBadge}>{STATUS_LABEL[registration.status]}</span>
+          {registration.status === "approved" && <span className={styles.tierBadge}>סוג כרטיס: {getTierLabel(registration)}</span>}
           <div className={styles.cardActions}>
             <Button href={`/admin/businesses/${registration.id}`} variant="secondary" size="compact">
               {registration.status === "pending" ? "לבדיקה" : "צפייה"}

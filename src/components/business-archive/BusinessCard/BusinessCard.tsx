@@ -1,11 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
-import { BadgeCheck, GraduationCap, HandHeart, MapPin, MessageCircle, Phone, Utensils, Wrench } from "lucide-react";
+import { ArrowLeft, GraduationCap, HandHeart, MapPin, MessageCircle, Phone, Utensils, Wrench } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { CategoryTag } from "@/components/ui/CategoryTag";
 import { Button } from "@/components/ui/Button";
+import { VerifiedBusinessBadge } from "@/components/ui/VerifiedBusinessBadge/VerifiedBusinessBadge";
 import { getCategoryLabel } from "@/data/business-categories";
 import type { Business } from "@/types/business";
+import type { BusinessListingAccess } from "@/types/business-listing-access";
 import styles from "./BusinessCard.module.css";
 
 const PLACEHOLDER_ICON: Record<string, typeof Utensils> = {
@@ -17,6 +19,9 @@ const PLACEHOLDER_ICON: Record<string, typeof Utensils> = {
 
 type BusinessCardProps = {
   business: Business;
+  access: BusinessListingAccess;
+  /** Purely for future layout variants — both currently render identically. */
+  variant?: "archive" | "related";
 };
 
 /**
@@ -24,52 +29,59 @@ type BusinessCardProps = {
  * Design Tokens) but is a separate component from src/components/home/FeaturedBusinessesSection/
  * BusinessCard: that one takes editor-settings-shaped props (BusinessCardContentSettings) and is
  * wired into the visual editor; this one takes a plain Business record from the full directory.
- * Unifying the two would mean forcing the editor's settings shape onto every archive listing (or
- * vice versa) — a bigger refactor than this phase calls for.
+ *
+ * Whether the card is clickable is driven entirely by `access.canOpenProfile` — never by
+ * `business.verified`, which no longer controls anything here (spec section 6/7). A basic-tier
+ * business renders no <Link> at all (not a disabled-looking one, not one with pointer-events
+ * blocked via CSS): the DOM simply has nothing to navigate with.
  */
-export function BusinessCard({ business }: BusinessCardProps) {
+export function BusinessCard({ business, access }: BusinessCardProps) {
   const categoryIds = business.categoryIds ?? [];
   const primaryCategoryLabel = categoryIds[0] ? (getCategoryLabel(categoryIds[0]) ?? business.category) : business.category;
   const extraCategoryCount = Math.max(categoryIds.length - 1, 0);
   const PlaceholderIcon = PLACEHOLDER_ICON[business.category] ?? Utensils;
   const description = business.shortDescription || business.description;
   const locationLabel = business.serviceArea || business.address;
+  const isPremium = access.canOpenProfile;
+  const profileHref = `/businesses/${business.slug}`;
+
+  const imageContent = (
+    <div className={styles.imageArea}>
+      {business.imageUrl ? (
+        <Image
+          src={business.imageUrl}
+          alt={business.imageAlt}
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          className={styles.image}
+        />
+      ) : (
+        <div className={styles.placeholder} aria-hidden="true">
+          <PlaceholderIcon size={36} strokeWidth={1.5} />
+        </div>
+      )}
+      {access.canShowVerifiedBadge && <VerifiedBusinessBadge className={styles.verifiedBadgeOverlay} />}
+    </div>
+  );
 
   return (
-    <Card noPadding className={styles.card} data-testid="archive-business-card">
-      <Link href={`/businesses/${business.slug}`} className={styles.imageLink} aria-label={business.name}>
-        <div className={styles.imageArea}>
-          {business.imageUrl ? (
-            <Image
-              src={business.imageUrl}
-              alt={business.imageAlt}
-              fill
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              className={styles.image}
-            />
-          ) : (
-            <div className={styles.placeholder} aria-hidden="true">
-              <PlaceholderIcon size={36} strokeWidth={1.5} />
-            </div>
-          )}
-          {business.verified && (
-            <span className={styles.verifiedBadge}>
-              <BadgeCheck size={14} aria-hidden="true" />
-              עסק מאומת
-            </span>
-          )}
-        </div>
-      </Link>
+    <Card noPadding hoverable={isPremium} className={`${styles.card} ${isPremium ? "" : styles.basicCard}`} data-testid="archive-business-card">
+      {isPremium ? (
+        <Link href={profileHref} className={styles.imageLink} aria-label={business.name}>
+          {imageContent}
+        </Link>
+      ) : (
+        imageContent
+      )}
 
       <div className={styles.body}>
         <div className={styles.tags}>
           <CategoryTag label={primaryCategoryLabel} category={business.category} />
           {extraCategoryCount > 0 && <span className={styles.extraTag}>{`+${extraCategoryCount}`}</span>}
+          {!isPremium && <span className={styles.basicTag}>רישום בסיסי</span>}
         </div>
 
-        <h3 className={styles.name}>
-          <Link href={`/businesses/${business.slug}`}>{business.name}</Link>
-        </h3>
+        <h3 className={styles.name}>{isPremium ? <Link href={profileHref}>{business.name}</Link> : business.name}</h3>
 
         {description && <p className={styles.description}>{description}</p>}
 
@@ -103,6 +115,11 @@ export function BusinessCard({ business }: BusinessCardProps) {
               data-analytics-event="archive-business-whatsapp-click"
             >
               וואטסאפ
+            </Button>
+          )}
+          {isPremium && (
+            <Button href={profileHref} variant="secondary" size="compact" icon={<ArrowLeft size={15} aria-hidden="true" />}>
+              לעמוד העסק
             </Button>
           )}
         </div>

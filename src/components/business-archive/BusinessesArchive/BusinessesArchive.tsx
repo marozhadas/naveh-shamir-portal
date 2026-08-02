@@ -16,6 +16,7 @@ import { filterBusinesses, getCategoryCounts, sortBusinesses } from "@/utils/bus
 import { ALL_BUSINESSES } from "@/data/all-businesses";
 import type { Business } from "@/types/business";
 import type { BusinessFilters } from "@/types/business-filters";
+import type { BusinessListingAccess } from "@/types/business-listing-access";
 import styles from "./BusinessesArchive.module.css";
 
 const PAGE_SIZE = 12;
@@ -24,9 +25,11 @@ const SEARCH_DEBOUNCE_MS = 300;
 type BusinessesArchiveProps = {
   /** Defaults to the static demo list when omitted (e.g. in isolated stories/tests). The real page always passes the repository-resolved list, which also includes any admin-approved Supabase registrations. */
   businesses?: Business[];
+  /** Keyed by business id — computed once, server-side, in businesses/page.tsx. Defaults to empty (every card falls back to basic) so this component still renders sensibly if ever used without it. */
+  accessByBusinessId?: Record<string, BusinessListingAccess>;
 };
 
-export function BusinessesArchive({ businesses = ALL_BUSINESSES }: BusinessesArchiveProps) {
+export function BusinessesArchive({ businesses = ALL_BUSINESSES, accessByBusinessId = {} }: BusinessesArchiveProps) {
   const { filters, setFilters } = useBusinessSearchParams();
   const [searchDraft, setSearchDraft] = useState(filters.query);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -90,8 +93,8 @@ export function BusinessesArchive({ businesses = ALL_BUSINESSES }: BusinessesArc
 
   const filteredSorted = useMemo(() => {
     const filtered = filterBusinesses(businesses, filters);
-    return sortBusinesses(filtered, filters.sort);
-  }, [businesses, filters]);
+    return sortBusinesses(filtered, filters.sort, accessByBusinessId);
+  }, [businesses, filters, accessByBusinessId]);
 
   const visibleBusinesses = filteredSorted.slice(0, visibleCount);
   const activeCategoryCount = filters.categoryIds.length;
@@ -143,7 +146,7 @@ export function BusinessesArchive({ businesses = ALL_BUSINESSES }: BusinessesArc
             <BusinessesEmptyState onClearFilters={clearAll} />
           ) : (
             <>
-              <BusinessesGrid businesses={visibleBusinesses} />
+              <BusinessesGrid businesses={visibleBusinesses} accessByBusinessId={accessByBusinessId} />
               <LoadMoreButton
                 visibleCount={visibleBusinesses.length}
                 totalCount={filteredSorted.length}

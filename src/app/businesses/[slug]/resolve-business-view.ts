@@ -1,34 +1,61 @@
 import { authAdapter } from "@/adapters/mock-auth-adapter";
 import { businessRepository } from "@/repositories/mock-business-repository";
+import { subscriptionRepository } from "@/repositories/mock-subscription-repository";
+import { getBusinessListingAccess } from "@/domain/get-business-listing-access";
 import type { Business } from "@/types/business";
 import type { AuthenticatedUser } from "@/types/auth";
+import type { BusinessListingAccess } from "@/types/business-listing-access";
 
 export type BusinessProfileView =
-  | { kind: "published"; business: Business; viewer: AuthenticatedUser | null }
-  | { kind: "preview"; business: Business; viewer: AuthenticatedUser }
+  | { kind: "published"; business: Business; viewer: AuthenticatedUser | null; access: BusinessListingAccess }
+  | { kind: "preview"; business: Business; viewer: AuthenticatedUser; access: BusinessListingAccess }
   | { kind: "unavailable" }
   | { kind: "not-found" };
 
+function canPreviewAs(viewer: AuthenticatedUser | null, business: Business): viewer is AuthenticatedUser {
+  return Boolean(viewer && (viewer.role === "admin" || business.ownerId === viewer.id));
+}
+
 /**
- * The single place that decides what a given slug resolves to for a given viewer (spec section
- * 4/42/45/46): published businesses are public; drafts/pending-review/suspended/archived
- * businesses are only visible, as a clearly-labeled preview, to their owner or an admin —
- * everyone else gets a generic "unavailable" message that never leaks the real reason, and a
- * slug that matches nothing at all is a plain 404.
+ * The single place that decides what a given slug resolves to for a given viewer. Two
+ * independent gates apply, in order:
+ *
+ * 1. Publication status (draft/pending-review/suspended/archived businesses are never public —
+ *    spec section 4/42/45/46).
+ * 2. Listing access (spec section 9): even a *published, approved* business only gets a public
+ *    profile page while it's premium (active subscription or trial). A published-but-basic
+ *    business still has a real page and full saved content — nothing is deleted — it's just not
+ *    served to the public until premium access is restored, same as the draft case: the owner or
+ *    an admin can still preview it, everyone else gets the same generic "unavailable" message
+ *    (never the real reason — no payment status, no expiry date, spec section 9/25).
  */
 export async function resolveBusinessView(slug: string): Promise<BusinessProfileView> {
   const published = await businessRepository.getPublishedBySlug(slug);
   if (published) {
+    const subscription = await subscriptionRepository.getByBusinessId(published.id);
+    const access = getBusinessListingAccess(published, subscription, new Date());
+
+    if (access.canOpenProfile) {
+      const viewer = await authAdapter.getCurrentUser();
+      return { kind: "published", business: published, viewer, access };
+    }
+
     const viewer = await authAdapter.getCurrentUser();
-    return { kind: "published", business: published, viewer };
+    if (canPreviewAs(viewer, published)) {
+      return { kind: "preview", business: published, viewer, access };
+    }
+    return { kind: "unavailable" };
   }
 
   const business = await businessRepository.getBySlugUnfiltered(slug);
   if (!business) return { kind: "not-found" };
 
   const viewer = await authAdapter.getCurrentUser();
-  const canPreview = viewer && (viewer.role === "admin" || business.ownerId === viewer.id);
-  if (canPreview && viewer) return { kind: "preview", business, viewer };
+  if (canPreviewAs(viewer, business)) {
+    const subscription = await subscriptionRepository.getByBusinessId(business.id);
+    const access = getBusinessListingAccess(business, subscription, new Date());
+    return { kind: "preview", business, viewer, access };
+  }
 
   return { kind: "unavailable" };
 }
