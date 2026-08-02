@@ -3,6 +3,7 @@
 import { useEditor } from "@/editor/hooks/use-editor";
 import { useSectionSettings } from "@/editor/state/editor-selectors";
 import { TextField, TextAreaField, ToggleField } from "@/editor/components/EditorField/EditorField";
+import { HeroGalleryManager } from "@/editor/components/HeroGalleryManager/HeroGalleryManager";
 import { TokenPicker } from "@/editor/components/TokenPicker/TokenPicker";
 import { TokenSelect } from "@/editor/components/TokenPicker/TokenSelect";
 import { SegmentedControl } from "@/editor/components/TokenPicker/SegmentedControl";
@@ -68,6 +69,7 @@ export function HeroSettingsPanel({ tab }: HeroSettingsPanelProps) {
   if (tab === "content") {
     return (
       <>
+        <HeroGalleryManager />
         <TextField
           label="כותרת ראשית"
           value={hero.content.title}

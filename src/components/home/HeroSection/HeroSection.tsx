@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { SearchBar } from "@/components/ui/SearchBar";
@@ -13,6 +13,7 @@ import {
   spacingTokenToCssVar,
 } from "@/styles/token-to-css-variable";
 import type { HeroEditorSettings } from "@/editor/schemas/hero.schema";
+import type { HeroGalleryImage } from "@/types/hero-gallery";
 import styles from "./HeroSection.module.css";
 
 /** Hero's own "content column width" scale — distinct from the shared section ContainerWidthToken. */
@@ -22,14 +23,41 @@ const MAX_CONTENT_WIDTH_PX: Record<HeroEditorSettings["layout"]["maxContentWidth
   lg: "920px",
 };
 
+/** Shown whenever no gallery images have been uploaded yet — keeps the Hero looking exactly like it did before the gallery feature existed. */
+const DEFAULT_BACKGROUND: HeroGalleryImage = { id: "default", url: "/images/hero-background.jpg", alt: "", order: 0 };
+
+const ROTATE_INTERVAL_MS = 6000;
+
+function useRotatingIndex(count: number): number {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (count < 2) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const timer = window.setInterval(() => {
+      setIndex((current) => (current + 1) % count);
+    }, ROTATE_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [count]);
+
+  // The image set itself can change (an admin adds/removes one) — clamp instead of going out of bounds.
+  return index % count;
+}
+
 type HeroSectionProps = {
   settings: HeroEditorSettings;
+  /** Live, shared background images uploaded via the floating editor (spec: must show for every visitor, not just the editing admin). Empty/omitted falls back to the static default photo. */
+  galleryImages?: HeroGalleryImage[];
 };
 
-export function HeroSection({ settings }: HeroSectionProps) {
+export function HeroSection({ settings, galleryImages }: HeroSectionProps) {
   const [query, setQuery] = useState("");
   const [feedback, setFeedback] = useState("");
   const router = useRouter();
+
+  const images = galleryImages && galleryImages.length > 0 ? galleryImages : [DEFAULT_BACKGROUND];
+  const activeIndex = useRotatingIndex(images.length);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -63,6 +91,17 @@ export function HeroSection({ settings }: HeroSectionProps) {
 
   return (
     <section id="top" className={styles.hero} style={heroStyle}>
+      <div className={styles.backgroundLayer} aria-hidden="true">
+        {images.map((image, index) => (
+          <div
+            key={image.id}
+            className={styles.backgroundImage}
+            style={{ backgroundImage: `url("${image.url}")`, opacity: index === activeIndex ? 1 : 0 }}
+          />
+        ))}
+      </div>
+      <div className={styles.overlay} />
+
       <div className={styles.content}>
         <h1 className={styles.title}>{settings.content.title}</h1>
         {settings.content.description && <p className={styles.subtitle}>{settings.content.description}</p>}

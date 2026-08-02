@@ -6,6 +6,7 @@ import { isEditorEnabled } from "@/editor/config/editor-capabilities";
 import { EditableRegion } from "@/editor/components/EditableRegion/EditableRegion";
 import { EditorHost } from "@/editor/EditorHost";
 import { isAdminAuthenticated } from "@/lib/admin-session";
+import { listHeroGalleryImages } from "@/repositories/hero-gallery-service";
 
 type HomeProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -21,7 +22,11 @@ function toURLSearchParams(resolved: Record<string, string | string[] | undefine
 }
 
 export default async function Home({ searchParams }: HomeProps) {
-  const [resolvedSearchParams, isAdmin] = await Promise.all([searchParams, isAdminAuthenticated()]);
+  const [resolvedSearchParams, isAdmin, galleryImages] = await Promise.all([
+    searchParams,
+    isAdminAuthenticated(),
+    listHeroGalleryImages(),
+  ]);
   const editorEnabled = isEditorEnabled(toURLSearchParams(resolvedSearchParams), isAdmin);
 
   return (
@@ -34,7 +39,7 @@ export default async function Home({ searchParams }: HomeProps) {
       </EditableRegion>
       <main id="main-content">
         <EditableRegion id="home.hero" label="אזור ראשי">
-          <ConnectedHero />
+          <ConnectedHero galleryImages={galleryImages} />
         </EditableRegion>
         <ConnectedMovableSections />
       </main>
