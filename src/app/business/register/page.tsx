@@ -15,8 +15,8 @@ export default function BusinessRegisterPage() {
         <div className={styles.container}>
           <h1 className={styles.title}>רישום עסק לפורטל</h1>
           <p className={styles.description}>
-            מלאו את פרטי העסק שלכם. הפרטים יישלחו לבדיקה של צוות הפורטל — לאחר אישור, העסק שלכם יופיע בארכיון
-            העסקים ויהיה גלוי לכל תושבי השכונה.
+            הפרטים יישלחו לבדיקה של צוות הפורטל — לאחר אישור, העסק שלכם יופיע בארכיון העסקים ויהיה גלוי לכל תושבי
+            השכונה.
           </p>
           <RegisterBusinessForm />
         </div>
