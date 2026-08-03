@@ -1,0 +1,48 @@
+.container {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: var(--space-10) 24px var(--space-16);
+  text-align: center;
+}
+
+.title {
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-black);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-4);
+}
+
+.description {
+  font-size: var(--fs-body);
+  color: var(--color-text-secondary);
+  line-height: var(--lh-body);
+  margin: 0 0 var(--space-3);
+}
+
+.planLine {
+  font-size: var(--fs-body-sm);
+  font-weight: var(--fw-demibold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-3);
+}
+
+.disclaimer {
+  font-size: var(--fs-body-sm);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin: 0 0 var(--space-6);
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.smallPrint {
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+}

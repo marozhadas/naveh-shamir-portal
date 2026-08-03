@@ -152,5 +152,29 @@ describe("getBusinessListingAccess", () => {
     expect(access.canShowGallery).toBe(true);
     expect(access.canShowServices).toBe(true);
     expect(access.canShowOpeningHours).toBe(true);
+    expect(access.canSelfEdit).toBe(true);
+  });
+
+  it("plus plan gets the full profile (gallery/services/hours) but never the verified badge or self-edit", () => {
+    const access = getBusinessListingAccess(makeBusiness(), makeSubscription({ status: "active", planId: "plus" }), NOW);
+    expect(access.tier).toBe("plus");
+    expect(access.canOpenProfile).toBe(true);
+    expect(access.canShowGallery).toBe(true);
+    expect(access.canShowServices).toBe(true);
+    expect(access.canShowOpeningHours).toBe(true);
+    expect(access.canShowVerifiedBadge).toBe(false);
+    expect(access.canSelfEdit).toBe(false);
+  });
+
+  it("plus plan on an active trial is still tier=plus, not premium", () => {
+    const subscription = makeSubscription({ status: "trialing", planId: "plus", trialEndsAt: "2026-07-01T00:00:00.000Z" });
+    const access = getBusinessListingAccess(makeBusiness(), subscription, NOW);
+    expect(access.tier).toBe("plus");
+    expect(access.canShowVerifiedBadge).toBe(false);
+  });
+
+  it("basic tier never gets self-edit access", () => {
+    const access = getBusinessListingAccess(makeBusiness(), null, NOW);
+    expect(access.canSelfEdit).toBe(false);
   });
 });

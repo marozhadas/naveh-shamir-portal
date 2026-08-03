@@ -1,4 +1,4 @@
-export type BusinessListingTier = "basic" | "premium";
+export type BusinessListingTier = "basic" | "plus" | "premium";
 
 export type BusinessListingAccessReason =
   | "basic-listing"
@@ -23,6 +23,8 @@ export type BusinessListingAccess = {
   canShowGallery: boolean;
   canShowServices: boolean;
   canShowOpeningHours: boolean;
+  /** Plus explicitly does not get this — self-editing (magic-link login, /business/dashboard/profile) is Premium-only. */
+  canSelfEdit: boolean;
   tier: BusinessListingTier;
   reason: BusinessListingAccessReason;
 };

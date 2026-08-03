@@ -11,6 +11,9 @@ import { ApproveRejectPanel } from "./ApproveRejectPanel";
 import { retryNotificationEmailAction } from "./actions";
 import styles from "./detail.module.css";
 
+const PLAN_TIER_LABEL: Record<string, string> = { free: "חינמי", plus: "Plus", premium: "Premium" };
+const TRIAL_STATUS_LABEL: Record<string, string> = { "not-started": "טרם הופעל", active: "פעיל", ended: "הסתיים" };
+
 export const dynamic = "force-dynamic";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -63,6 +66,40 @@ export default async function AdminBusinessDetailPage({ params }: BusinessDetail
       {registration.status === "rejected" && registration.rejection_reason && (
         <p className={styles.rejectionNotice}>סיבת הדחייה: {registration.rejection_reason}</p>
       )}
+
+      <section className={styles.section} aria-labelledby="plan-heading">
+        <h2 id="plan-heading" className={styles.sectionTitle}>
+          חבילה נבחרת
+        </h2>
+        <dl className={styles.detailsGrid}>
+          <div>
+            <dt>חבילה</dt>
+            <dd>{PLAN_TIER_LABEL[registration.plan_tier] ?? registration.plan_tier}</dd>
+          </div>
+          {registration.plan_tier !== "free" && (
+            <>
+              <div>
+                <dt>סטטוס חודש ניסיון</dt>
+                <dd>{TRIAL_STATUS_LABEL[registration.trial_status] ?? registration.trial_status}</dd>
+              </div>
+              <div>
+                <dt>תמונות</dt>
+                <dd>{(registration.cover_image ? 1 : 0) + (registration.gallery?.length ?? 0)}</dd>
+              </div>
+              <div>
+                <dt>שירותים</dt>
+                <dd>{registration.services?.length ?? 0}</dd>
+              </div>
+              {registration.promotion && (
+                <div>
+                  <dt>מבצע</dt>
+                  <dd>{registration.promotion.title}</dd>
+                </div>
+              )}
+            </>
+          )}
+        </dl>
+      </section>
 
       <section className={styles.section} aria-labelledby="description-heading">
         <h2 id="description-heading" className={styles.sectionTitle}>
@@ -126,7 +163,13 @@ export default async function AdminBusinessDetailPage({ params }: BusinessDetail
           <dl className={styles.detailsGrid}>
             <div>
               <dt>סוג כרטיס</dt>
-              <dd>{subscriptionSummary.access.tier === "premium" ? "עמוד מלא (Premium)" : "רישום בסיסי"}</dd>
+              <dd>
+                {subscriptionSummary.access.tier === "premium"
+                  ? "עמוד מלא (Premium)"
+                  : subscriptionSummary.access.tier === "plus"
+                    ? "עמוד מלא (Plus)"
+                    : "רישום בסיסי"}
+              </dd>
             </div>
             <div>
               <dt>סטטוס מנוי</dt>

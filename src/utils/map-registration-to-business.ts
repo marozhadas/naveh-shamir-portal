@@ -47,17 +47,20 @@ const REGISTRATION_TO_PUBLICATION_STATUS: Record<BusinessRegistrationStatus, Bus
  * registration to its owner without exposing it publicly).
  */
 export function mapRegistrationToBusiness(row: BusinessRegistrationRow): Business {
+  const publicPhone = row.public_phone ?? row.phone;
+  const publicWhatsapp = row.public_whatsapp ?? row.whatsapp_phone;
+
   return {
     id: toBusinessId(row.id),
     slug: row.slug,
     name: row.business_name,
     category: toLegacyCategory(row.category_id),
     description: row.description,
-    imageUrl: "",
-    imageAlt: "",
-    phone: row.phone ?? undefined,
-    whatsappUrl: buildWhatsappUrl(row.whatsapp_phone),
-    categoryIds: [row.category_id],
+    imageUrl: row.cover_image?.url ?? "",
+    imageAlt: row.cover_image?.alt ?? "",
+    phone: publicPhone ?? undefined,
+    whatsappUrl: buildWhatsappUrl(publicWhatsapp),
+    categoryIds: row.category_ids ?? [row.category_id],
     shortDescription: row.short_description ?? undefined,
     websiteUrl: row.website_url ?? undefined,
     address: row.address ?? undefined,
@@ -68,10 +71,16 @@ export function mapRegistrationToBusiness(row: BusinessRegistrationRow): Busines
     createdAt: row.created_at,
     status: REGISTRATION_TO_PUBLICATION_STATUS[row.status],
     ownerId: row.owner_id ?? undefined,
+    fullDescription: row.description,
+    image: row.cover_image ? { src: row.cover_image.url, alt: row.cover_image.alt } : undefined,
+    gallery: row.gallery?.map((image, index) => ({ id: `${row.id}-gallery-${index}`, src: image.url, alt: image.alt, order: image.order })),
     contact: {
-      phone: row.phone ?? undefined,
-      whatsappUrl: buildWhatsappUrl(row.whatsapp_phone),
-      email: row.email ?? undefined,
+      phone: publicPhone ?? undefined,
+      whatsappUrl: buildWhatsappUrl(publicWhatsapp),
+      // The free flow's `email` has always been shown publicly (no separate internal/public
+      // split exists for it) — `public_email` only applies to the Plus/Premium wizard, which
+      // deliberately never defaults it from the internal contact email (privacy: spec section 8).
+      email: row.public_email ?? row.email ?? undefined,
       websiteUrl: row.website_url ?? undefined,
     },
     location: {
@@ -79,5 +88,18 @@ export function mapRegistrationToBusiness(row: BusinessRegistrationRow): Busines
       address: row.address ?? undefined,
       serviceArea: row.service_area ?? undefined,
     },
+    openingHours: row.opening_hours?.map((day) => ({ day: day.day, closed: day.closed, intervals: day.intervals })),
+    services: row.services?.map((service, index) => ({
+      id: `${row.id}-service-${index}`,
+      name: service.title,
+      description: service.description,
+      priceLabel: service.priceLabel,
+      visible: true,
+      order: index,
+    })),
+    socialLinks: row.social_links
+      ? { instagram: row.social_links.instagramUrl, facebook: row.social_links.facebookUrl, tiktok: row.social_links.tiktokUrl }
+      : undefined,
+    promotion: row.promotion ? { ...row.promotion, visible: true } : undefined,
   };
 }

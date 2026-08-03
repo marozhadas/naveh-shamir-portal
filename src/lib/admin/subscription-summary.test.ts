@@ -19,6 +19,7 @@ function makeSummary(overrides: Partial<AdminSubscriptionSummary> = {}): AdminSu
     canShowGallery: false,
     canShowServices: false,
     canShowOpeningHours: false,
+    canSelfEdit: false,
     tier: "basic",
     reason: "basic-listing",
   };

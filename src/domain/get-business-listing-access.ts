@@ -13,6 +13,7 @@ export const FALLBACK_BASIC_ACCESS: BusinessListingAccess = {
   canShowGallery: false,
   canShowServices: false,
   canShowOpeningHours: false,
+  canSelfEdit: false,
   tier: "basic",
   reason: "basic-listing",
 };
@@ -26,7 +27,28 @@ function basicAccess(canAppearInArchive: boolean, reason: BusinessListingAccessR
     canShowGallery: false,
     canShowServices: false,
     canShowOpeningHours: false,
+    canSelfEdit: false,
     tier: "basic",
+    reason,
+  };
+}
+
+/**
+ * Full profile page — gallery, services, hours, contact details — but explicitly WITHOUT the
+ * verified badge or self-edit access, which are Premium-only (spec: Plus is a real upgrade from
+ * the free listing, not the full Premium experience).
+ */
+function plusAccess(reason: BusinessListingAccessReason): BusinessListingAccess {
+  return {
+    canAppearInArchive: true,
+    canOpenProfile: true,
+    canShowVerifiedBadge: false,
+    canShowFullContactDetails: true,
+    canShowGallery: true,
+    canShowServices: true,
+    canShowOpeningHours: true,
+    canSelfEdit: false,
+    tier: "plus",
     reason,
   };
 }
@@ -40,9 +62,15 @@ function premiumAccess(reason: BusinessListingAccessReason): BusinessListingAcce
     canShowGallery: true,
     canShowServices: true,
     canShowOpeningHours: true,
+    canSelfEdit: true,
     tier: "premium",
     reason,
   };
+}
+
+/** Any planId other than "plus" is treated as Premium — matches every subscription created before this tier existed (planId="business-monthly"). */
+function fullAccessForPlan(planId: string, reason: BusinessListingAccessReason): BusinessListingAccess {
+  return planId === "plus" ? plusAccess(reason) : premiumAccess(reason);
 }
 
 /**
@@ -74,22 +102,22 @@ export function getBusinessListingAccess(
   }
 
   if (subscription.status === "active") {
-    return premiumAccess("subscription-active");
+    return fullAccessForPlan(subscription.planId, "subscription-active");
   }
 
   if (subscription.status === "trialing") {
     const trialActive = new Date(subscription.trialEndsAt).getTime() > now.getTime();
-    return trialActive ? premiumAccess("trial-active") : basicAccess(true, "subscription-expired");
+    return trialActive ? fullAccessForPlan(subscription.planId, "trial-active") : basicAccess(true, "subscription-expired");
   }
 
   if (subscription.status === "canceled") {
-    // cancelAtPeriodEnd keeps premium access through the period already paid for.
+    // cancelAtPeriodEnd keeps full access through the period already paid for.
     const stillWithinPaidPeriod = Boolean(
       subscription.cancelAtPeriodEnd &&
         subscription.currentPeriodEndsAt &&
         new Date(subscription.currentPeriodEndsAt).getTime() > now.getTime(),
     );
-    return stillWithinPaidPeriod ? premiumAccess("subscription-active") : basicAccess(true, "subscription-expired");
+    return stillWithinPaidPeriod ? fullAccessForPlan(subscription.planId, "subscription-active") : basicAccess(true, "subscription-expired");
   }
 
   if (subscription.status === "past-due") {

@@ -25,6 +25,33 @@ export type BusinessRegistrationRow = {
   owner_id: string | null;
   /** Which /business/plans tier the registrant chose (see the "add_plan_tier_to_business_registrations" migration) — defaults to "free" at the DB level. */
   plan_tier: "free" | "plus" | "premium";
+  /**
+   * Fields collected only by the Plus/Premium wizard (see the "add_plus_registration_fields"
+   * migration) — always null for a "free" registration, which never sets them.
+   */
+  category_ids: string[] | null;
+  business_type: string | null;
+  public_phone: string | null;
+  public_whatsapp: string | null;
+  public_email: string | null;
+  address_type: "physical" | "service-area" | "both" | null;
+  cover_image: { url: string; alt: string } | null;
+  gallery: { url: string; alt: string; order: number }[] | null;
+  services: { title: string; description?: string; priceLabel?: string }[] | null;
+  opening_hours:
+    | {
+        day: "sunday" | "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday";
+        closed: boolean;
+        intervals: { opensAt: string; closesAt: string }[];
+      }[]
+    | null;
+  social_links: { instagramUrl?: string; facebookUrl?: string; tiktokUrl?: string } | null;
+  promotion: { title: string; description?: string; validUntil?: string } | null;
+  /** Never flipped by the registration submission itself — only by the (not-yet-built) secure trial-activation flow. See PlusBusinessRegistrationInput's doc comment. */
+  trial_status: "not-started" | "active" | "ended";
+  publication_consent: boolean;
+  terms_accepted: boolean;
+  trial_consent: boolean;
 };
 
 /** Fields the public registration form is allowed to submit — status/featured/verified are never client-supplied (RLS also enforces this server-side). */

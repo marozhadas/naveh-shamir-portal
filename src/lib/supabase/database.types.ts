@@ -50,6 +50,22 @@ export type Database = {
           | "rejection_reason"
           | "owner_id"
           | "plan_tier"
+          | "category_ids"
+          | "business_type"
+          | "public_phone"
+          | "public_whatsapp"
+          | "public_email"
+          | "address_type"
+          | "cover_image"
+          | "gallery"
+          | "services"
+          | "opening_hours"
+          | "social_links"
+          | "promotion"
+          | "trial_status"
+          | "publication_consent"
+          | "terms_accepted"
+          | "trial_consent"
         > & {
           id?: string;
           status?: BusinessRegistrationRow["status"];
@@ -58,6 +74,22 @@ export type Database = {
           rejection_reason?: string | null;
           owner_id?: string | null;
           plan_tier?: BusinessRegistrationRow["plan_tier"];
+          category_ids?: BusinessRegistrationRow["category_ids"];
+          business_type?: BusinessRegistrationRow["business_type"];
+          public_phone?: BusinessRegistrationRow["public_phone"];
+          public_whatsapp?: BusinessRegistrationRow["public_whatsapp"];
+          public_email?: BusinessRegistrationRow["public_email"];
+          address_type?: BusinessRegistrationRow["address_type"];
+          cover_image?: BusinessRegistrationRow["cover_image"];
+          gallery?: BusinessRegistrationRow["gallery"];
+          services?: BusinessRegistrationRow["services"];
+          opening_hours?: BusinessRegistrationRow["opening_hours"];
+          social_links?: BusinessRegistrationRow["social_links"];
+          promotion?: BusinessRegistrationRow["promotion"];
+          trial_status?: BusinessRegistrationRow["trial_status"];
+          publication_consent?: boolean;
+          terms_accepted?: boolean;
+          trial_consent?: boolean;
         };
         Update: Partial<BusinessRegistrationRow>;
         Relationships: [];

@@ -4,6 +4,7 @@ import { formatNotificationDateTime } from "@/utils/admin-notification-format";
 import { SUBSCRIPTION_STATUS_LABEL } from "@/lib/admin/subscription-summary";
 import type { AdminSubscriptionSummary } from "@/lib/admin/subscription-summary";
 import type { BusinessRegistrationRow, BusinessRegistrationStatus } from "@/types/business-registration";
+import type { BusinessListingTier } from "@/types/business-listing-access";
 import styles from "./businesses-list.module.css";
 
 const STATUS_LABEL: Record<BusinessRegistrationStatus, string> = {
@@ -11,6 +12,8 @@ const STATUS_LABEL: Record<BusinessRegistrationStatus, string> = {
   approved: "מאושר — מוצג באתר",
   rejected: "נדחה",
 };
+
+const TIER_LABEL: Record<BusinessListingTier, string> = { basic: "בסיסי", plus: "Plus", premium: "פרימיום" };
 
 function getSubscriptionLabel(summary: AdminSubscriptionSummary): string {
   if (!summary.subscription) return "ללא מנוי — לא הופעל ניסיון";
@@ -40,9 +43,10 @@ export function BusinessRegistrationsListView({ rows, emptyMessage }: BusinessRe
             </span>
           </div>
           <span className={styles.statusBadge}>{STATUS_LABEL[registration.status]}</span>
+          <span className={styles.tierBadge}>חבילה נבחרת: {TIER_LABEL[registration.plan_tier === "free" ? "basic" : registration.plan_tier]}</span>
           {registration.status === "approved" && (
             <span className={styles.tierBadge}>
-              סוג כרטיס: {summary.access.tier === "premium" ? "פרימיום" : "בסיסי"} · {getSubscriptionLabel(summary)}
+              סוג כרטיס: {TIER_LABEL[summary.access.tier]} · {getSubscriptionLabel(summary)}
             </span>
           )}
           <div className={styles.cardActions}>
