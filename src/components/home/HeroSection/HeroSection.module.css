@@ -1,7 +1,14 @@
 .hero {
+  background: var(--color-bg-base);
+  padding: var(--hero-padding-block-start, var(--space-16)) 24px var(--hero-padding-block-end, var(--space-24));
+}
+
+.card {
   position: relative;
   overflow: hidden;
-  padding: var(--hero-padding-block-start, var(--space-16)) 24px var(--hero-padding-block-end, var(--space-24));
+  max-width: 1440px;
+  margin: 0 auto;
+  border-radius: 40px;
 }
 
 .backgroundLayer {
@@ -30,6 +37,7 @@
   z-index: 2;
   max-width: var(--hero-max-content-width, 760px);
   margin: 0 auto;
+  padding-block: var(--space-24);
   text-align: var(--hero-content-align, center);
   color: #fff;
 }
@@ -64,11 +72,16 @@
 
 @media (max-width: 880px) {
   .hero {
-    padding: var(--hero-padding-block-start-mobile, var(--hero-padding-block-start, var(--space-16))) 24px
+    padding: var(--hero-padding-block-start-mobile, var(--hero-padding-block-start, var(--space-16))) 16px
       var(--hero-padding-block-end-mobile, var(--hero-padding-block-end, var(--space-24)));
   }
 
+  .card {
+    border-radius: 24px;
+  }
+
   .content {
+    padding-block: var(--space-16);
     text-align: var(--hero-content-align-mobile, var(--hero-content-align, center));
   }
 

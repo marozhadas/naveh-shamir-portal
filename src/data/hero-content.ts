@@ -10,32 +10,31 @@ import type { HeroEditorSettings } from "@/editor/schemas/hero.schema";
  */
 export const DEFAULT_HERO_SETTINGS: HeroEditorSettings = {
   content: {
-    title: "כל נווה שמיר, במקום אחד.",
-    description: "המרכז המקומי שלכם לעסקים, חדשות, אירועים וחיבור קהילתי.",
+    // Matches the Figma Hero redesign: the site name as the big headline, the tagline underneath.
+    title: "נווה שמיר",
+    description: "הפורטל של השכונה",
     searchPlaceholder: "מה מחפשים?",
   },
   appearance: {
     backgroundColorToken: "inverse",
     titleColorToken: "text-inverse",
     descriptionColorToken: "muted",
-    // Live CSS uses a fluid clamp(30px, 5vw, 48px) — no single token can reproduce that exactly.
-    // "2xl" (40px) is the closest discrete value actually inside the clamp's own range.
-    titleSizeToken: "2xl",
+    // "display" (56px) is the largest available title token — matches the Figma design's
+    // oversized centered headline more closely than the previous "2xl" (40px).
+    titleSizeToken: "display",
     titleWeightToken: "black",
     searchBarRadiusToken: "pill",
     searchBarShadowToken: "none",
     contentAlignment: "center",
   },
   layout: {
-    maxContentWidth: "md",
+    maxContentWidth: "lg",
     paddingBlockDesktop: { start: "64", end: "96" },
     titleToDescriptionGap: "16",
     descriptionToSearchGap: "32",
   },
   responsive: {
-    // Same clamp caveat as titleSizeToken above — "xl" (28px) sits near the clamp's own
-    // 30px floor, which is what narrow viewports actually resolve to today.
-    titleSizeMobileToken: "xl",
+    titleSizeMobileToken: "2xl",
     paddingBlockMobile: { start: "64", end: "96" },
     contentAlignmentMobile: "center",
     showIllustrationMobile: true,

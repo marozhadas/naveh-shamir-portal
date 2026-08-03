@@ -91,40 +91,42 @@ export function HeroSection({ settings, galleryImages }: HeroSectionProps) {
 
   return (
     <section id="top" className={styles.hero} style={heroStyle}>
-      <div className={styles.backgroundLayer} aria-hidden="true">
-        {images.map((image, index) => (
-          <div
-            key={image.id}
-            className={styles.backgroundImage}
-            style={{ backgroundImage: `url("${image.url}")`, opacity: index === activeIndex ? 1 : 0 }}
-          />
-        ))}
-      </div>
-      <div className={styles.overlay} />
-
-      <div className={styles.content}>
-        <h1 className={styles.title}>{settings.content.title}</h1>
-        {settings.content.description && <p className={styles.subtitle}>{settings.content.description}</p>}
-
-        {settings.visibility.showSearch && (
-          <form role="search" className={styles.searchForm} onSubmit={handleSubmit}>
-            <SearchBar
-              id="hero-search"
-              label="חיפוש בפורטל נווה שמיר"
-              placeholder={settings.content.searchPlaceholder}
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
+      <div className={styles.card}>
+        <div className={styles.backgroundLayer} aria-hidden="true">
+          {images.map((image, index) => (
+            <div
+              key={image.id}
+              className={styles.backgroundImage}
+              style={{ backgroundImage: `url("${image.url}")`, opacity: index === activeIndex ? 1 : 0 }}
             />
-            <button type="submit" className="sr-only">
-              חיפוש
-            </button>
-          </form>
-        )}
-        {settings.visibility.showSearch && (
-          <p aria-live="polite" className={styles.searchFeedback}>
-            {feedback}
-          </p>
-        )}
+          ))}
+        </div>
+        <div className={styles.overlay} />
+
+        <div className={styles.content}>
+          <h1 className={styles.title}>{settings.content.title}</h1>
+          {settings.content.description && <p className={styles.subtitle}>{settings.content.description}</p>}
+
+          {settings.visibility.showSearch && (
+            <form role="search" className={styles.searchForm} onSubmit={handleSubmit}>
+              <SearchBar
+                id="hero-search"
+                label="חיפוש בפורטל נווה שמיר"
+                placeholder={settings.content.searchPlaceholder}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+              <button type="submit" className="sr-only">
+                חיפוש
+              </button>
+            </form>
+          )}
+          {settings.visibility.showSearch && (
+            <p aria-live="polite" className={styles.searchFeedback}>
+              {feedback}
+            </p>
+          )}
+        </div>
       </div>
     </section>
   );
