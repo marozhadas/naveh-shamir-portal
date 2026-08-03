@@ -23,6 +23,8 @@ export type BusinessRegistrationRow = {
   rejection_reason: string | null;
   /** Set once the owner claims this registration via the magic-link callback (email match) — see /auth/callback. Null until then. */
   owner_id: string | null;
+  /** Which /business/plans tier the registrant chose (see the "add_plan_tier_to_business_registrations" migration) — defaults to "free" at the DB level. */
+  plan_tier: "free" | "plus" | "premium";
 };
 
 /** Fields the public registration form is allowed to submit — status/featured/verified are never client-supplied (RLS also enforces this server-side). */

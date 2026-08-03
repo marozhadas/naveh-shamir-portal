@@ -86,6 +86,30 @@
   margin: 0;
 }
 
+.planIntro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+.planIntroName {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+  color: var(--color-text-primary);
+  margin: 0 0 4px;
+}
+
+.planIntroPrice {
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
 .hint {
   font-size: var(--fs-caption);
   color: var(--color-text-secondary);

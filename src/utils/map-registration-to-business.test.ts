@@ -24,6 +24,7 @@ function makeRow(overrides: Partial<BusinessRegistrationRow> = {}): BusinessRegi
     reviewed_at: "2026-06-02T00:00:00.000Z",
     rejection_reason: null,
     owner_id: null,
+    plan_tier: "free",
     ...overrides,
   };
 }

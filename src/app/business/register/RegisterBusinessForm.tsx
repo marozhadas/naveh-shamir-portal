@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useId, useRef, useState } from "react";
-import type { ChangeEvent, RefObject } from "react";
+import type { ChangeEvent, ReactNode, RefObject } from "react";
 import { Button } from "@/components/ui/Button";
 import { registerBusinessAction, type BusinessRegistrationActionState } from "./actions";
 import { getVisibleBusinessCategories } from "@/data/business-categories";
@@ -39,8 +39,15 @@ function focusAndReveal(node: FieldElement | null | undefined) {
   node.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "center" });
 }
 
-export function RegisterBusinessForm() {
-  const [state, formAction, isPending] = useActionState(registerBusinessAction, INITIAL_STATE);
+type RegisterBusinessFormProps = {
+  /** Defaults to the free-plan action — Plus/Premium pages pass their own tier-tagged action. */
+  action?: typeof registerBusinessAction;
+  /** Extra plan-context content rendered above the fields (e.g. a Plus/Premium plan summary). */
+  planIntro?: ReactNode;
+};
+
+export function RegisterBusinessForm({ action = registerBusinessAction, planIntro }: RegisterBusinessFormProps = {}) {
+  const [state, formAction, isPending] = useActionState(action, INITIAL_STATE);
   const [values, setValues] = useState<BusinessRegistrationFormValues>(EMPTY_FORM_VALUES);
   const [draftRestored, setDraftRestored] = useState(false);
   const hasLoadedDraftRef = useRef(false);
@@ -201,6 +208,7 @@ export function RegisterBusinessForm() {
 
   return (
     <form action={formAction} className={styles.form} noValidate>
+      {planIntro}
       {draftRestored && state.status === "idle" && <p className={styles.draftNotice}>שחזרנו את הפרטים שמילאת.</p>}
 
       {state.status === "server-error" && state.message && (

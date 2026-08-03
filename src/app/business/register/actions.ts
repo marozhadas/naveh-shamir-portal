@@ -8,6 +8,7 @@ import { isSupabaseAdminConfigured } from "@/lib/supabase/admin-client";
 import { getOpenNotificationForEntity } from "@/lib/admin/notifications";
 import { sendRegistrationNotificationEmail } from "@/lib/email/send-registration-notification-email";
 import { businessRegistrationSchema, EMPTY_FORM_VALUES, type BusinessRegistrationFormValues } from "./schema";
+import type { BusinessPlanTier } from "@/data/business-plans";
 
 export type BusinessRegistrationActionState = {
   status: "idle" | "validation-error" | "server-error" | "success";
@@ -51,10 +52,14 @@ function randomSuffix(): string {
  *
  * On any failure (validation or server), the submitted values are always returned in `values` so
  * the client never has to guess-and-refill — see RegisterBusinessForm.tsx for how that's used.
+ *
+ * `planTier` is never read from the client — it's a fixed argument each route's own action passes
+ * (see business/register/plus/actions.ts, business/register/premium/actions.ts), so a visitor can
+ * never submit an arbitrary tier through the form itself.
  */
-export async function registerBusinessAction(
-  _prevState: BusinessRegistrationActionState,
+export async function submitBusinessRegistration(
   formData: FormData,
+  planTier: BusinessPlanTier,
 ): Promise<BusinessRegistrationActionState> {
   const raw = readFormValues(formData);
   const result = businessRegistrationSchema.safeParse(raw);
@@ -98,6 +103,7 @@ export async function registerBusinessAction(
       status: "pending",
       featured: false,
       verified: false,
+      plan_tier: planTier,
     });
 
     if (!error) {
@@ -130,4 +136,12 @@ export async function registerBusinessAction(
 
   console.error("[registerBusinessAction] exhausted slug-collision retries");
   return { status: "server-error", message: GENERIC_SERVER_ERROR_MESSAGE, values: raw };
+}
+
+/** The free-plan registration action — unchanged signature/behavior, used by business/register/page.tsx. */
+export async function registerBusinessAction(
+  _prevState: BusinessRegistrationActionState,
+  formData: FormData,
+): Promise<BusinessRegistrationActionState> {
+  return submitBusinessRegistration(formData, "free");
 }

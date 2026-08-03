@@ -41,7 +41,15 @@ export type Database = {
         Row: BusinessRegistrationRow;
         Insert: Omit<
           BusinessRegistrationRow,
-          "id" | "status" | "featured" | "verified" | "created_at" | "reviewed_at" | "rejection_reason" | "owner_id"
+          | "id"
+          | "status"
+          | "featured"
+          | "verified"
+          | "created_at"
+          | "reviewed_at"
+          | "rejection_reason"
+          | "owner_id"
+          | "plan_tier"
         > & {
           id?: string;
           status?: BusinessRegistrationRow["status"];
@@ -49,6 +57,7 @@ export type Database = {
           verified?: boolean;
           rejection_reason?: string | null;
           owner_id?: string | null;
+          plan_tier?: BusinessRegistrationRow["plan_tier"];
         };
         Update: Partial<BusinessRegistrationRow>;
         Relationships: [];

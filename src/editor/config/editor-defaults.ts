@@ -25,7 +25,7 @@ export const defaultHeaderSettings: HeaderEditorSettings = {
   content: {
     logo: { src: "/images/logo-color.png", alt: "נווה שמיר — הפורטל של השכונה", objectFit: "contain" },
     ctaLabel: "הוספת עסק / מודעה",
-    ctaHref: "/business/register",
+    ctaHref: "/business/plans",
     personalAreaLabel: "אזור אישי",
     personalAreaHref: "/account",
     showPersonalAreaButton: true,
