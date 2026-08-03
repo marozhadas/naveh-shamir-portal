@@ -120,6 +120,40 @@ export function TextAreaField({ label, value, onChange, maxLength }: TextAreaFie
   );
 }
 
+type NumberFieldProps = {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min: number;
+  max: number;
+  suffix?: string;
+};
+
+/** Free-form pixel-value input (as opposed to a bounded token dropdown) — value is clamped to [min, max] on change. */
+export function NumberField({ label, value, onChange, min, max, suffix }: NumberFieldProps) {
+  const id = useId();
+  return (
+    <FieldChrome label={label} htmlFor={id}>
+      <div className={styles.labelRow}>
+        <input
+          id={id}
+          type="number"
+          className={styles.input}
+          value={value}
+          min={min}
+          max={max}
+          onChange={(event) => {
+            const next = Number(event.target.value);
+            if (Number.isNaN(next)) return;
+            onChange(Math.min(max, Math.max(min, next)));
+          }}
+        />
+        {suffix && <span className={styles.count}>{suffix}</span>}
+      </div>
+    </FieldChrome>
+  );
+}
+
 type ToggleFieldProps = {
   label: string;
   checked: boolean;

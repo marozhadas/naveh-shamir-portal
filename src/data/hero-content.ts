@@ -19,13 +19,13 @@ export const DEFAULT_HERO_SETTINGS: HeroEditorSettings = {
     backgroundColorToken: "inverse",
     titleColorToken: "text-inverse",
     descriptionColorToken: "muted",
-    // Explicit request: oversized 220px headline.
-    titleSizeToken: "4xl",
+    // Explicit request: oversized 220px headline (free-typed px, not a bounded token).
+    titleSizeToken: 220,
     // Figma specifies "Ploni ML v2 AAA:UltraBold" for the Hero title — the ultrabold (800) weight
     // file, not the heavier black (900) one.
     titleWeightToken: "ultrabold",
     // Explicit request: 100px tagline.
-    descriptionSizeToken: "3xl",
+    descriptionSizeToken: 100,
     searchBarRadiusToken: "pill",
     searchBarShadowToken: "none",
     contentAlignment: "center",
@@ -37,7 +37,7 @@ export const DEFAULT_HERO_SETTINGS: HeroEditorSettings = {
     descriptionToSearchGap: "32",
   },
   responsive: {
-    titleSizeMobileToken: "2xl",
+    titleSizeMobileToken: 40,
     paddingBlockMobile: { start: "64", end: "96" },
     contentAlignmentMobile: "center",
     showIllustrationMobile: true,

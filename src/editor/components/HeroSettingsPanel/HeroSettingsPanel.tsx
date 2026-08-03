@@ -2,14 +2,13 @@
 
 import { useEditor } from "@/editor/hooks/use-editor";
 import { useSectionSettings } from "@/editor/state/editor-selectors";
-import { TextField, TextAreaField, ToggleField } from "@/editor/components/EditorField/EditorField";
+import { TextField, TextAreaField, ToggleField, NumberField } from "@/editor/components/EditorField/EditorField";
 import { HeroGalleryManager } from "@/editor/components/HeroGalleryManager/HeroGalleryManager";
 import { TokenPicker } from "@/editor/components/TokenPicker/TokenPicker";
 import { TokenSelect } from "@/editor/components/TokenPicker/TokenSelect";
 import { SegmentedControl } from "@/editor/components/TokenPicker/SegmentedControl";
 import { CONTENT_LIMITS } from "@/editor/schemas/content-limits";
 import {
-  FONT_SIZE_TOKEN_LABEL,
   FONT_WEIGHT_TOKEN_LABEL,
   HERO_MAX_CONTENT_WIDTH_LABEL,
   RADIUS_TOKEN_LABEL,
@@ -18,7 +17,6 @@ import {
 } from "@/editor/config/editor-constants";
 import type {
   ColorToken,
-  FontSizeToken,
   FontWeightToken,
   RadiusToken,
   ShadowToken,
@@ -41,7 +39,6 @@ const COLOR_OPTIONS: ColorToken[] = [
   "muted",
 ];
 
-const FONT_SIZE_OPTIONS: FontSizeToken[] = ["xs", "sm", "base", "lg", "xl", "2xl", "display", "3xl", "4xl"];
 const FONT_WEIGHT_OPTIONS: FontWeightToken[] = ["light", "regular", "medium", "demibold", "bold", "ultrabold", "black"];
 const SPACING_OPTIONS: SpacingToken[] = ["0", "4", "8", "12", "16", "20", "24", "32", "40", "48", "64", "80", "96"];
 const RADIUS_OPTIONS: RadiusToken[] = ["sm", "md", "lg", "pill"];
@@ -116,11 +113,12 @@ export function HeroSettingsPanel({ tab }: HeroSettingsPanelProps) {
             onDiscreteChange({ ...hero, appearance: { ...hero.appearance, descriptionColorToken: value } })
           }
         />
-        <TokenSelect
+        <NumberField
           label="גודל כותרת"
           value={hero.appearance.titleSizeToken}
-          options={FONT_SIZE_OPTIONS}
-          labels={FONT_SIZE_TOKEN_LABEL}
+          min={8}
+          max={400}
+          suffix="px"
           onChange={(value) => onDiscreteChange({ ...hero, appearance: { ...hero.appearance, titleSizeToken: value } })}
         />
         <TokenSelect
@@ -130,11 +128,12 @@ export function HeroSettingsPanel({ tab }: HeroSettingsPanelProps) {
           labels={FONT_WEIGHT_TOKEN_LABEL}
           onChange={(value) => onDiscreteChange({ ...hero, appearance: { ...hero.appearance, titleWeightToken: value } })}
         />
-        <TokenSelect
+        <NumberField
           label="גודל תיאור"
           value={hero.appearance.descriptionSizeToken}
-          options={FONT_SIZE_OPTIONS}
-          labels={FONT_SIZE_TOKEN_LABEL}
+          min={8}
+          max={400}
+          suffix="px"
           onChange={(value) =>
             onDiscreteChange({ ...hero, appearance: { ...hero.appearance, descriptionSizeToken: value } })
           }
@@ -232,11 +231,12 @@ export function HeroSettingsPanel({ tab }: HeroSettingsPanelProps) {
   // responsive
   return (
     <>
-      <TokenSelect
+      <NumberField
         label="גודל כותרת (מובייל)"
         value={hero.responsive.titleSizeMobileToken}
-        options={FONT_SIZE_OPTIONS}
-        labels={FONT_SIZE_TOKEN_LABEL}
+        min={8}
+        max={400}
+        suffix="px"
         onChange={(value) =>
           onDiscreteChange({ ...hero, responsive: { ...hero.responsive, titleSizeMobileToken: value } })
         }

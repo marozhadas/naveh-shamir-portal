@@ -1,13 +1,15 @@
 import { z } from "zod";
 import {
   colorTokenSchema,
-  fontSizeTokenSchema,
   fontWeightTokenSchema,
   radiusTokenSchema,
   shadowTokenSchema,
   spacingTokenSchema,
   textAlignTokenSchema,
 } from "./tokens.schema";
+
+/** Free-form pixel size (not a bounded token) — the editor lets you type any value in this range. */
+const pxSizeSchema = z.number().int().min(8).max(400);
 import { CONTENT_LIMITS } from "./content-limits";
 
 export const heroSettingsSchema = z.object({
@@ -20,9 +22,9 @@ export const heroSettingsSchema = z.object({
     backgroundColorToken: colorTokenSchema,
     titleColorToken: colorTokenSchema,
     descriptionColorToken: colorTokenSchema,
-    titleSizeToken: fontSizeTokenSchema,
+    titleSizeToken: pxSizeSchema,
     titleWeightToken: fontWeightTokenSchema,
-    descriptionSizeToken: fontSizeTokenSchema,
+    descriptionSizeToken: pxSizeSchema,
     searchBarRadiusToken: radiusTokenSchema,
     searchBarShadowToken: shadowTokenSchema,
     contentAlignment: textAlignTokenSchema,
@@ -34,7 +36,7 @@ export const heroSettingsSchema = z.object({
     descriptionToSearchGap: spacingTokenSchema,
   }),
   responsive: z.object({
-    titleSizeMobileToken: fontSizeTokenSchema,
+    titleSizeMobileToken: pxSizeSchema,
     paddingBlockMobile: z.object({ start: spacingTokenSchema, end: spacingTokenSchema }),
     contentAlignmentMobile: textAlignTokenSchema,
     showIllustrationMobile: z.boolean(),

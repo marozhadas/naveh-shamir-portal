@@ -160,6 +160,7 @@ export const defaultUpcomingEventsSettings: UpcomingEventsEditorSettings = {
       displayMonth: e.displayMonth,
       displayTime: e.displayTime,
       location: e.location,
+      image: { src: "", alt: "", objectFit: "cover" },
       priceLabel: "",
       calendarUrl: e.calendarUrl ?? "",
       calendarButtonLabel: "הוסיפו ליומן",

@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
-import { CalendarPlus, Clock, MapPin } from "lucide-react";
+import Image from "next/image";
+import { CalendarPlus, Clock, ImageIcon, MapPin } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { DateBadge } from "@/components/ui/DateBadge";
 import { Button } from "@/components/ui/Button";
@@ -26,7 +27,25 @@ export function EventCard({ event, appearance }: EventCardProps) {
   return (
     <Card className={styles.card} style={cardStyle} data-testid="event-card">
       <div className={styles.top}>
-        <DateBadge day={event.displayDay} month={event.displayMonth} />
+        <div className={styles.imageArea}>
+          {event.image.src ? (
+            <Image
+              src={event.image.src}
+              alt={event.image.alt}
+              fill
+              sizes="88px"
+              className={styles.image}
+              style={{ objectFit: event.image.objectFit }}
+            />
+          ) : (
+            <div className={styles.imagePlaceholder} aria-hidden="true">
+              <ImageIcon size={24} strokeWidth={1.5} />
+            </div>
+          )}
+          <div className={styles.dateBadgeOverlay}>
+            <DateBadge day={event.displayDay} month={event.displayMonth} />
+          </div>
+        </div>
         <div className={styles.info}>
           <h3 className={styles.title}>{event.title}</h3>
           <time dateTime={event.startDate} className="sr-only">

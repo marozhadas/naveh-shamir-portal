@@ -7,6 +7,7 @@ import { TokenPicker } from "@/editor/components/TokenPicker/TokenPicker";
 import { TokenSelect } from "@/editor/components/TokenPicker/TokenSelect";
 import { SegmentedControl } from "@/editor/components/TokenPicker/SegmentedControl";
 import { LinkControl } from "@/editor/components/LinkControl/LinkControl";
+import { ImageControl } from "@/editor/components/ImageControl/ImageControl";
 import { EditableItemsList } from "@/editor/components/EditableItemsList/EditableItemsList";
 import { ContrastWarning } from "@/editor/components/ContrastWarning/ContrastWarning";
 import { CONTENT_LIMITS } from "@/editor/schemas/content-limits";
@@ -103,6 +104,7 @@ export function UpcomingEventsSettingsPanel({ tab }: UpcomingEventsSettingsPanel
             displayMonth: "ינו",
             displayTime: "18:00",
             location: "",
+            image: { src: "", alt: "", objectFit: "cover" },
             priceLabel: "",
             calendarUrl: "",
             calendarButtonLabel: "הוסיפו ליומן",
@@ -120,6 +122,7 @@ export function UpcomingEventsSettingsPanel({ tab }: UpcomingEventsSettingsPanel
               <TextField label="חודש בתצוגה (למשל אוג)" value={item.displayMonth} maxLength={8} required onChange={(displayMonth) => update({ displayMonth })} />
               <TextField label="שעה בתצוגה" value={item.displayTime} maxLength={CONTENT_LIMITS.eventTimeLabel} required onChange={(displayTime) => update({ displayTime })} />
               <TextField label="מיקום" value={item.location} maxLength={CONTENT_LIMITS.eventLocation} required onChange={(location) => update({ location })} />
+              <ImageControl label="תמונה" value={item.image} onChange={(image) => update({ image })} />
               <TextField label="תאריך התחלה (ISO, למשל 2026-08-12T09:00:00+03:00)" value={item.startDate} maxLength={40} onChange={(startDate) => update({ startDate })} />
               <TextField label="תאריך סיום (ISO, אופציונלי)" value={item.endDate} maxLength={40} onChange={(endDate) => update({ endDate })} />
               <TextField label="מחיר (אופציונלי)" value={item.priceLabel} maxLength={CONTENT_LIMITS.eventTimeLabel} onChange={(priceLabel) => update({ priceLabel })} />

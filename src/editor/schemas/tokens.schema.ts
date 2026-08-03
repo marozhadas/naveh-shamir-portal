@@ -82,3 +82,17 @@ export const editableImageSchema = z.object({
   alt: z.string().max(160),
   objectFit: z.enum(["cover", "contain"]),
 });
+
+/** Like editableImageSchema, but the image itself is optional (empty src falls back to a placeholder). */
+export const optionalEditableImageSchema = z.object({
+  src: z
+    .string()
+    .refine((value) => value === "" || HTTPS_OR_LOCAL_PATTERN.test(value), {
+      message: "התמונה חייבת להיות קישור https:// או נתיב מקומי שמתחיל ב-/",
+    })
+    .refine((value) => !value.startsWith("data:"), {
+      message: "לא ניתן לשמור תמונת Base64 בתוך קובץ ההגדרות",
+    }),
+  alt: z.string().max(160),
+  objectFit: z.enum(["cover", "contain"]),
+});

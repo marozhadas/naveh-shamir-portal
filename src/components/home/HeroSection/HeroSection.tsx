@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { SearchBar } from "@/components/ui/SearchBar";
 import {
   colorTokenToCssVar,
-  fontSizeTokenToCssVar,
   fontWeightTokenToCssVar,
   radiusTokenToCssVar,
   shadowTokenToCssVar,
@@ -79,11 +78,11 @@ export function HeroSection({ settings, galleryImages }: HeroSectionProps) {
     "--hero-content-align": settings.appearance.contentAlignment,
     "--hero-content-align-mobile": settings.responsive.contentAlignmentMobile,
     "--hero-title-color": colorTokenToCssVar(settings.appearance.titleColorToken),
-    "--hero-title-size": fontSizeTokenToCssVar(settings.appearance.titleSizeToken),
-    "--hero-title-size-mobile": fontSizeTokenToCssVar(settings.responsive.titleSizeMobileToken),
+    "--hero-title-size": `${settings.appearance.titleSizeToken}px`,
+    "--hero-title-size-mobile": `${settings.responsive.titleSizeMobileToken}px`,
     "--hero-title-weight": fontWeightTokenToCssVar(settings.appearance.titleWeightToken),
     "--hero-description-color": colorTokenToCssVar(settings.appearance.descriptionColorToken),
-    "--hero-description-size": fontSizeTokenToCssVar(settings.appearance.descriptionSizeToken),
+    "--hero-description-size": `${settings.appearance.descriptionSizeToken}px`,
     "--hero-title-gap": spacingTokenToCssVar(settings.layout.titleToDescriptionGap),
     "--hero-search-gap": spacingTokenToCssVar(settings.layout.descriptionToSearchGap),
     "--search-bar-radius": radiusTokenToCssVar(settings.appearance.searchBarRadiusToken),
