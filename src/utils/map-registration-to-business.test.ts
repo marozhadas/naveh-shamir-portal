@@ -41,6 +41,7 @@ function makeRow(overrides: Partial<BusinessRegistrationRow> = {}): BusinessRegi
     publication_consent: false,
     terms_accepted: false,
     trial_consent: false,
+    dashboard_access_consent: false,
     ...overrides,
   };
 }

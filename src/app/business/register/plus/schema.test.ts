@@ -108,9 +108,36 @@ describe("plusBusinessRegistrationSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("requires all three consent checkboxes to be true", () => {
+  it("requires all three consent checkboxes to be true for Plus", () => {
     expect(plusBusinessRegistrationSchema.safeParse(makeValidInput({ publicationConsent: false })).success).toBe(false);
     expect(plusBusinessRegistrationSchema.safeParse(makeValidInput({ termsAccepted: false })).success).toBe(false);
     expect(plusBusinessRegistrationSchema.safeParse(makeValidInput({ trialConsent: false })).success).toBe(false);
+  });
+
+  it("accepts a fully valid Premium registration (dashboardAccessConsent instead of trialConsent)", () => {
+    const result = plusBusinessRegistrationSchema.safeParse(
+      makeValidInput({ planId: "premium", trialConsent: undefined, dashboardAccessConsent: true }),
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("requires dashboardAccessConsent for Premium, not trialConsent", () => {
+    const missingDashboardConsent = plusBusinessRegistrationSchema.safeParse(
+      makeValidInput({ planId: "premium", trialConsent: undefined, dashboardAccessConsent: false }),
+    );
+    expect(missingDashboardConsent.success).toBe(false);
+
+    // Premium doesn't need trialConsent at all — omitting it entirely must not block a valid submission.
+    const withoutTrialConsent = plusBusinessRegistrationSchema.safeParse(
+      makeValidInput({ planId: "premium", trialConsent: undefined, dashboardAccessConsent: true }),
+    );
+    expect(withoutTrialConsent.success).toBe(true);
+  });
+
+  it("rejects a Plus submission missing trialConsent even if dashboardAccessConsent is set", () => {
+    const result = plusBusinessRegistrationSchema.safeParse(
+      makeValidInput({ trialConsent: false, dashboardAccessConsent: true }),
+    );
+    expect(result.success).toBe(false);
   });
 });

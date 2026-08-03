@@ -66,6 +66,7 @@ export type Database = {
           | "publication_consent"
           | "terms_accepted"
           | "trial_consent"
+          | "dashboard_access_consent"
         > & {
           id?: string;
           status?: BusinessRegistrationRow["status"];
@@ -90,6 +91,7 @@ export type Database = {
           publication_consent?: boolean;
           terms_accepted?: boolean;
           trial_consent?: boolean;
+          dashboard_access_consent?: boolean;
         };
         Update: Partial<BusinessRegistrationRow>;
         Relationships: [];

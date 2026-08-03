@@ -52,6 +52,8 @@ export type BusinessRegistrationRow = {
   publication_consent: boolean;
   terms_accepted: boolean;
   trial_consent: boolean;
+  /** Premium-only consent to receive a secure personal-area access link by email. Always false for free/Plus. */
+  dashboard_access_consent: boolean;
 };
 
 /** Fields the public registration form is allowed to submit — status/featured/verified are never client-supplied (RLS also enforces this server-side). */

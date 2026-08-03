@@ -100,7 +100,12 @@ export const plusBusinessRegistrationSchema = z
 
     publicationConsent: z.literal(true, { message: "יש לאשר את פרסום הפרטים" }),
     termsAccepted: z.literal(true, { message: "יש לאשר את תנאי השימוש" }),
-    trialConsent: z.literal(true, { message: "יש לאשר את הפעלת חודש הניסיון" }),
+    // Plus offers a free trial month; Premium (spec: no promised free month) does not — required
+    // only for planId="plus", see the superRefine below.
+    trialConsent: z.boolean().optional(),
+    // Required only for planId="premium" — see the superRefine below. Optional here so the exact
+    // same schema/object shape validates both plans.
+    dashboardAccessConsent: z.boolean().optional(),
   })
   .superRefine((values, ctx) => {
     if (values.addressType !== "service-area" && !values.address) {
@@ -108,6 +113,16 @@ export const plusBusinessRegistrationSchema = z
     }
     if (values.addressType !== "physical" && !values.serviceArea) {
       ctx.addIssue({ code: "custom", path: ["serviceArea"], message: "יש להזין אזור שירות" });
+    }
+    if (values.planId === "plus" && values.trialConsent !== true) {
+      ctx.addIssue({ code: "custom", path: ["trialConsent"], message: "יש לאשר את הפעלת חודש הניסיון" });
+    }
+    if (values.planId === "premium" && values.dashboardAccessConsent !== true) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["dashboardAccessConsent"],
+        message: "יש לאשר קבלת גישה מאובטחת לאזור האישי במייל",
+      });
     }
   });
 

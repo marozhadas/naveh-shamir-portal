@@ -44,17 +44,20 @@ function randomSuffix(): string {
 }
 
 /**
- * The single insert path for both /business/register/plus and (once wired) /business/register/premium
- * — `planId` is always a fixed argument from the caller, never trusted from the client payload alone
- * (this function re-validates the whole input, including planId, against plusBusinessRegistrationSchema
- * server-side regardless of what the client already checked).
+ * The single insert path shared by /business/register/plus and /business/register/premium.
+ * `planId` is always a fixed argument the caller passes (see submitPlusRegistrationAction /
+ * submitPremiumRegistrationAction below) — the input's own `planId` field is discarded and
+ * overwritten with it, so a POST crafted directly against this action can never register a
+ * business under a different tier than the route it was submitted from.
  *
- * Deliberately does NOT start a trial or flip the business to "approved"/premium — spec: the free
- * month must only begin after an admin approves the registration AND a separate, explicit
- * activation happens (not yet built). Until then this only ever writes trial_status="not-started".
+ * Deliberately does NOT start a trial, flip the business to "approved", grant the verified badge,
+ * or open self-edit access — spec: those only happen after an admin approves the registration AND
+ * a separate, explicit activation happens (not yet built). Until then this only ever writes
+ * trial_status="not-started" regardless of plan.
  */
-export async function submitPlusRegistrationAction(
+async function submitExtendedBusinessRegistration(
   input: PlusBusinessRegistrationInput,
+  planId: "plus" | "premium",
   /** Hidden field real visitors never fill; a bot that fills every field usually does. Silently pretends success instead of tipping the bot off. */
   honeypot?: string,
 ): Promise<SubmitPlusRegistrationState> {
@@ -62,6 +65,7 @@ export async function submitPlusRegistrationAction(
 
   const result = plusBusinessRegistrationSchema.safeParse({
     ...input,
+    planId,
     instagramUrl: input.socialLinks.instagramUrl ?? "",
     facebookUrl: input.socialLinks.facebookUrl ?? "",
     tiktokUrl: input.socialLinks.tiktokUrl ?? "",
@@ -116,6 +120,7 @@ export async function submitPlusRegistrationAction(
       publication_consent: values.publicationConsent,
       terms_accepted: values.termsAccepted,
       trial_consent: values.trialConsent,
+      dashboard_access_consent: values.dashboardAccessConsent ?? false,
       status: "pending",
       featured: false,
       verified: false,
@@ -124,10 +129,26 @@ export async function submitPlusRegistrationAction(
     if (!error) return { status: "success" };
 
     if (error.code === "23505") continue; // slug collision — retry with a suffixed slug
-    console.error("[submitPlusRegistrationAction] insert failed:", error.code, error.message);
+    console.error("[submitExtendedBusinessRegistration] insert failed:", error.code, error.message);
     return { status: "server-error", message: GENERIC_SERVER_ERROR_MESSAGE };
   }
 
-  console.error("[submitPlusRegistrationAction] exhausted slug-collision retries");
+  console.error("[submitExtendedBusinessRegistration] exhausted slug-collision retries");
   return { status: "server-error", message: GENERIC_SERVER_ERROR_MESSAGE };
+}
+
+/** Plus registration action, used by /business/register/plus. planId is pinned server-side. */
+export async function submitPlusRegistrationAction(
+  input: PlusBusinessRegistrationInput,
+  honeypot?: string,
+): Promise<SubmitPlusRegistrationState> {
+  return submitExtendedBusinessRegistration(input, "plus", honeypot);
+}
+
+/** Premium registration action, used by /business/register/premium. planId is pinned server-side. */
+export async function submitPremiumRegistrationAction(
+  input: PlusBusinessRegistrationInput,
+  honeypot?: string,
+): Promise<SubmitPlusRegistrationState> {
+  return submitExtendedBusinessRegistration(input, "premium", honeypot);
 }

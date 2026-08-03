@@ -25,6 +25,8 @@ export type BusinessListingAccess = {
   canShowOpeningHours: boolean;
   /** Plus explicitly does not get this — self-editing (magic-link login, /business/dashboard/profile) is Premium-only. */
   canSelfEdit: boolean;
+  /** Eligibility only — the homepage must still separately check business.featured before actually showing it (admin picks who, not every Premium business automatically). */
+  canBeHomepageFeatured: boolean;
   tier: BusinessListingTier;
   reason: BusinessListingAccessReason;
 };

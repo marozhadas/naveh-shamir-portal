@@ -96,6 +96,12 @@ export default async function AdminBusinessDetailPage({ params }: BusinessDetail
                   <dd>{registration.promotion.title}</dd>
                 </div>
               )}
+              {registration.plan_tier === "premium" && (
+                <div>
+                  <dt>הסכמה לגישה לאזור אישי</dt>
+                  <dd>{registration.dashboard_access_consent ? "אושרה" : "לא אושרה"}</dd>
+                </div>
+              )}
             </>
           )}
         </dl>

@@ -177,4 +177,15 @@ describe("getBusinessListingAccess", () => {
     const access = getBusinessListingAccess(makeBusiness(), null, NOW);
     expect(access.canSelfEdit).toBe(false);
   });
+
+  it("only an active premium subscription is eligible for homepage-featured placement", () => {
+    const premium = getBusinessListingAccess(makeBusiness(), makeSubscription({ status: "active" }), NOW);
+    expect(premium.canBeHomepageFeatured).toBe(true);
+
+    const plus = getBusinessListingAccess(makeBusiness(), makeSubscription({ status: "active", planId: "plus" }), NOW);
+    expect(plus.canBeHomepageFeatured).toBe(false);
+
+    const basic = getBusinessListingAccess(makeBusiness(), null, NOW);
+    expect(basic.canBeHomepageFeatured).toBe(false);
+  });
 });

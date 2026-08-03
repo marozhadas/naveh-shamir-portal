@@ -14,6 +14,7 @@ export const FALLBACK_BASIC_ACCESS: BusinessListingAccess = {
   canShowServices: false,
   canShowOpeningHours: false,
   canSelfEdit: false,
+  canBeHomepageFeatured: false,
   tier: "basic",
   reason: "basic-listing",
 };
@@ -28,6 +29,7 @@ function basicAccess(canAppearInArchive: boolean, reason: BusinessListingAccessR
     canShowServices: false,
     canShowOpeningHours: false,
     canSelfEdit: false,
+    canBeHomepageFeatured: false,
     tier: "basic",
     reason,
   };
@@ -48,6 +50,7 @@ function plusAccess(reason: BusinessListingAccessReason): BusinessListingAccess 
     canShowServices: true,
     canShowOpeningHours: true,
     canSelfEdit: false,
+    canBeHomepageFeatured: false,
     tier: "plus",
     reason,
   };
@@ -63,6 +66,7 @@ function premiumAccess(reason: BusinessListingAccessReason): BusinessListingAcce
     canShowServices: true,
     canShowOpeningHours: true,
     canSelfEdit: true,
+    canBeHomepageFeatured: true,
     tier: "premium",
     reason,
   };

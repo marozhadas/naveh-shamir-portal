@@ -72,4 +72,6 @@ export type PlusBusinessRegistrationInput = {
   publicationConsent: boolean;
   termsAccepted: boolean;
   trialConsent: boolean;
+  /** Premium-only — "I consent to receiving a secure personal-area access link by email." Ignored for Plus. */
+  dashboardAccessConsent?: boolean;
 };

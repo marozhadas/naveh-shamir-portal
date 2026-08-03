@@ -4,13 +4,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { getVisibleBusinessCategories } from "@/data/business-categories";
-import { uploadBusinessMediaAction, submitPlusRegistrationAction } from "./actions";
+import { uploadBusinessMediaAction, submitPlusRegistrationAction, submitPremiumRegistrationAction } from "./actions";
 import { BUSINESS_TYPE_OPTIONS, WEEKDAYS, WEEKDAY_LABEL } from "./schema";
 import type { PlusBusinessRegistrationInput } from "@/types/business-plus-registration";
 import styles from "./plus-wizard.module.css";
 
 const CATEGORIES = getVisibleBusinessCategories();
-const DRAFT_KEY = "naveh-shamir-plus-registration-draft-v1";
+const DRAFT_KEY_BY_PLAN = {
+  plus: "naveh-shamir-plus-registration-draft-v1",
+  premium: "naveh-shamir-premium-registration-draft-v1",
+} as const;
 const PHONE_PATTERN = /^\+?[0-9-\s]{6,}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -53,6 +56,7 @@ type WizardValues = {
   publicationConsent: boolean;
   termsAccepted: boolean;
   trialConsent: boolean;
+  dashboardAccessConsent: boolean;
   honeypot: string;
 };
 
@@ -95,6 +99,7 @@ function createEmptyValues(): WizardValues {
     publicationConsent: false,
     termsAccepted: false,
     trialConsent: false,
+    dashboardAccessConsent: false,
     honeypot: "",
   };
 }
@@ -106,6 +111,7 @@ type PlusRegistrationWizardProps = {
 
 export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationWizardProps) {
   const router = useRouter();
+  const draftKey = DRAFT_KEY_BY_PLAN[planId];
   const registrationIdRef = useRef<string>(crypto.randomUUID());
   const [step, setStep] = useState(1);
   const [values, setValues] = useState<WizardValues>(createEmptyValues);
@@ -122,7 +128,7 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
     if (hasLoadedDraftRef.current) return;
     hasLoadedDraftRef.current = true;
     try {
-      const raw = sessionStorage.getItem(DRAFT_KEY);
+      const raw = sessionStorage.getItem(draftKey);
       if (!raw) return;
       const parsed = JSON.parse(raw) as { step: number; values: WizardValues };
       // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time read from sessionStorage on mount, not a prop/state sync
@@ -132,18 +138,19 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
     } catch {
       // Corrupt/unavailable storage — start fresh.
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- draftKey is derived from the planId prop, stable for the component's lifetime; only run once on mount
   }, []);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
       try {
-        sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ step, values }));
+        sessionStorage.setItem(draftKey, JSON.stringify({ step, values }));
       } catch {
         // Storage full/unavailable — a convenience feature, not worth surfacing an error for.
       }
     }, 500);
     return () => clearTimeout(timeout);
-  }, [step, values]);
+  }, [step, values, draftKey]);
 
   function update<K extends keyof WizardValues>(key: K, value: WizardValues[K]) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -151,7 +158,7 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
 
   function clearDraft() {
     try {
-      sessionStorage.removeItem(DRAFT_KEY);
+      sessionStorage.removeItem(draftKey);
     } catch {
       // Nothing to do if storage is unavailable.
     }
@@ -205,7 +212,11 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
     const next: Record<string, string> = {};
     if (!values.publicationConsent) next.publicationConsent = "יש לאשר את פרסום הפרטים";
     if (!values.termsAccepted) next.termsAccepted = "יש לאשר את תנאי השימוש";
-    if (!values.trialConsent) next.trialConsent = "יש לאשר את הפעלת חודש הניסיון";
+    if (planId === "premium") {
+      if (!values.dashboardAccessConsent) next.dashboardAccessConsent = "יש לאשר קבלת גישה מאובטחת לאזור האישי במייל";
+    } else if (!values.trialConsent) {
+      next.trialConsent = "יש לאשר את הפעלת חודש הניסיון";
+    }
     return next;
   }
 
@@ -366,9 +377,11 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
       publicationConsent: values.publicationConsent,
       termsAccepted: values.termsAccepted,
       trialConsent: values.trialConsent,
+      dashboardAccessConsent: planId === "premium" ? values.dashboardAccessConsent : undefined,
     };
 
-    const result = await submitPlusRegistrationAction(input, values.honeypot);
+    const submitAction = planId === "premium" ? submitPremiumRegistrationAction : submitPlusRegistrationAction;
+    const result = await submitAction(input, values.honeypot);
     setSubmitting(false);
 
     if (result.status === "success") {
@@ -1061,9 +1074,25 @@ function ReviewStep({ values, planId, priceLabel, errors, onEdit, onChangeConsen
 
       <div className={styles.reviewSection}>
         <p className={styles.reviewLabel}>מסלול {planId === "plus" ? "Plus" : "Premium"}</p>
-        <p className={styles.reviewValue}>חודש ראשון חינם</p>
-        <p className={styles.reviewValue}>לאחר תקופת הניסיון: {priceLabel} לחודש</p>
+        {planId === "plus" ? (
+          <>
+            <p className={styles.reviewValue}>חודש ראשון חינם</p>
+            <p className={styles.reviewValue}>לאחר תקופת הניסיון: {priceLabel} לחודש</p>
+          </>
+        ) : (
+          <p className={styles.reviewValue}>{priceLabel} לחודש</p>
+        )}
       </div>
+
+      {planId === "premium" && (
+        <div className={styles.reviewSection}>
+          <p className={styles.reviewLabel}>לאחר אישור והפעלה תקבלו גישה אישית ומאובטחת</p>
+          <p className={styles.reviewValue}>
+            לאחר אישור העסק והפעלת חבילת Premium, יישלח אליכם למייל קישור אישי ומאובטח לאזור האישי — שם תוכלו לעדכן
+            בעצמכם שם עסק, תיאור קצר ומלא, תמונות, שירותים, שעות פעילות, פרטי קשר, קישורים ומבצעים.
+          </p>
+        </div>
+      )}
 
       <div className={`${styles.field} ${errors.publicationConsent ? styles.fieldInvalid : ""}`}>
         <label className={styles.checkboxRow}>
@@ -1087,17 +1116,35 @@ function ReviewStep({ values, planId, priceLabel, errors, onEdit, onChangeConsen
           </p>
         )}
       </div>
-      <div className={`${styles.field} ${errors.trialConsent ? styles.fieldInvalid : ""}`}>
-        <label className={styles.checkboxRow}>
-          <input type="checkbox" checked={values.trialConsent} onChange={(e) => onChangeConsent("trialConsent", e.target.checked)} />
-          אני מאשר/ת להפעיל את חודש הניסיון לאחר אישור העסק.
-        </label>
-        {errors.trialConsent && (
-          <p className={styles.fieldErrorMessage} role="alert">
-            {errors.trialConsent}
-          </p>
-        )}
-      </div>
+      {planId === "plus" ? (
+        <div className={`${styles.field} ${errors.trialConsent ? styles.fieldInvalid : ""}`}>
+          <label className={styles.checkboxRow}>
+            <input type="checkbox" checked={values.trialConsent} onChange={(e) => onChangeConsent("trialConsent", e.target.checked)} />
+            אני מאשר/ת להפעיל את חודש הניסיון לאחר אישור העסק.
+          </label>
+          {errors.trialConsent && (
+            <p className={styles.fieldErrorMessage} role="alert">
+              {errors.trialConsent}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className={`${styles.field} ${errors.dashboardAccessConsent ? styles.fieldInvalid : ""}`}>
+          <label className={styles.checkboxRow}>
+            <input
+              type="checkbox"
+              checked={values.dashboardAccessConsent}
+              onChange={(e) => onChangeConsent("dashboardAccessConsent", e.target.checked)}
+            />
+            אני מאשר/ת להשתמש בכתובת המייל שלי לצורך שליחת גישה מאובטחת לאזור האישי.
+          </label>
+          {errors.dashboardAccessConsent && (
+            <p className={styles.fieldErrorMessage} role="alert">
+              {errors.dashboardAccessConsent}
+            </p>
+          )}
+        </div>
+      )}
     </>
   );
 }
