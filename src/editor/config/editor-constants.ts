@@ -75,6 +75,8 @@ export const FONT_SIZE_TOKEN_LABEL: Record<FontSizeToken, string> = {
   xl: "גדול מאוד (28px)",
   "2xl": "כותרת (40px)",
   display: "תצוגה (56px)",
+  "3xl": "ענק (100px)",
+  "4xl": "ענק מאוד (220px)",
 };
 
 export const FONT_WEIGHT_TOKEN_LABEL: Record<FontWeightToken, string> = {

@@ -22,6 +22,7 @@ export const heroSettingsSchema = z.object({
     descriptionColorToken: colorTokenSchema,
     titleSizeToken: fontSizeTokenSchema,
     titleWeightToken: fontWeightTokenSchema,
+    descriptionSizeToken: fontSizeTokenSchema,
     searchBarRadiusToken: radiusTokenSchema,
     searchBarShadowToken: shadowTokenSchema,
     contentAlignment: textAlignTokenSchema,

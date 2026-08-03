@@ -80,6 +80,8 @@ const FONT_SIZE_TOKEN_TO_CSS_VAR: Record<FontSizeToken, string> = {
   xl: "var(--fs-h2)",
   "2xl": "var(--fs-h1)",
   display: "var(--fs-display-1)",
+  "3xl": "var(--fs-3xl)",
+  "4xl": "var(--fs-4xl)",
 };
 
 const FONT_WEIGHT_TOKEN_TO_CSS_VAR: Record<FontWeightToken, string> = {

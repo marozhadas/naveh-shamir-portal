@@ -83,6 +83,7 @@ export function HeroSection({ settings, galleryImages }: HeroSectionProps) {
     "--hero-title-size-mobile": fontSizeTokenToCssVar(settings.responsive.titleSizeMobileToken),
     "--hero-title-weight": fontWeightTokenToCssVar(settings.appearance.titleWeightToken),
     "--hero-description-color": colorTokenToCssVar(settings.appearance.descriptionColorToken),
+    "--hero-description-size": fontSizeTokenToCssVar(settings.appearance.descriptionSizeToken),
     "--hero-title-gap": spacingTokenToCssVar(settings.layout.titleToDescriptionGap),
     "--hero-search-gap": spacingTokenToCssVar(settings.layout.descriptionToSearchGap),
     "--search-bar-radius": radiusTokenToCssVar(settings.appearance.searchBarRadiusToken),

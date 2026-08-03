@@ -1,8 +1,9 @@
 .section {
   max-width: var(--quicklinks-container-max-width, 1280px);
   /* Deep negative margin so the panel peeks up into the Hero photo card itself, matching the
-     Figma design's overlapping "floating card" look, not just the plain gap below it. */
-  margin: -96px auto 0;
+     Figma design's overlapping "floating card" look. -176px = the Hero's own 96px bottom padding
+     + this section's 32px top padding + a 48px real overlap into the card (not just closing the gap). */
+  margin: -176px auto 0;
   padding: var(--quicklinks-padding-block, 0) var(--quicklinks-padding-inline, 24px);
   position: relative;
   z-index: 5;
@@ -79,7 +80,7 @@
 
 @media (max-width: 880px) {
   .section {
-    margin-top: -56px;
+    margin-top: -152px;
   }
 
   .panel {

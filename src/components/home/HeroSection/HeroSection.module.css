@@ -51,7 +51,7 @@
 }
 
 .subtitle {
-  font-size: clamp(16px, 2vw, 19px);
+  font-size: var(--hero-description-size, clamp(16px, 2vw, 19px));
   color: var(--hero-description-color, var(--slate-200));
   margin: var(--hero-title-gap, var(--space-4)) 0 0;
   line-height: var(--lh-body);

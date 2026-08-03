@@ -41,8 +41,8 @@ const COLOR_OPTIONS: ColorToken[] = [
   "muted",
 ];
 
-const FONT_SIZE_OPTIONS: FontSizeToken[] = ["xs", "sm", "base", "lg", "xl", "2xl", "display"];
-const FONT_WEIGHT_OPTIONS: FontWeightToken[] = ["light", "regular", "medium", "demibold", "bold", "black"];
+const FONT_SIZE_OPTIONS: FontSizeToken[] = ["xs", "sm", "base", "lg", "xl", "2xl", "display", "3xl", "4xl"];
+const FONT_WEIGHT_OPTIONS: FontWeightToken[] = ["light", "regular", "medium", "demibold", "bold", "ultrabold", "black"];
 const SPACING_OPTIONS: SpacingToken[] = ["0", "4", "8", "12", "16", "20", "24", "32", "40", "48", "64", "80", "96"];
 const RADIUS_OPTIONS: RadiusToken[] = ["sm", "md", "lg", "pill"];
 const SHADOW_OPTIONS: ShadowToken[] = ["none", "sm", "card", "card-hover", "modal"];
@@ -129,6 +129,15 @@ export function HeroSettingsPanel({ tab }: HeroSettingsPanelProps) {
           options={FONT_WEIGHT_OPTIONS}
           labels={FONT_WEIGHT_TOKEN_LABEL}
           onChange={(value) => onDiscreteChange({ ...hero, appearance: { ...hero.appearance, titleWeightToken: value } })}
+        />
+        <TokenSelect
+          label="גודל תיאור"
+          value={hero.appearance.descriptionSizeToken}
+          options={FONT_SIZE_OPTIONS}
+          labels={FONT_SIZE_TOKEN_LABEL}
+          onChange={(value) =>
+            onDiscreteChange({ ...hero, appearance: { ...hero.appearance, descriptionSizeToken: value } })
+          }
         />
         <SegmentedControl
           label="יישור תוכן"

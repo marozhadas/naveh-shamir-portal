@@ -55,6 +55,8 @@
   /* Typography */
   --font-family-base: var(--font-ploni), "Heebo", "Assistant", system-ui, sans-serif;
 
+  --fs-4xl: 220px;
+  --fs-3xl: 100px;
   --fs-display-1: 56px;
   --fs-h1: 40px;
   --fs-h2: 28px;

@@ -46,7 +46,7 @@ export type RadiusToken = "sm" | "md" | "lg" | "xl" | "pill";
 export type ShadowToken = "none" | "sm" | "card" | "card-hover" | "modal";
 
 /** Maps to the project's type scale (src/styles/tokens.css --fs-*). */
-export type FontSizeToken = "xs" | "sm" | "base" | "lg" | "xl" | "2xl" | "display";
+export type FontSizeToken = "xs" | "sm" | "base" | "lg" | "xl" | "2xl" | "display" | "3xl" | "4xl";
 
 export type FontWeightToken = "light" | "regular" | "medium" | "demibold" | "bold" | "ultrabold" | "black";
 
