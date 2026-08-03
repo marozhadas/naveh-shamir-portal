@@ -24,7 +24,7 @@
 }
 
 .logo {
-  height: 44px;
+  height: 71px;
   width: auto;
 }
 
@@ -40,9 +40,28 @@
   display: flex;
   align-items: center;
   gap: var(--header-nav-gap, 28px);
-  font-size: 15px;
-  font-weight: var(--fw-demibold);
+  font-size: 22px;
+  font-weight: var(--fw-regular);
   flex-wrap: wrap;
+}
+
+/* Header-only overrides on top of the shared Button component — pill shape and the larger
+   size the Figma header design uses, without touching Button's global radius/padding used
+   everywhere else on the site. Scoped as a descendant selector (not a bare class) so its
+   specificity (0,2,0) reliably beats Button.module.css's own single-class rules (0,1,0)
+   regardless of which CSS chunk loads first. */
+.header .ctaButton {
+  border-radius: var(--radius-pill);
+  padding: 5px 15px;
+  font-size: 19px;
+  font-weight: var(--fw-bold);
+}
+
+.header .personalAreaButton {
+  border-radius: var(--radius-pill);
+  padding: 5px 15px;
+  font-size: 19px;
+  font-weight: var(--fw-regular);
 }
 
 .navList a {

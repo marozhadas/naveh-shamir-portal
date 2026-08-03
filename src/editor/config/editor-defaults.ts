@@ -41,8 +41,8 @@ export const defaultHeaderSettings: HeaderEditorSettings = {
   },
   layout: {
     containerMaxWidth: "lg",
-    // Live CSS uses 28px (not on the 4px scale); nearest token used here.
-    navItemGap: "24",
+    // Matches the Figma header design's wider nav item spacing.
+    navItemGap: "32",
     logoNavGap: "32",
     showDesktopNav: true,
   },
@@ -64,8 +64,10 @@ export const defaultQuickLinksSettings: QuickLinksEditorSettings = {
   },
   appearance: {
     panelBackgroundColorToken: "surface",
-    panelRadiusToken: "lg",
-    panelShadowToken: "card",
+    // Matches the Figma quick-links panel's larger corner radius and softer,
+    // more diffuse drop shadow (vs. the flatter default card shadow).
+    panelRadiusToken: "xl",
+    panelShadowToken: "card-hover",
     itemHoverEffect: "background",
     cardColorToken: "surface",
     textColorToken: "text-primary",

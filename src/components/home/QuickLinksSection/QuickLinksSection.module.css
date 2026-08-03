@@ -1,6 +1,8 @@
 .section {
   max-width: var(--quicklinks-container-max-width, 1280px);
-  margin: -48px auto 0;
+  /* Deep negative margin so the panel peeks up into the Hero photo card itself, matching the
+     Figma design's overlapping "floating card" look, not just the plain gap below it. */
+  margin: -96px auto 0;
   padding: var(--quicklinks-padding-block, 0) var(--quicklinks-padding-inline, 24px);
   position: relative;
   z-index: 5;
@@ -15,8 +17,10 @@
 
 .panel {
   background: var(--quicklinks-panel-bg, #fff);
-  border-radius: var(--quicklinks-panel-radius, var(--radius-lg));
-  box-shadow: var(--quicklinks-panel-shadow, var(--shadow-card));
+  /* Figma's "Rectangle 25" quick-links card: 50px radius at a 1920px-wide canvas, scaled to
+     this project's 1280px reference container (× 1280/1920), plus its exact drop shadow. */
+  border-radius: var(--quicklinks-panel-radius, 33px);
+  box-shadow: var(--quicklinks-panel-shadow, 0px 4px 30px 0px rgba(41, 41, 81, 0.1));
   padding: var(--space-6);
   display: grid;
   grid-template-columns: repeat(var(--quicklinks-columns-desktop, 6), 1fr);
@@ -74,8 +78,13 @@
 }
 
 @media (max-width: 880px) {
+  .section {
+    margin-top: -56px;
+  }
+
   .panel {
     grid-template-columns: repeat(var(--quicklinks-columns-tablet, 3), 1fr);
+    border-radius: var(--quicklinks-panel-radius, 20px);
   }
 }
 

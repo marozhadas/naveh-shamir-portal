@@ -18,8 +18,14 @@ import type { QuickLinkItemSettings, QuickLinksEditorSettings } from "@/editor/s
 
 const COLOR_OPTIONS: ColorToken[] = ["surface", "background", "highlight", "text-primary", "text-secondary"];
 const SPACING_OPTIONS: SpacingToken[] = ["0", "4", "8", "12", "16", "20", "24", "32"];
-const RADIUS_OPTIONS: Array<"sm" | "md" | "lg" | "pill"> = ["sm", "md", "lg", "pill"];
-const RADIUS_LABEL: Record<"sm" | "md" | "lg" | "pill", string> = { sm: "קטן", md: "בינוני", lg: "גדול", pill: "עגול" };
+const RADIUS_OPTIONS: Array<"sm" | "md" | "lg" | "xl" | "pill"> = ["sm", "md", "lg", "xl", "pill"];
+const RADIUS_LABEL: Record<"sm" | "md" | "lg" | "xl" | "pill", string> = {
+  sm: "קטן",
+  md: "בינוני",
+  lg: "גדול",
+  xl: "גדול מאוד",
+  pill: "עגול",
+};
 const SHADOW_OPTIONS: ShadowToken[] = ["none", "sm", "card", "card-hover", "modal"];
 const HOVER_OPTIONS: Array<QuickLinksEditorSettings["appearance"]["itemHoverEffect"]> = ["none", "background", "lift"];
 const HOVER_LABEL: Record<QuickLinksEditorSettings["appearance"]["itemHoverEffect"], string> = {

@@ -37,13 +37,13 @@ export const spacingTokenSchema = z.enum([
   "96",
 ]);
 
-export const radiusTokenSchema = z.enum(["sm", "md", "lg", "pill"]);
+export const radiusTokenSchema = z.enum(["sm", "md", "lg", "xl", "pill"]);
 
 export const shadowTokenSchema = z.enum(["none", "sm", "card", "card-hover", "modal"]);
 
 export const fontSizeTokenSchema = z.enum(["xs", "sm", "base", "lg", "xl", "2xl", "display"]);
 
-export const fontWeightTokenSchema = z.enum(["light", "regular", "medium", "demibold", "bold", "black"]);
+export const fontWeightTokenSchema = z.enum(["light", "regular", "medium", "demibold", "bold", "ultrabold", "black"]);
 
 export const textAlignTokenSchema = z.enum(["start", "center"]);
 

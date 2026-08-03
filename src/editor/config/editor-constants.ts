@@ -83,6 +83,7 @@ export const FONT_WEIGHT_TOKEN_LABEL: Record<FontWeightToken, string> = {
   medium: "בינוני (500)",
   demibold: "מודגש למחצה (600)",
   bold: "מודגש (700)",
+  ultrabold: "מודגש מאוד (800)",
   black: "שחור (900)",
 };
 
@@ -90,6 +91,7 @@ export const RADIUS_TOKEN_LABEL: Record<RadiusToken, string> = {
   sm: "קטן",
   md: "בינוני",
   lg: "גדול",
+  xl: "גדול מאוד",
   pill: "עגול לגמרי",
 };
 

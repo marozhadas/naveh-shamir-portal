@@ -60,6 +60,7 @@ const RADIUS_TOKEN_TO_CSS_VAR: Record<RadiusToken, string> = {
   sm: "var(--radius-sm)",
   md: "var(--radius-md)",
   lg: "var(--radius-lg)",
+  xl: "var(--radius-xl)",
   pill: "var(--radius-pill)",
 };
 
@@ -87,6 +88,7 @@ const FONT_WEIGHT_TOKEN_TO_CSS_VAR: Record<FontWeightToken, string> = {
   medium: "var(--fw-medium)",
   demibold: "var(--fw-demibold)",
   bold: "var(--fw-bold)",
+  ultrabold: "var(--fw-ultrabold)",
   black: "var(--fw-black)",
 };
 

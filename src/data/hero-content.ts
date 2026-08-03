@@ -22,7 +22,9 @@ export const DEFAULT_HERO_SETTINGS: HeroEditorSettings = {
     // "display" (56px) is the largest available title token — matches the Figma design's
     // oversized centered headline more closely than the previous "2xl" (40px).
     titleSizeToken: "display",
-    titleWeightToken: "black",
+    // Figma specifies "Ploni ML v2 AAA:UltraBold" for the Hero title — the ultrabold (800) weight
+    // file, not the heavier black (900) one.
+    titleWeightToken: "ultrabold",
     searchBarRadiusToken: "pill",
     searchBarShadowToken: "none",
     contentAlignment: "center",

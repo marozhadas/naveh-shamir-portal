@@ -86,13 +86,14 @@ export function Header({ settings }: HeaderProps) {
                 disabled
                 icon={<UserRound size={18} aria-hidden="true" />}
                 title="בקרוב"
+                className={styles.personalAreaButton}
               >
                 {settings.content.personalAreaLabel}
               </Button>
             </div>
           )}
           <div className={styles.desktopOnly}>
-            <Button href={settings.content.ctaHref} variant={settings.appearance.ctaVariant}>
+            <Button href={settings.content.ctaHref} variant={settings.appearance.ctaVariant} className={styles.ctaButton}>
               {settings.content.ctaLabel}
             </Button>
           </div>
@@ -123,7 +124,13 @@ export function Header({ settings }: HeaderProps) {
           </ul>
         </nav>
         <div className={styles.mobileActions}>
-          <Button href={settings.content.ctaHref} variant={settings.appearance.ctaVariant} fullWidth onClick={() => setOpen(false)}>
+          <Button
+            href={settings.content.ctaHref}
+            variant={settings.appearance.ctaVariant}
+            fullWidth
+            onClick={() => setOpen(false)}
+            className={styles.ctaButton}
+          >
             {settings.content.ctaLabel}
           </Button>
           {settings.content.showPersonalAreaButton && (
@@ -133,6 +140,7 @@ export function Header({ settings }: HeaderProps) {
               fullWidth
               icon={<UserRound size={18} aria-hidden="true" />}
               title="בקרוב"
+              className={styles.personalAreaButton}
             >
               {settings.content.personalAreaLabel}
             </Button>

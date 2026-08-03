@@ -41,14 +41,14 @@ export type ColorToken =
 /** Maps to the project's 4px spacing scale (src/styles/tokens.css --space-*). */
 export type SpacingToken = "0" | "4" | "8" | "12" | "16" | "20" | "24" | "32" | "40" | "48" | "64" | "80" | "96";
 
-export type RadiusToken = "sm" | "md" | "lg" | "pill";
+export type RadiusToken = "sm" | "md" | "lg" | "xl" | "pill";
 
 export type ShadowToken = "none" | "sm" | "card" | "card-hover" | "modal";
 
 /** Maps to the project's type scale (src/styles/tokens.css --fs-*). */
 export type FontSizeToken = "xs" | "sm" | "base" | "lg" | "xl" | "2xl" | "display";
 
-export type FontWeightToken = "light" | "regular" | "medium" | "demibold" | "bold" | "black";
+export type FontWeightToken = "light" | "regular" | "medium" | "demibold" | "bold" | "ultrabold" | "black";
 
 export type TextAlignToken = "start" | "center";
 

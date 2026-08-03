@@ -17,8 +17,14 @@ import type { WhatsAppBannerEditorSettings } from "@/editor/schemas/whatsapp.sch
 
 const COLOR_OPTIONS: ColorToken[] = ["success", "highlight", "surface", "background", "text-primary"];
 const SPACING_OPTIONS: SpacingToken[] = ["0", "8", "16", "24", "32", "48", "64"];
-const RADIUS_OPTIONS: Array<"sm" | "md" | "lg" | "pill"> = ["sm", "md", "lg", "pill"];
-const RADIUS_LABEL: Record<"sm" | "md" | "lg" | "pill", string> = { sm: "קטן", md: "בינוני", lg: "גדול", pill: "עגול" };
+const RADIUS_OPTIONS: Array<"sm" | "md" | "lg" | "xl" | "pill"> = ["sm", "md", "lg", "xl", "pill"];
+const RADIUS_LABEL: Record<"sm" | "md" | "lg" | "xl" | "pill", string> = {
+  sm: "קטן",
+  md: "בינוני",
+  lg: "גדול",
+  xl: "גדול מאוד",
+  pill: "עגול",
+};
 const SHADOW_OPTIONS: ShadowToken[] = ["none", "sm", "card", "card-hover", "modal"];
 const BUTTON_VARIANT_OPTIONS: ButtonVariant[] = ["whatsapp", "primary", "secondary", "accent"];
 const BUTTON_VARIANT_LABEL: Record<ButtonVariant, string> = { primary: "ראשי", secondary: "משני", accent: "הדגשה", whatsapp: "וואטסאפ" };

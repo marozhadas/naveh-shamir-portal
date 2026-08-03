@@ -17,8 +17,14 @@ import type { EventCardContentSettings, UpcomingEventsEditorSettings } from "@/e
 
 const COLOR_OPTIONS: ColorToken[] = ["background", "surface", "highlight", "text-primary", "text-secondary", "green"];
 const SPACING_OPTIONS: SpacingToken[] = ["8", "12", "16", "20", "24", "32", "48", "64"];
-const RADIUS_OPTIONS: Array<"sm" | "md" | "lg" | "pill"> = ["sm", "md", "lg", "pill"];
-const RADIUS_LABEL: Record<"sm" | "md" | "lg" | "pill", string> = { sm: "קטן", md: "בינוני", lg: "גדול", pill: "עגול" };
+const RADIUS_OPTIONS: Array<"sm" | "md" | "lg" | "xl" | "pill"> = ["sm", "md", "lg", "xl", "pill"];
+const RADIUS_LABEL: Record<"sm" | "md" | "lg" | "xl" | "pill", string> = {
+  sm: "קטן",
+  md: "בינוני",
+  lg: "גדול",
+  xl: "גדול מאוד",
+  pill: "עגול",
+};
 const SHADOW_OPTIONS: ShadowToken[] = ["none", "sm", "card", "card-hover", "modal"];
 const BUTTON_VARIANT_OPTIONS: ButtonVariant[] = ["primary", "secondary", "accent"];
 const BUTTON_VARIANT_LABEL: Record<ButtonVariant, string> = { primary: "ראשי", secondary: "משני", accent: "הדגשה", whatsapp: "וואטסאפ" };
