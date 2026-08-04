@@ -32,6 +32,29 @@ export async function getMarketplaceListingById(id: string): Promise<Marketplace
   return data;
 }
 
+export type MarketplaceListingEditableFields = {
+  title: string;
+  description: string;
+  category_id: string;
+  is_free: boolean;
+  price: number | null;
+  condition: string | null;
+  area: string | null;
+  contact_name: string;
+  phone: string | null;
+  whatsapp_phone: string | null;
+};
+
+/** Admin edit — separate from updateMarketplaceListingStatus (which only ever touches status/review fields) so a status change can never accidentally overwrite listing content, and vice versa. */
+export async function updateMarketplaceListingFields(id: string, fields: MarketplaceListingEditableFields): Promise<void> {
+  const supabase = createAdminSupabaseClient();
+  const { error } = await supabase
+    .from("marketplace_listings")
+    .update({ ...fields, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
 export async function updateMarketplaceListingStatus(
   id: string,
   status: MarketplaceListingStatus,

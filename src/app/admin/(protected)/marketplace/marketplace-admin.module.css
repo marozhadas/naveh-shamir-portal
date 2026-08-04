@@ -61,16 +61,11 @@
   gap: var(--space-3);
 }
 
-.card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  flex-wrap: wrap;
+.wrap {
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-md);
-  padding: var(--space-4) var(--space-5);
   background: var(--color-bg-surface);
+  overflow: hidden;
 }
 
 .status_pending {
@@ -84,6 +79,37 @@
 .status_removed {
   border-inline-start: 4px solid var(--slate-400);
   opacity: 0.85;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-4) var(--space-5);
+}
+
+.expandButton {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.expandButton:hover {
+  background: var(--slate-100);
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
 }
 
 .cardInfo {
@@ -130,4 +156,101 @@
   padding: 6px 10px;
   color: var(--color-text-primary);
   background: #fff;
+}
+
+.detail {
+  border-top: 1px solid var(--color-border-default);
+  padding: var(--space-4) var(--space-5);
+  background: var(--slate-50, #f8fafc);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.detailImages {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.detailImageWrap {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--color-border-default);
+  flex-shrink: 0;
+}
+
+.detailImage {
+  object-fit: cover;
+}
+
+.detailList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-3) var(--space-5);
+  margin: 0;
+}
+
+.detailList dt {
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+  margin: 0 0 2px;
+}
+
+.detailList dd {
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.editGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+
+.editField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+}
+
+.editField input,
+.editField select,
+.editField textarea {
+  font-family: var(--font-family-base);
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  background: #fff;
+}
+
+.editField textarea {
+  resize: vertical;
+}
+
+.editCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-primary);
+}
+
+.editError {
+  font-size: var(--fs-caption);
+  color: var(--color-danger);
+  margin: 0;
+}
+
+.editActions {
+  display: flex;
+  gap: var(--space-2);
 }

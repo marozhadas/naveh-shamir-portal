@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { isAdminAuthenticated } from "@/lib/admin-session";
 import { isSupabaseAdminConfigured } from "@/lib/supabase/admin-client";
-import { getMarketplaceListingById, updateMarketplaceListingStatus } from "@/lib/admin/marketplace-listings";
+import { getMarketplaceListingById, updateMarketplaceListingFields, updateMarketplaceListingStatus } from "@/lib/admin/marketplace-listings";
+import type { MarketplaceListingEditableFields } from "@/lib/admin/marketplace-listings";
 import type { MarketplaceListingStatus } from "@/types/marketplace";
 
 async function requireAdmin(): Promise<void> {
@@ -39,5 +40,13 @@ export async function setMarketplaceListingStatusAction(listingId: string, statu
   const listing = await getMarketplaceListingById(listingId);
   if (!listing) throw new Error("המודעה לא נמצאה.");
   await updateMarketplaceListingStatus(listingId, status);
+  revalidateMarketplaceViews(listingId);
+}
+
+export async function updateMarketplaceListingFieldsAction(listingId: string, fields: MarketplaceListingEditableFields): Promise<void> {
+  await requireAdmin();
+  const listing = await getMarketplaceListingById(listingId);
+  if (!listing) throw new Error("המודעה לא נמצאה.");
+  await updateMarketplaceListingFields(listingId, fields);
   revalidateMarketplaceViews(listingId);
 }
