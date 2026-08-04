@@ -1,14 +1,12 @@
 import type { NavLink } from "@/types/navigation";
 
-/**
- * The non-"businesses" links are anchors into homepage sections, so they're prefixed with `/`
- * to resolve correctly from any page (e.g. /businesses) and not just while already on `/`.
- */
+/** Every item is now a real page route — no anchors into homepage sections anymore. */
 export const NAV_LINKS: NavLink[] = [
-  { id: "home", label: "בית", href: "/#top" },
+  { id: "home", label: "בית", href: "/" },
   { id: "businesses", label: "עסקים", href: "/businesses" },
-  { id: "events", label: "אירועים", href: "/#events" },
-  { id: "boards", label: "לוחות קהילה", href: "/#quick-links" },
-  { id: "essential", label: "מידע חיוני", href: "/#essential" },
-  { id: "contact", label: "צור קשר", href: "/#site-footer" },
+  { id: "marketplace", label: "מסירה ומכירה", href: "/marketplace" },
+  { id: "events", label: "אירועים", href: "/events" },
+  { id: "essential", label: "מספרים חיוניים", href: "/essential-numbers" },
+  { id: "boards", label: "לוח קהילה", href: "/community-board" },
+  { id: "contact", label: "צור קשר", href: "/contact" },
 ];

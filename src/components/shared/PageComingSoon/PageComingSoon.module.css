@@ -1,0 +1,31 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-3);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-10) var(--space-6);
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.icon {
+  color: var(--color-text-secondary);
+}
+
+.title {
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.description {
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--lh-body);
+  margin: 0;
+}
