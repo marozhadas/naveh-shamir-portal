@@ -69,3 +69,22 @@
 .meta + .meta {
   margin-top: 4px;
 }
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* Element+class (not a bare class) so this reliably beats Button.module.css's own
+   ".button { min-width: 0 }" regardless of stylesheet load order — same fix already applied to
+   the business-card action rows. */
+.actions > a,
+.actions > button {
+  flex: 1;
+  min-width: 0;
+  /* Tighter than Button's own .compact padding (10px 20px) — these two labeled+iconed buttons
+     share a single narrow card (3-per-row desktop grid), so the extra horizontal room matters
+     more here than it does anywhere else these variants are used. */
+  padding-inline: 10px;
+  gap: 4px;
+}

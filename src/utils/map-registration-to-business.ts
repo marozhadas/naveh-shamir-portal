@@ -17,7 +17,7 @@ const ARCHIVE_CATEGORY_TO_LEGACY: Record<string, BusinessCategory> = {
   other: 'גמ"ח',
 };
 
-function toLegacyCategory(categoryId: string): BusinessCategory {
+export function toLegacyCategory(categoryId: string): BusinessCategory {
   return ARCHIVE_CATEGORY_TO_LEGACY[categoryId] ?? "שירותים";
 }
 

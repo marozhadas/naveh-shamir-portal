@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import Image from "next/image";
-import { CalendarPlus, Clock, ImageIcon, MapPin } from "lucide-react";
+import { ArrowLeft, CalendarPlus, Clock, ImageIcon, MapPin } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { DateBadge } from "@/components/ui/DateBadge";
 import { Button } from "@/components/ui/Button";
@@ -64,19 +64,25 @@ export function EventCard({ event, appearance }: EventCardProps) {
         </div>
       </div>
 
-      {event.calendarUrl && (
-        <Button
-          href={event.calendarUrl}
-          variant={appearance.buttonVariant}
-          size="compact"
-          fullWidth
-          download
-          icon={<CalendarPlus size={15} aria-hidden="true" />}
-          data-analytics-event="event-add-to-calendar-click"
-        >
-          {event.calendarButtonLabel}
+      <div className={styles.actions}>
+        {/* First in DOM = rightmost in this RTL layout, matching the requested "לפרטים נוספים
+            בימין / הוספה ליומן משמאל" order. */}
+        <Button href={`/events/${event.slug}`} variant="secondary" size="compact" icon={<ArrowLeft size={15} aria-hidden="true" />}>
+          לפרטים נוספים
         </Button>
-      )}
+        {event.calendarUrl && (
+          <Button
+            href={event.calendarUrl}
+            variant={appearance.buttonVariant}
+            size="compact"
+            download
+            icon={<CalendarPlus size={15} aria-hidden="true" />}
+            data-analytics-event="event-add-to-calendar-click"
+          >
+            {event.calendarButtonLabel}
+          </Button>
+        )}
+      </div>
     </Card>
   );
 }

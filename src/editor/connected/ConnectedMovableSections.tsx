@@ -7,6 +7,7 @@ import { EditableRegion } from "@/editor/components/EditableRegion/EditableRegio
 import { MOVABLE_SECTION_IDS } from "@/editor/schemas/page-editor.schema";
 import type { HomeRegionId, HomeSectionId } from "@/editor/types/editor.types";
 import type { CommunityEventRow } from "@/types/community-event";
+import type { BusinessRegistrationRow } from "@/types/business-registration";
 import { ConnectedQuickLinks } from "./ConnectedQuickLinks";
 import { ConnectedFeaturedBusinesses } from "./ConnectedFeaturedBusinesses";
 import { ConnectedUpcomingEvents } from "./ConnectedUpcomingEvents";
@@ -23,6 +24,8 @@ const SECTION_MAP: Record<HomeSectionId, { Component: ComponentType; regionId: H
 type ConnectedMovableSectionsProps = {
   /** Server-fetched real upcoming events (page.tsx) — special-cased through to ConnectedUpcomingEvents only; SECTION_MAP's other components take no props. */
   upcomingEvents?: CommunityEventRow[];
+  /** Server-fetched real admin-featured businesses (page.tsx), paired with each one's public-profile access — special-cased through to ConnectedFeaturedBusinesses only. */
+  featuredBusinesses?: { registration: BusinessRegistrationRow; canOpenProfile: boolean }[];
 };
 
 /**
@@ -32,7 +35,7 @@ type ConnectedMovableSectionsProps = {
  * editor draft when it's mounted, otherwise the real published content, otherwise (nothing ever
  * published) the built-in default order with nothing hidden.
  */
-export function ConnectedMovableSections({ upcomingEvents }: ConnectedMovableSectionsProps) {
+export function ConnectedMovableSections({ upcomingEvents, featuredBusinesses }: ConnectedMovableSectionsProps) {
   const state = useOptionalEditorState();
   const published = usePublishedContent();
   const order = state?.currentState.sectionsOrder ?? published?.sectionsOrder ?? MOVABLE_SECTION_IDS;
@@ -47,7 +50,14 @@ export function ConnectedMovableSections({ upcomingEvents }: ConnectedMovableSec
         if (isHidden && !isAuthoringView) return null;
 
         const { Component } = entry;
-        const element = sectionId === "upcomingEvents" ? <ConnectedUpcomingEvents events={upcomingEvents} /> : <Component />;
+        const element =
+          sectionId === "upcomingEvents" ? (
+            <ConnectedUpcomingEvents events={upcomingEvents} />
+          ) : sectionId === "featuredBusinesses" ? (
+            <ConnectedFeaturedBusinesses businesses={featuredBusinesses} />
+          ) : (
+            <Component />
+          );
         return (
           <EditableRegion key={sectionId} id={entry.regionId} label={entry.label}>
             {isHidden ? (
