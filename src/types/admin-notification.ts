@@ -80,6 +80,8 @@ export type AdminAuditAction =
   | "admin-logout"
   | "business-approved"
   | "business-rejected"
+  | "business-updated"
+  | "business-deleted"
   | "notification-preferences-updated"
   | "notification-email-retry"
   | "event-created"

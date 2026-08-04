@@ -195,3 +195,149 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Edit form */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: var(--fs-body-sm);
+  font-weight: var(--fw-demibold);
+  color: var(--color-text-primary);
+}
+
+.hint {
+  font-weight: var(--fw-regular);
+  color: var(--color-text-secondary);
+}
+
+.field input,
+.field textarea,
+.field select {
+  font-family: var(--font-family-base);
+  font-size: var(--fs-body-sm);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  color: var(--color-text-primary);
+  background: #fff;
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible,
+.field select:focus-visible {
+  outline: 2px solid var(--color-border-strong);
+  outline-offset: 1px;
+}
+
+.fieldInvalid input,
+.fieldInvalid textarea,
+.fieldInvalid select {
+  border-color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+
+.fieldErrorMessage {
+  font-size: var(--fs-caption);
+  color: var(--color-danger);
+  margin: 0;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-primary);
+}
+
+.imagePreviewWrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.imagePreview {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-default);
+}
+
+.imagePreviewActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.replaceButton,
+.uploadTile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-body-sm);
+  font-weight: var(--fw-demibold);
+  color: var(--color-text-primary);
+  background: var(--slate-100);
+  border: 1px dashed var(--color-border-default);
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.imageInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.formActions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.successBox {
+  background: var(--color-success-bg);
+  border: 1px solid var(--green-100);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+}
+
+.successTitle {
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-body);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-4);
+}
+
+.successActions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}

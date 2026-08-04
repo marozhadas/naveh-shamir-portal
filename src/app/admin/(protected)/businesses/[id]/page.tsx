@@ -8,6 +8,7 @@ import { formatNotificationDateTime } from "@/utils/admin-notification-format";
 import { getAdminSubscriptionSummary, SUBSCRIPTION_STATUS_LABEL } from "@/lib/admin/subscription-summary";
 import { Button } from "@/components/ui/Button";
 import { ApproveRejectPanel } from "./ApproveRejectPanel";
+import { DeleteBusinessButton } from "./DeleteBusinessButton";
 import { retryNotificationEmailAction } from "./actions";
 import styles from "./detail.module.css";
 
@@ -61,6 +62,13 @@ export default async function AdminBusinessDetailPage({ params }: BusinessDetail
           </p>
         </div>
         <span className={styles.statusBadge}>{STATUS_LABEL[registration.status]}</span>
+      </div>
+
+      <div className={styles.actions}>
+        <Button href={`/admin/businesses/${registration.id}/edit`} variant="secondary">
+          עריכת פרטי העסק
+        </Button>
+        <DeleteBusinessButton registrationId={registration.id} businessName={registration.business_name} redirectTo="/admin/businesses" />
       </div>
 
       {registration.status === "rejected" && registration.rejection_reason && (

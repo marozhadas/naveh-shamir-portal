@@ -54,3 +54,15 @@ export async function uploadBusinessMedia(
 
   return { success: true, url: publicUrl };
 }
+
+/** Best-effort cleanup — called only after a successful save that replaced/removed an image, never before. Admin-only caller (unlike the public upload above). */
+export async function deleteBusinessMediaByUrl(url: string): Promise<void> {
+  if (!isSupabaseAdminConfigured()) return;
+  const marker = `/storage/v1/object/public/${BUCKET}/`;
+  const index = url.indexOf(marker);
+  if (index === -1) return;
+  const path = url.slice(index + marker.length);
+  const admin = createAdminSupabaseClient();
+  const { error } = await admin.storage.from(BUCKET).remove([path]);
+  if (error) console.error("[deleteBusinessMediaByUrl] failed:", error.message);
+}

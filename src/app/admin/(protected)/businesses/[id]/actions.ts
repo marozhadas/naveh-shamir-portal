@@ -3,10 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { getAdminId, isAdminAuthenticated } from "@/lib/admin-session";
 import { isSupabaseAdminConfigured } from "@/lib/supabase/admin-client";
-import { getRegistrationById, updateRegistrationStatus } from "@/lib/admin/business-registrations";
+import { deleteRegistration, getRegistrationById, updateRegistrationFields, updateRegistrationStatus } from "@/lib/admin/business-registrations";
 import { getNotificationById, resolveNotificationForEntity } from "@/lib/admin/notifications";
 import { recordAuditLog } from "@/lib/admin/audit-log";
 import { sendRegistrationNotificationEmail } from "@/lib/email/send-registration-notification-email";
+import { deleteBusinessMediaByUrl, uploadBusinessMedia } from "@/repositories/business-media-service";
+import { businessEditFormSchema, type BusinessEditFormValues } from "./schema";
 
 async function requireAdmin(): Promise<string> {
   if (!(await isAdminAuthenticated())) throw new Error("Not authenticated.");
@@ -111,4 +113,135 @@ export async function retryNotificationEmailAction(notificationId: string): Prom
 
   revalidatePath(`/admin/businesses/${registration.id}`);
   revalidatePath("/admin/notifications");
+}
+
+function readField(formData: FormData, name: string): string {
+  const value = formData.get(name);
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function readEditFormValues(formData: FormData): BusinessEditFormValues {
+  return {
+    businessName: readField(formData, "businessName"),
+    categoryId: readField(formData, "categoryId"),
+    shortDescription: readField(formData, "shortDescription"),
+    description: readField(formData, "description"),
+    contactName: readField(formData, "contactName"),
+    phone: readField(formData, "phone"),
+    whatsappPhone: readField(formData, "whatsappPhone"),
+    email: readField(formData, "email"),
+    websiteUrl: readField(formData, "websiteUrl"),
+    address: readField(formData, "address"),
+    serviceArea: readField(formData, "serviceArea"),
+    featured: formData.get("featured") === "on",
+    verified: formData.get("verified") === "on",
+  };
+}
+
+export type BusinessEditActionState = {
+  status: "idle" | "validation-error" | "server-error" | "success";
+  message?: string;
+  fieldErrors?: Partial<Record<keyof BusinessEditFormValues, string[]>>;
+  values: BusinessEditFormValues;
+};
+
+const GENERIC_EDIT_ERROR_MESSAGE = "לא הצלחנו לשמור את העדכון כרגע. הפרטים שמילאת נשמרו, ואפשר לנסות שוב בעוד רגע.";
+
+export async function updateBusinessAction(
+  registrationId: string,
+  _prevState: BusinessEditActionState,
+  formData: FormData,
+): Promise<BusinessEditActionState> {
+  const adminId = await requireAdmin();
+  const raw = readEditFormValues(formData);
+  const result = businessEditFormSchema.safeParse(raw);
+
+  if (!result.success) {
+    return { status: "validation-error", message: "יש כמה פרטים שצריך לתקן", fieldErrors: result.error.flatten().fieldErrors, values: raw };
+  }
+
+  const registration = await getRegistrationById(registrationId);
+  if (!registration) return { status: "server-error", message: "העסק לא נמצא.", values: raw };
+
+  const values = result.data;
+  const imageUrl = readField(formData, "imageUrl");
+  const imageAlt = readField(formData, "imageAlt");
+  const previousImageUrl = readField(formData, "previousImageUrl");
+
+  try {
+    await updateRegistrationFields(registrationId, {
+      business_name: values.businessName,
+      category_id: values.categoryId,
+      short_description: values.shortDescription || null,
+      description: values.description,
+      contact_name: values.contactName,
+      phone: values.phone || null,
+      whatsapp_phone: values.whatsappPhone || null,
+      email: values.email || null,
+      website_url: values.websiteUrl || null,
+      address: values.address || null,
+      service_area: values.serviceArea || null,
+      featured: values.featured,
+      verified: values.verified,
+      cover_image: imageUrl ? { url: imageUrl, alt: imageAlt || values.businessName } : null,
+    });
+
+    await recordAuditLog({
+      adminId,
+      action: "business-updated",
+      entityType: "business-registration",
+      entityId: registrationId,
+      metadata: { businessName: values.businessName },
+    });
+
+    if (previousImageUrl && previousImageUrl !== imageUrl) {
+      await deleteBusinessMediaByUrl(previousImageUrl);
+    }
+
+    revalidateBusinessViews(registrationId);
+    revalidatePath(`/admin/businesses/${registrationId}/edit`);
+    if (registration.slug) revalidatePath(`/businesses/${registration.slug}`);
+    return { status: "success", values: raw };
+  } catch (error) {
+    console.error("[updateBusinessAction] failed:", error);
+    return { status: "server-error", message: GENERIC_EDIT_ERROR_MESSAGE, values: raw };
+  }
+}
+
+export type UploadBusinessImageActionResult = { success: true; url: string } | { success: false; message: string };
+
+const UPLOAD_ERROR_MESSAGE: Record<string, string> = {
+  "not-configured": "העלאת תמונות אינה זמינה כרגע.",
+  "invalid-type": "יש להעלות קובץ JPG, PNG או WebP בלבד.",
+  "too-large": "התמונה גדולה מדי — עד 5MB.",
+  "upload-failed": "העלאת התמונה נכשלה. נסו שוב.",
+};
+
+export async function uploadBusinessImageAction(registrationId: string, file: File): Promise<UploadBusinessImageActionResult> {
+  await requireAdmin();
+  const result = await uploadBusinessMedia(registrationId, "cover", file);
+  if (!result.success) return { success: false, message: UPLOAD_ERROR_MESSAGE[result.reason] };
+  return { success: true, url: result.url };
+}
+
+export async function deleteBusinessAction(registrationId: string): Promise<void> {
+  const adminId = await requireAdmin();
+  const registration = await getRegistrationById(registrationId);
+  if (!registration) throw new Error("העסק לא נמצא.");
+
+  if (registration.cover_image?.url) await deleteBusinessMediaByUrl(registration.cover_image.url);
+  for (const image of registration.gallery ?? []) {
+    if (image.url) await deleteBusinessMediaByUrl(image.url);
+  }
+
+  await deleteRegistration(registrationId);
+  await recordAuditLog({
+    adminId,
+    action: "business-deleted",
+    entityType: "business-registration",
+    entityId: registrationId,
+    metadata: { businessName: registration.business_name },
+  });
+
+  revalidateBusinessViews(registrationId);
 }
