@@ -23,12 +23,30 @@ export function MobileBusinessActions({ business }: MobileBusinessActionsProps) 
   return (
     <div className={styles.bar}>
       {whatsappLink && (
-        <Button href={whatsappLink} variant="whatsapp" target="_blank" rel="noopener noreferrer" icon={<WhatsAppIcon size={16} aria-hidden="true" />} fullWidth>
+        <Button
+          href={whatsappLink}
+          variant="whatsapp"
+          target="_blank"
+          rel="noopener noreferrer"
+          icon={<WhatsAppIcon size={16} aria-hidden="true" />}
+          fullWidth
+          data-analytics-event="business_whatsapp_click"
+          data-analytics-business-id={business.id}
+          data-analytics-category={business.category}
+        >
           וואטסאפ
         </Button>
       )}
       {contact.phone && (
-        <Button href={contact.phone} variant="secondary" icon={<Phone size={16} aria-hidden="true" />} fullWidth>
+        <Button
+          href={contact.phone}
+          variant="secondary"
+          icon={<Phone size={16} aria-hidden="true" />}
+          fullWidth
+          data-analytics-event="business_phone_click"
+          data-analytics-business-id={business.id}
+          data-analytics-category={business.category}
+        >
           התקשרו
         </Button>
       )}

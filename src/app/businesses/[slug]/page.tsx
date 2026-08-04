@@ -10,6 +10,7 @@ import { subscriptionRepository } from "@/repositories/mock-subscription-reposit
 import { getListingAccessByBusinessId } from "@/domain/get-business-listing-access";
 import { getBusinessDescription, getBusinessHeroImage } from "@/utils/business-profile";
 import { createLocalBusinessStructuredData } from "@/utils/create-local-business-json-ld";
+import { trackAnalyticsEvent } from "@/repositories/analytics-service";
 import { SITE_CONFIG } from "@/data/config";
 import { resolveBusinessView } from "./resolve-business-view";
 
@@ -74,6 +75,12 @@ export default async function BusinessPage({ params }: BusinessPageProps) {
         <Footer settings={defaultFooterSettings} />
       </>
     );
+  }
+
+  // Fire-and-forget — never blocks rendering the page. Only real published visits count, not
+  // an owner's own preview of a draft/suspended listing.
+  if (view.kind === "published") {
+    void trackAnalyticsEvent("business_page_view", { businessId: view.business.id, category: view.business.category });
   }
 
   // Related businesses are only ever suggested if they're themselves premium (spec section 13) —

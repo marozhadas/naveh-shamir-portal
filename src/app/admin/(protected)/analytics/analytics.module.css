@@ -1,0 +1,95 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.title {
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.subtitle {
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-secondary);
+  margin: 4px 0 0;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+}
+
+.summaryCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+.summaryValue {
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-black);
+  color: var(--color-text-primary);
+}
+
+.summaryLabel {
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+}
+
+.section {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+}
+
+.sectionTitle {
+  font-size: var(--fs-h4, var(--fs-body));
+  font-weight: var(--fw-bold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-4);
+}
+
+.empty {
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-body-sm);
+}
+
+.table th {
+  text-align: start;
+  color: var(--color-text-secondary);
+  font-weight: var(--fw-demibold);
+  font-size: var(--fs-caption);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border-default);
+}
+
+.table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border-default);
+  color: var(--color-text-primary);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.numCell {
+  text-align: start;
+  font-variant-numeric: tabular-nums;
+}

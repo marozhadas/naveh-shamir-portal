@@ -66,12 +66,28 @@ export function BusinessHero({ business, access }: BusinessHeroProps) {
 
         <div className={styles.actions}>
           {whatsappLink && (
-            <Button href={whatsappLink} variant="whatsapp" target="_blank" rel="noopener noreferrer" icon={<WhatsAppIcon size={16} aria-hidden="true" />}>
+            <Button
+              href={whatsappLink}
+              variant="whatsapp"
+              target="_blank"
+              rel="noopener noreferrer"
+              icon={<WhatsAppIcon size={16} aria-hidden="true" />}
+              data-analytics-event="business_whatsapp_click"
+              data-analytics-business-id={business.id}
+              data-analytics-category={business.category}
+            >
               וואטסאפ
             </Button>
           )}
           {contact.phone && (
-            <Button href={contact.phone} variant="secondary" icon={<Phone size={16} aria-hidden="true" />}>
+            <Button
+              href={contact.phone}
+              variant="secondary"
+              icon={<Phone size={16} aria-hidden="true" />}
+              data-analytics-event="business_phone_click"
+              data-analytics-business-id={business.id}
+              data-analytics-category={business.category}
+            >
               התקשרו
             </Button>
           )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Filter } from "lucide-react";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { SortSelect } from "@/components/business-archive/SortSelect/SortSelect";
@@ -12,6 +12,7 @@ import { ResultsCount } from "@/components/business-archive/ResultsCount/Results
 import { LoadMoreButton } from "@/components/business-archive/LoadMoreButton/LoadMoreButton";
 import { BusinessesEmptyState } from "@/components/business-archive/BusinessesEmptyState/BusinessesEmptyState";
 import { useBusinessSearchParams } from "@/hooks/use-business-search-params";
+import { trackAnalyticsEvent } from "@/repositories/analytics-service";
 import { filterBusinesses, getCategoryCounts, sortBusinesses } from "@/utils/business-filters";
 import { ALL_BUSINESSES } from "@/data/all-businesses";
 import type { Business } from "@/types/business";
@@ -88,6 +89,14 @@ export function BusinessesArchive({ businesses = ALL_BUSINESSES, accessByBusines
     () => filterBusinesses(businesses, { query: filters.query, categoryIds: [], sort: filters.sort }),
     [businesses, filters.query, filters.sort],
   );
+
+  // Fires once per committed (debounced) query, not per keystroke — filters.query only changes
+  // after useBusinessSearchParams pushes the new URL.
+  useEffect(() => {
+    const query = filters.query.trim();
+    if (!query) return;
+    void trackAnalyticsEvent("portal_search", { metadata: { query, resultsCount: queryFilteredBusinesses.length } });
+  }, [filters.query, queryFilteredBusinesses.length]);
 
   const categoryCounts = useMemo(() => getCategoryCounts(businesses, filters.query), [businesses, filters.query]);
 

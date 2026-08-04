@@ -7,6 +7,7 @@ import type {
 import type { BusinessSubscriptionRow } from "@/types/subscription";
 import type { HeroGalleryImageRow } from "@/types/hero-gallery";
 import type { SiteContentPageRow } from "@/types/site-content";
+import type { AnalyticsEventRow } from "@/types/analytics";
 
 export type BusinessEventLogRow = {
   id: string;
@@ -165,6 +166,12 @@ export type Database = {
         Row: SiteContentPageRow;
         Insert: Omit<SiteContentPageRow, "updated_at"> & { updated_at?: string };
         Update: Partial<SiteContentPageRow>;
+        Relationships: [];
+      };
+      business_analytics_events: {
+        Row: AnalyticsEventRow;
+        Insert: Omit<AnalyticsEventRow, "id" | "created_at"> & { id?: string; created_at?: string };
+        Update: Partial<AnalyticsEventRow>;
         Relationships: [];
       };
     };

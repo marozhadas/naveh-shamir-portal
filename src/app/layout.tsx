@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ploni } from "@/styles/fonts";
 import { EditorHost } from "@/editor/EditorHost";
+import { AnalyticsClickTracker } from "@/components/analytics/AnalyticsClickTracker";
 import { isAdminAuthenticated } from "@/lib/admin-session";
 import { getPublishedPageContent } from "@/repositories/site-content-service";
 import "./globals.css";
@@ -30,6 +31,7 @@ export default async function RootLayout({
   return (
     <html lang="he" dir="rtl" className={ploni.variable}>
       <body>
+        <AnalyticsClickTracker />
         <EditorHost isAdmin={isAdmin} publishedContent={publishedContent}>
           {children}
         </EditorHost>
