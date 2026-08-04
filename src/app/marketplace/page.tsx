@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { Button } from "@/components/ui/Button";
 import { defaultFooterSettings, defaultHeaderSettings } from "@/editor/config/editor-defaults";
 import { PageHeader } from "@/components/shared/PageHeader/PageHeader";
-import { PageComingSoon } from "@/components/shared/PageComingSoon/PageComingSoon";
+import { MarketplaceArchive } from "@/components/marketplace/MarketplaceArchive/MarketplaceArchive";
+import { MarketplaceGridSkeleton } from "@/components/marketplace/MarketplaceGridSkeleton/MarketplaceGridSkeleton";
+import { getActiveListings } from "@/repositories/marketplace-service";
 import styles from "./marketplace.module.css";
 
 const PAGE_TITLE = "לוח מסירה ומכירה בנווה שמיר | הפורטל של השכונה";
@@ -16,6 +20,14 @@ export const metadata: Metadata = {
   openGraph: { title: PAGE_TITLE, description: PAGE_DESCRIPTION, locale: "he_IL", type: "website" },
 };
 
+// Reads live, admin-approved listings from Supabase on every request.
+export const dynamic = "force-dynamic";
+
+async function MarketplaceArchiveLoader() {
+  const listings = await getActiveListings();
+  return <MarketplaceArchive listings={listings} />;
+}
+
 export default function MarketplacePage() {
   return (
     <>
@@ -24,12 +36,19 @@ export default function MarketplacePage() {
       </a>
       <Header settings={defaultHeaderSettings} />
       <main id="main-content">
-        <PageHeader breadcrumbs={[{ label: "בית", href: "/" }, { label: "מסירה ומכירה" }]} title="לוח מסירה ומכירה" description={PAGE_DESCRIPTION} />
+        <div className={styles.pageHeadWrap}>
+          <PageHeader breadcrumbs={[{ label: "בית", href: "/" }, { label: "מסירה ומכירה" }]} title="לוח מסירה ומכירה" description={PAGE_DESCRIPTION} />
+          <div className={styles.ctaWrap}>
+            <Button href="/marketplace/post" variant="accent">
+              פרסום מודעה
+            </Button>
+          </div>
+        </div>
+
         <div className={styles.container}>
-          <PageComingSoon
-            title="הלוח בבנייה"
-            description="בקרוב תוכלו לפרסם ולמצוא כאן מודעות מסירה ומכירה, עם סינון לפי סוג, קטגוריה וטווח מחירים."
-          />
+          <Suspense fallback={<MarketplaceGridSkeleton />}>
+            <MarketplaceArchiveLoader />
+          </Suspense>
         </div>
       </main>
       <Footer settings={defaultFooterSettings} />

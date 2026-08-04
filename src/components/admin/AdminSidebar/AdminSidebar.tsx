@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Building2, Bell, Settings, BarChart3, X } from "lucide-react";
+import { LayoutDashboard, Building2, Bell, Settings, BarChart3, Recycle, X } from "lucide-react";
 import { formatBadgeCount } from "@/utils/admin-notification-format";
 import styles from "./AdminSidebar.module.css";
 
@@ -34,6 +34,7 @@ export function AdminSidebar({ pendingBusinessesCount, openNotificationsCount, m
       icon: <Building2 size={18} aria-hidden="true" />,
       badge: pendingBusinessesCount,
     },
+    { href: "/admin/marketplace", label: "מסירה ומכירה", icon: <Recycle size={18} aria-hidden="true" /> },
     { href: "/admin/notifications", label: "התראות", icon: <Bell size={18} aria-hidden="true" />, badge: openNotificationsCount },
     { href: "/admin/analytics", label: "אנליטיקה", icon: <BarChart3 size={18} aria-hidden="true" /> },
     { href: "/admin/settings/notifications", label: "הגדרות", icon: <Settings size={18} aria-hidden="true" /> },

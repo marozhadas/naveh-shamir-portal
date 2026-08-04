@@ -8,6 +8,7 @@ import type { BusinessSubscriptionRow } from "@/types/subscription";
 import type { HeroGalleryImageRow } from "@/types/hero-gallery";
 import type { SiteContentPageRow } from "@/types/site-content";
 import type { AnalyticsEventRow } from "@/types/analytics";
+import type { MarketplaceListingRow } from "@/types/marketplace";
 
 export type BusinessEventLogRow = {
   id: string;
@@ -174,6 +175,17 @@ export type Database = {
         Update: Partial<AnalyticsEventRow>;
         Relationships: [];
       };
+      marketplace_listings: {
+        Row: MarketplaceListingRow;
+        Insert: Omit<MarketplaceListingRow, "id" | "created_at" | "updated_at" | "report_count"> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          report_count?: number;
+        };
+        Update: Partial<MarketplaceListingRow>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -184,6 +196,10 @@ export type Database = {
       notify_expiring_trials: {
         Args: Record<string, never>;
         Returns: number;
+      };
+      report_marketplace_listing: {
+        Args: { listing_id: string };
+        Returns: undefined;
       };
     };
   };

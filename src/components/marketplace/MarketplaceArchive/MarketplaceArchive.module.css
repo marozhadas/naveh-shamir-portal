@@ -1,0 +1,17 @@
+.resultsCount {
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-4);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-5);
+}
+
+.loadMoreWrap {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-8);
+}

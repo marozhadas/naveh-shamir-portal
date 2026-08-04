@@ -1,0 +1,77 @@
+.wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.wrap > *:first-child {
+  flex: 1 1 260px;
+  min-width: 220px;
+}
+
+.typeGroup {
+  display: flex;
+  gap: 4px;
+  background: var(--slate-100);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+}
+
+.typeButton {
+  font-size: var(--fs-body-sm);
+  font-weight: var(--fw-demibold);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
+.typeButtonActive {
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.selectField {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.selectField label {
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+}
+
+.selectField select {
+  font-family: var(--font-family-base);
+  font-size: var(--fs-body-sm);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  color: var(--color-text-primary);
+  background: #fff;
+}
+
+@media (max-width: 640px) {
+  .wrap {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .wrap > *:first-child {
+    min-width: 0;
+  }
+
+  .typeGroup {
+    justify-content: center;
+  }
+}
