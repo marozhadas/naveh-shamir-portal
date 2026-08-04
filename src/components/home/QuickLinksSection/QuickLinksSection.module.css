@@ -90,6 +90,13 @@
 }
 
 @media (max-width: 480px) {
+  .section {
+    /* Overrides the editor-configured --quicklinks-padding-inline (currently 16px) at phone
+       widths specifically — at this width the panel is nearly full viewport width, so the outer
+       gutter reads as noticeably tighter than it does on desktop/tablet. */
+    padding-inline: 20px;
+  }
+
   .panel {
     grid-template-columns: repeat(var(--quicklinks-columns-mobile, 2), 1fr);
   }
