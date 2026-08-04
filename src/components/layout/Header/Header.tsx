@@ -21,8 +21,19 @@ type HeaderProps = {
 
 export function Header({ settings }: HeaderProps) {
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const panelId = useId();
   const visibleNavItems = settings.content.navItems.filter((item) => item.visible);
+
+  useEffect(() => {
+    function onScroll() {
+      setScrolled(window.scrollY > 12);
+    }
+
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -54,7 +65,7 @@ export function Header({ settings }: HeaderProps) {
   } as CSSProperties;
 
   return (
-    <header className={styles.header} style={headerStyle}>
+    <header className={scrolled ? `${styles.header} ${styles.scrolled}` : styles.header} style={headerStyle}>
       <div className={styles.inner}>
         <Link href="/#top" className={styles.logoLink}>
           <Image

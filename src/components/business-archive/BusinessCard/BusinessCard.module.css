@@ -124,7 +124,10 @@
   flex-wrap: wrap;
 }
 
-.actions > * {
+/* Element+class beats Button.module.css's bare ".button { min-width: 0 }" (equal single-class
+   specificity would otherwise make the winner depend on unpredictable CSS-chunk load order). */
+.actions > a,
+.actions > button {
   flex: 1;
   min-width: 120px;
 }

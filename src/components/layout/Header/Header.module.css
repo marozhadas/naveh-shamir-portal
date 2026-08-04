@@ -14,7 +14,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--header-logo-nav-gap, 20px);
+  gap: clamp(10px, 2vw, var(--header-logo-nav-gap, 20px));
+  transition: padding var(--duration-base) var(--ease-standard);
+}
+
+/* Shrunk state, toggled by a scroll listener in Header.tsx once the page has scrolled past the
+   top — a smaller header reclaims vertical space for content while still reading clearly as "the
+   header" (same bg/shadow/links), and it keeps sticking since only padding/logo size animate. */
+.header.scrolled .inner {
+  padding-block: 8px;
 }
 
 .logoLink {
@@ -24,14 +32,19 @@
 }
 
 .logo {
-  height: 71px;
+  height: clamp(44px, 7vw, 71px);
   width: auto;
+  transition: height var(--duration-base) var(--ease-standard);
+}
+
+.header.scrolled .logo {
+  height: clamp(36px, 5vw, 52px);
 }
 
 .desktopNav {
   display: var(--header-desktop-nav-display, flex);
   align-items: center;
-  gap: var(--header-nav-gap, 28px);
+  gap: clamp(8px, calc(5vw - 37px), var(--header-nav-gap, 28px));
   flex: 1;
   min-width: 0;
 }
@@ -39,10 +52,16 @@
 .navList {
   display: flex;
   align-items: center;
-  gap: var(--header-nav-gap, 28px);
-  font-size: 22px;
+  gap: clamp(8px, calc(5vw - 37px), var(--header-nav-gap, 28px));
+  /* Fluid instead of a fixed 22px: the nav must shrink continuously together with the viewport
+     (down to the mobile-menu breakpoint) rather than wrapping "צור קשר" onto a second row when
+     it no longer fits at full size — flex-wrap stays nowrap on purpose, see below. Reaches the
+     full 22px only around ~1300px+ (this design's comfortable width); below that it shrinks
+     linearly so nothing ever wraps or overflows down to the ~880px mobile-menu breakpoint. */
+  font-size: clamp(14px, calc(2vw - 4px), 22px);
   font-weight: var(--fw-regular);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 /* Header-only overrides on top of the shared Button component — pill shape and the larger

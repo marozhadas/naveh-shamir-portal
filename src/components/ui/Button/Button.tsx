@@ -71,8 +71,8 @@ export function Button({
     const { href, ...anchorRest } = rest as ButtonAsAnchor;
     return (
       <a href={href} className={classes} {...anchorRest}>
-        {icon}
-        {children}
+        {icon && <span className={styles.icon}>{icon}</span>}
+        <span className={styles.label}>{children}</span>
       </a>
     );
   }
@@ -80,8 +80,8 @@ export function Button({
   const buttonRest = rest as ButtonAsButton;
   return (
     <button type={buttonRest.type ?? "button"} className={classes} {...buttonRest}>
-      {icon}
-      {children}
+      {icon && <span className={styles.icon}>{icon}</span>}
+      <span className={styles.label}>{children}</span>
     </button>
   );
 }
