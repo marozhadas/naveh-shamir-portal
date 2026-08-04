@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { defaultFooterSettings, defaultHeaderSettings } from "@/editor/config/editor-defaults";
 import { PageHeader } from "@/components/shared/PageHeader/PageHeader";
-import { PageComingSoon } from "@/components/shared/PageComingSoon/PageComingSoon";
+import { EventsArchive } from "@/components/events/EventsArchive/EventsArchive";
+import { EventsGridSkeleton } from "@/components/events/EventsGridSkeleton/EventsGridSkeleton";
+import { getPublishedEvents } from "@/repositories/community-events-service";
 import styles from "./events.module.css";
 
-const PAGE_TITLE = "אירועים בנווה שמיר | הפורטל של השכונה";
-const PAGE_DESCRIPTION = "פעילויות, מפגשים, הרצאות, חוגים ואירועים קהילתיים בנווה שמיר.";
+const PAGE_TITLE = "מה קורה בנווה שמיר? | הפורטל של השכונה";
+const PAGE_DESCRIPTION = "כל האירועים, הפעילויות והמפגשים במקום אחד.";
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,
@@ -15,6 +18,14 @@ export const metadata: Metadata = {
   alternates: { canonical: "/events" },
   openGraph: { title: PAGE_TITLE, description: PAGE_DESCRIPTION, locale: "he_IL", type: "website" },
 };
+
+// Reads live, admin-published events from Supabase on every request.
+export const dynamic = "force-dynamic";
+
+async function EventsArchiveLoader() {
+  const events = await getPublishedEvents();
+  return <EventsArchive events={events} />;
+}
 
 export default function EventsPage() {
   return (
@@ -24,12 +35,11 @@ export default function EventsPage() {
       </a>
       <Header settings={defaultHeaderSettings} />
       <main id="main-content">
-        <PageHeader breadcrumbs={[{ label: "בית", href: "/" }, { label: "אירועים" }]} title="אירועים בשכונה" description={PAGE_DESCRIPTION} />
+        <PageHeader breadcrumbs={[{ label: "בית", href: "/" }, { label: "אירועים" }]} title="מה קורה בנווה שמיר?" description={PAGE_DESCRIPTION} />
         <div className={styles.container}>
-          <PageComingSoon
-            title="העמוד בבנייה"
-            description="בקרוב תוכלו לראות כאן את כל האירועים בשכונה, מסודרים לפי תאריך וניתנים לסינון לפי סוג ותאריך."
-          />
+          <Suspense fallback={<EventsGridSkeleton />}>
+            <EventsArchiveLoader />
+          </Suspense>
         </div>
       </main>
       <Footer settings={defaultFooterSettings} />

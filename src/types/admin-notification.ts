@@ -81,4 +81,11 @@ export type AdminAuditAction =
   | "business-approved"
   | "business-rejected"
   | "notification-preferences-updated"
-  | "notification-email-retry";
+  | "notification-email-retry"
+  | "event-created"
+  | "event-updated"
+  | "event-published"
+  | "event-unpublished"
+  | "event-canceled"
+  | "event-deleted"
+  | "event-duplicated";

@@ -4,9 +4,12 @@ import { ConnectedHero } from "@/editor/connected/ConnectedHero";
 import { ConnectedMovableSections } from "@/editor/connected/ConnectedMovableSections";
 import { EditableRegion } from "@/editor/components/EditableRegion/EditableRegion";
 import { listHeroGalleryImages } from "@/repositories/hero-gallery-service";
+import { getPublishedEvents } from "@/repositories/community-events-service";
+import { pickHomepageTeaserEvents } from "@/utils/map-community-events-to-teaser-cards";
 
 export default async function Home() {
-  const galleryImages = await listHeroGalleryImages();
+  const [galleryImages, allPublishedEvents] = await Promise.all([listHeroGalleryImages(), getPublishedEvents()]);
+  const upcomingEvents = pickHomepageTeaserEvents(allPublishedEvents);
 
   return (
     <>
@@ -20,7 +23,7 @@ export default async function Home() {
         <EditableRegion id="home.hero" label="אזור ראשי">
           <ConnectedHero galleryImages={galleryImages} />
         </EditableRegion>
-        <ConnectedMovableSections />
+        <ConnectedMovableSections upcomingEvents={upcomingEvents} />
       </main>
       <EditableRegion id="home.footer" label="פוטר">
         <ConnectedFooter />

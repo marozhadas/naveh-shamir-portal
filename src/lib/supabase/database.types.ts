@@ -9,6 +9,7 @@ import type { HeroGalleryImageRow } from "@/types/hero-gallery";
 import type { SiteContentPageRow } from "@/types/site-content";
 import type { AnalyticsEventRow } from "@/types/analytics";
 import type { MarketplaceListingRow } from "@/types/marketplace";
+import type { CommunityEventRow } from "@/types/community-event";
 
 export type BusinessEventLogRow = {
   id: string;
@@ -184,6 +185,17 @@ export type Database = {
           report_count?: number;
         };
         Update: Partial<MarketplaceListingRow>;
+        Relationships: [];
+      };
+      events: {
+        Row: CommunityEventRow;
+        Insert: Omit<CommunityEventRow, "id" | "created_at" | "updated_at" | "display_order"> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          display_order?: number;
+        };
+        Update: Partial<CommunityEventRow>;
         Relationships: [];
       };
     };

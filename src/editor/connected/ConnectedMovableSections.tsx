@@ -6,6 +6,7 @@ import { usePublishedContent } from "@/editor/context/PublishedContentContext";
 import { EditableRegion } from "@/editor/components/EditableRegion/EditableRegion";
 import { MOVABLE_SECTION_IDS } from "@/editor/schemas/page-editor.schema";
 import type { HomeRegionId, HomeSectionId } from "@/editor/types/editor.types";
+import type { CommunityEventRow } from "@/types/community-event";
 import { ConnectedQuickLinks } from "./ConnectedQuickLinks";
 import { ConnectedFeaturedBusinesses } from "./ConnectedFeaturedBusinesses";
 import { ConnectedUpcomingEvents } from "./ConnectedUpcomingEvents";
@@ -19,6 +20,11 @@ const SECTION_MAP: Record<HomeSectionId, { Component: ComponentType; regionId: H
   whatsappBanner: { Component: ConnectedWhatsAppBanner, regionId: "home.whatsappBanner", label: "באנר וואטסאפ" },
 };
 
+type ConnectedMovableSectionsProps = {
+  /** Server-fetched real upcoming events (page.tsx) — special-cased through to ConnectedUpcomingEvents only; SECTION_MAP's other components take no props. */
+  upcomingEvents?: CommunityEventRow[];
+};
+
 /**
  * Renders the four reorderable/hideable homepage sections in the author's chosen order.
  * Header/Hero/Footer are structural and never pass through here (spec: they can't move or hide).
@@ -26,7 +32,7 @@ const SECTION_MAP: Record<HomeSectionId, { Component: ComponentType; regionId: H
  * editor draft when it's mounted, otherwise the real published content, otherwise (nothing ever
  * published) the built-in default order with nothing hidden.
  */
-export function ConnectedMovableSections() {
+export function ConnectedMovableSections({ upcomingEvents }: ConnectedMovableSectionsProps) {
   const state = useOptionalEditorState();
   const published = usePublishedContent();
   const order = state?.currentState.sectionsOrder ?? published?.sectionsOrder ?? MOVABLE_SECTION_IDS;
@@ -41,15 +47,16 @@ export function ConnectedMovableSections() {
         if (isHidden && !isAuthoringView) return null;
 
         const { Component } = entry;
+        const element = sectionId === "upcomingEvents" ? <ConnectedUpcomingEvents events={upcomingEvents} /> : <Component />;
         return (
           <EditableRegion key={sectionId} id={entry.regionId} label={entry.label}>
             {isHidden ? (
               <div className={styles.hiddenPreview}>
                 <span className={styles.hiddenBadge}>מוסתר באתר החי</span>
-                <Component />
+                {element}
               </div>
             ) : (
-              <Component />
+              element
             )}
           </EditableRegion>
         );
