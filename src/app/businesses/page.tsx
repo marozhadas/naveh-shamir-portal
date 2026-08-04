@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Header } from "@/components/layout/Header";
+import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
-import { defaultHeaderSettings, defaultFooterSettings } from "@/editor/config/editor-defaults";
+import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { BusinessesArchive } from "@/components/business-archive/BusinessesArchive/BusinessesArchive";
 import { BusinessesGridSkeleton } from "@/components/business-archive/BusinessesGridSkeleton/BusinessesGridSkeleton";
 import { businessRepository } from "@/repositories/mock-business-repository";
@@ -43,7 +43,7 @@ export default function BusinessesPage() {
       <a href="#main-content" className="skip-link">
         דלגו לתוכן הראשי
       </a>
-      <Header settings={defaultHeaderSettings} />
+      <ConnectedHeader />
       <main id="main-content">
         <div className={styles.pageHead}>
           <nav aria-label="פירורי לחם" className={styles.breadcrumbs}>

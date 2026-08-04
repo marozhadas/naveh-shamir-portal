@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import { Header } from "@/components/layout/Header";
+import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
-import { defaultFooterSettings, defaultHeaderSettings } from "@/editor/config/editor-defaults";
+import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { ViewerSwitcher } from "@/components/demo/ViewerSwitcher/ViewerSwitcher";
 import { DashboardNav } from "@/components/business-dashboard/DashboardNav/DashboardNav";
 import { authAdapter, isRealBusinessOwnerSession } from "@/adapters/mock-auth-adapter";
@@ -12,7 +12,7 @@ export default async function BusinessDashboardLayout({ children }: { children: 
 
   return (
     <>
-      <Header settings={defaultHeaderSettings} />
+      <ConnectedHeader />
       {!isRealSession && <ViewerSwitcher currentViewerId={viewer?.id ?? null} />}
       <DashboardNav />
       <main id="main-content" className={styles.main}>

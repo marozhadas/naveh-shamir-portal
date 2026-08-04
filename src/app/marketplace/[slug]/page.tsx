@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { Phone, Package } from "lucide-react";
-import { Header } from "@/components/layout/Header";
+import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/Button";
 import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
-import { defaultFooterSettings, defaultHeaderSettings } from "@/editor/config/editor-defaults";
+import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { PageHeader } from "@/components/shared/PageHeader/PageHeader";
 import { getActiveListingBySlug } from "@/repositories/marketplace-service";
 import { getMarketplaceCategoryLabel } from "@/data/marketplace-categories";
@@ -67,7 +67,7 @@ export default async function MarketplaceListingPage({ params }: ListingPageProp
       <a href="#main-content" className="skip-link">
         דלגו לתוכן הראשי
       </a>
-      <Header settings={defaultHeaderSettings} />
+      <ConnectedHeader />
       <main id="main-content">
         <PageHeader
           breadcrumbs={[{ label: "בית", href: "/" }, { label: "מסירה ומכירה", href: "/marketplace" }, { label: listing.title }]}

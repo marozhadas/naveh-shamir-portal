@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { Phone, MapPin, Ticket, CalendarDays } from "lucide-react";
-import { Header } from "@/components/layout/Header";
+import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/Button";
 import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
-import { defaultFooterSettings, defaultHeaderSettings } from "@/editor/config/editor-defaults";
+import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { PageHeader } from "@/components/shared/PageHeader/PageHeader";
 import { getEventBySlug } from "@/repositories/community-events-service";
 import { EVENT_AUDIENCE_LABEL } from "@/types/community-event";
@@ -96,7 +96,7 @@ export default async function EventDetailPage({ params }: EventPageProps) {
       <a href="#main-content" className="skip-link">
         דלגו לתוכן הראשי
       </a>
-      <Header settings={defaultHeaderSettings} />
+      <ConnectedHeader />
       <main id="main-content">
         <PageHeader breadcrumbs={[{ label: "בית", href: "/" }, { label: "אירועים", href: "/events" }, { label: event.title }]} title={event.title} description={event.short_description} />
 

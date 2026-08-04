@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { Header } from "@/components/layout/Header";
+import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
-import { defaultFooterSettings, defaultHeaderSettings } from "@/editor/config/editor-defaults";
+import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { OwnerLoginForm } from "./OwnerLoginForm";
 import styles from "./login.module.css";
 
@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "כניסת בעלי עסקים | נ�
 export default function OwnerLoginPage() {
   return (
     <>
-      <Header settings={defaultHeaderSettings} />
+      <ConnectedHeader />
       <main id="main-content">
         <div className={styles.container}>
           <h1 className={styles.title}>כניסת בעלי עסקים</h1>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { Header } from "@/components/layout/Header";
+import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
-import { defaultFooterSettings, defaultHeaderSettings } from "@/editor/config/editor-defaults";
+import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { PageHeader } from "@/components/shared/PageHeader/PageHeader";
 import { PageComingSoon } from "@/components/shared/PageComingSoon/PageComingSoon";
 import styles from "./essential-numbers.module.css";
@@ -22,7 +22,7 @@ export default function EssentialNumbersPage() {
       <a href="#main-content" className="skip-link">
         דלגו לתוכן הראשי
       </a>
-      <Header settings={defaultHeaderSettings} />
+      <ConnectedHeader />
       <main id="main-content">
         <PageHeader breadcrumbs={[{ label: "בית", href: "/" }, { label: "מספרים חיוניים" }]} title="מספרים חיוניים" description={PAGE_DESCRIPTION} />
         <div className={styles.container}>

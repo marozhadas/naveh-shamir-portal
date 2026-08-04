@@ -81,6 +81,11 @@
   }
 
   .content {
+    /* .content has no horizontal padding at all above this breakpoint — harmless on desktop since
+       its 760px max-width sits well inside the card either way, but on mobile the card is nearly
+       full viewport width, so without this the title/subtitle/search text runs right up to the
+       card's rounded edges with no breathing room. */
+    padding-inline: 20px;
     padding-block: var(--space-16);
     text-align: var(--hero-content-align-mobile, var(--hero-content-align, center));
   }

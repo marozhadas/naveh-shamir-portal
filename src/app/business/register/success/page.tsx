@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Header } from "@/components/layout/Header";
+import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/Button";
-import { defaultFooterSettings, defaultHeaderSettings } from "@/editor/config/editor-defaults";
+import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import styles from "./success.module.css";
 
 const PLAN_NAME: Record<string, string> = { plus: "Plus", premium: "Premium", free: "חינמי" };
@@ -27,7 +27,7 @@ export default async function RegisterSuccessPage({ searchParams }: SuccessPageP
 
   return (
     <>
-      <Header settings={defaultHeaderSettings} />
+      <ConnectedHeader />
       <main id="main-content">
         <div className={styles.container}>
           <h1 className={styles.title}>{isPremium ? "ההרשמה לחבילת Premium התקבלה" : "ההרשמה התקבלה בהצלחה"}</h1>

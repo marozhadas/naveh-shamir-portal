@@ -1,14 +1,14 @@
 import { SearchX } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Header } from "@/components/layout/Header";
+import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
-import { defaultFooterSettings, defaultHeaderSettings } from "@/editor/config/editor-defaults";
+import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import styles from "./business-not-found.module.css";
 
 export default function BusinessNotFound() {
   return (
     <>
-      <Header settings={defaultHeaderSettings} />
+      <ConnectedHeader />
       <main id="main-content">
         <div className={styles.container}>
           <div className={styles.wrap}>

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { ClipboardList } from "lucide-react";
-import { Header } from "@/components/layout/Header";
+import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/Button";
-import { defaultFooterSettings, defaultHeaderSettings } from "@/editor/config/editor-defaults";
+import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { PageHeader } from "@/components/shared/PageHeader/PageHeader";
 import styles from "./community-board.module.css";
 
@@ -23,7 +23,7 @@ export default function CommunityBoardPage() {
       <a href="#main-content" className="skip-link">
         דלגו לתוכן הראשי
       </a>
-      <Header settings={defaultHeaderSettings} />
+      <ConnectedHeader />
       <main id="main-content">
         <PageHeader breadcrumbs={[{ label: "בית", href: "/" }, { label: "לוח קהילה" }]} title="לוח הקהילה" description={PAGE_DESCRIPTION} />
         <div className={styles.container}>

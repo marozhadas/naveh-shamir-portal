@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Header } from "@/components/layout/Header";
+import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
-import { defaultFooterSettings, defaultHeaderSettings } from "@/editor/config/editor-defaults";
+import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { BusinessProfilePage } from "@/components/business-profile/BusinessProfilePage/BusinessProfilePage";
 import { BusinessUnavailableState } from "@/components/business-profile/BusinessUnavailableState/BusinessUnavailableState";
 import { businessRepository } from "@/repositories/mock-business-repository";
@@ -68,7 +68,7 @@ export default async function BusinessPage({ params }: BusinessPageProps) {
   if (view.kind === "unavailable") {
     return (
       <>
-        <Header settings={defaultHeaderSettings} />
+        <ConnectedHeader />
         <main id="main-content">
           <BusinessUnavailableState />
         </main>

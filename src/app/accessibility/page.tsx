@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { Header } from "@/components/layout/Header";
+import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
-import { defaultFooterSettings, defaultHeaderSettings } from "@/editor/config/editor-defaults";
+import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import styles from "../legal-page.module.css";
 
 export const metadata: Metadata = { title: "הצהרת נגישות | נווה שמיר" };
@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "הצהרת נגישות | נווה �
 export default function AccessibilityPage() {
   return (
     <>
-      <Header settings={defaultHeaderSettings} />
+      <ConnectedHeader />
       <main id="main-content">
         <div className={styles.container}>
           <h1 className={styles.title}>הצהרת נגישות</h1>

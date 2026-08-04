@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Header } from "@/components/layout/Header";
+import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
-import { defaultFooterSettings, defaultHeaderSettings } from "@/editor/config/editor-defaults";
+import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { BUSINESS_PLANS } from "@/data/business-plans";
 import { PlusRegistrationWizard } from "../plus/PlusRegistrationWizard";
 import styles from "../plus/plus-wizard.module.css";
@@ -14,7 +14,7 @@ const plan = BUSINESS_PLANS.find((item) => item.tier === "premium")!;
 export default function RegisterPremiumPage() {
   return (
     <>
-      <Header settings={defaultHeaderSettings} />
+      <ConnectedHeader />
       <main id="main-content">
         <div className={styles.page}>
           <nav aria-label="פירורי לחם" className={styles.breadcrumbs}>

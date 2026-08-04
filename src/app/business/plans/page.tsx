@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Header } from "@/components/layout/Header";
+import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/Button";
-import { defaultFooterSettings, defaultHeaderSettings } from "@/editor/config/editor-defaults";
+import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { BUSINESS_PLANS } from "@/data/business-plans";
 import styles from "./plans.module.css";
 
@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "חבילות לעסקים | נווה
 export default function BusinessPlansPage() {
   return (
     <>
-      <Header settings={defaultHeaderSettings} />
+      <ConnectedHeader />
       <main id="main-content">
         <div className={styles.container}>
           <nav aria-label="פירורי לחם" className={styles.breadcrumbs}>

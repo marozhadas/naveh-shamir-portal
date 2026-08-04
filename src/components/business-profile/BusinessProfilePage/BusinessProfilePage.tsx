@@ -1,8 +1,8 @@
 import { Eye } from "lucide-react";
 import Link from "next/link";
-import { Header } from "@/components/layout/Header";
+import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
-import { defaultFooterSettings, defaultHeaderSettings } from "@/editor/config/editor-defaults";
+import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { BusinessBreadcrumbs } from "@/components/business-profile/BusinessBreadcrumbs/BusinessBreadcrumbs";
 import { BusinessHero } from "@/components/business-profile/BusinessHero/BusinessHero";
 import { BusinessGallery } from "@/components/business-profile/BusinessGallery/BusinessGallery";
@@ -45,7 +45,7 @@ export function BusinessProfilePage({ business, access, relatedBusinesses, relat
 
   return (
     <>
-      <Header settings={defaultHeaderSettings} />
+      <ConnectedHeader />
       {isPreview && (
         <div className={styles.previewBanner} role="status">
           <Eye size={16} aria-hidden="true" />

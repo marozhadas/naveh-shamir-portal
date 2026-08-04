@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Header } from "@/components/layout/Header";
+import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
-import { defaultFooterSettings, defaultHeaderSettings } from "@/editor/config/editor-defaults";
+import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { PageHeader } from "@/components/shared/PageHeader/PageHeader";
 import { EventsArchive } from "@/components/events/EventsArchive/EventsArchive";
 import { EventsGridSkeleton } from "@/components/events/EventsGridSkeleton/EventsGridSkeleton";
@@ -33,7 +33,7 @@ export default function EventsPage() {
       <a href="#main-content" className="skip-link">
         דלגו לתוכן הראשי
       </a>
-      <Header settings={defaultHeaderSettings} />
+      <ConnectedHeader />
       <main id="main-content">
         <PageHeader breadcrumbs={[{ label: "בית", href: "/" }, { label: "אירועים" }]} title="מה קורה בנווה שמיר?" description={PAGE_DESCRIPTION} />
         <div className={styles.container}>
