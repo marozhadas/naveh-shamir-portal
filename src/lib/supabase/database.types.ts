@@ -12,6 +12,7 @@ import type { MarketplaceListingRow } from "@/types/marketplace";
 import type { CommunityEventRow } from "@/types/community-event";
 import type { EssentialNumberRow } from "@/types/essential-number";
 import type { ContactMessageRow } from "@/types/contact-message";
+import type { WhatsAppGroupRow } from "@/types/whatsapp-group";
 
 export type BusinessEventLogRow = {
   id: string;
@@ -219,6 +220,16 @@ export type Database = {
           status?: ContactMessageRow["status"];
         };
         Update: Partial<ContactMessageRow>;
+        Relationships: [];
+      };
+      neighborhood_whatsapp_groups: {
+        Row: WhatsAppGroupRow;
+        Insert: Omit<WhatsAppGroupRow, "id" | "created_at" | "updated_at"> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<WhatsAppGroupRow>;
         Relationships: [];
       };
     };

@@ -12,6 +12,7 @@ const TRACKED_EVENT_NAMES: AnalyticsEventName[] = [
   "essential-number-website-click",
   "contact-whatsapp-click",
   "contact-email-click",
+  "whatsapp-group-click",
 ];
 
 /**
@@ -20,9 +21,10 @@ const TRACKED_EVENT_NAMES: AnalyticsEventName[] = [
  * data-analytics-event="<name>" — plus optional data-analytics-business-id/data-analytics-category
  * — gets tracked on click, fire-and-forget, without blocking the tel:/wa.me navigation.
  *
- * essential-number-* events never set businessId (business_analytics_events.business_id is a real
- * FK to business_registrations — an essential number's id would violate it) — the record id goes
- * into metadata.essentialNumberId instead via data-analytics-entity-id.
+ * essential-number-* and whatsapp-group-click events never set businessId
+ * (business_analytics_events.business_id is a real FK to business_registrations — neither record's
+ * id would satisfy it) — the record id goes into metadata.essentialNumberId / metadata.groupId
+ * instead via data-analytics-entity-id.
  */
 export function AnalyticsClickTracker() {
   useEffect(() => {
@@ -35,10 +37,16 @@ export function AnalyticsClickTracker() {
       if (!eventName || !TRACKED_EVENT_NAMES.includes(eventName)) return;
 
       const isEssentialNumberEvent = eventName.startsWith("essential-number-");
+      const isWhatsAppGroupEvent = eventName === "whatsapp-group-click";
+      const usesEntityIdMetadata = isEssentialNumberEvent || isWhatsAppGroupEvent;
       void trackAnalyticsEvent(eventName, {
-        businessId: isEssentialNumberEvent ? null : (el.dataset.analyticsBusinessId ?? null),
+        businessId: usesEntityIdMetadata ? null : (el.dataset.analyticsBusinessId ?? null),
         category: el.dataset.analyticsCategory ?? null,
-        metadata: isEssentialNumberEvent ? { essentialNumberId: el.dataset.analyticsEntityId ?? null } : undefined,
+        metadata: isEssentialNumberEvent
+          ? { essentialNumberId: el.dataset.analyticsEntityId ?? null }
+          : isWhatsAppGroupEvent
+            ? { groupId: el.dataset.analyticsEntityId ?? null }
+            : undefined,
       });
     }
 

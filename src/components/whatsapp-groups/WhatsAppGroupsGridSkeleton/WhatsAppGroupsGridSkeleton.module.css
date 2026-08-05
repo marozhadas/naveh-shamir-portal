@@ -1,0 +1,42 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-5);
+}
+
+.card {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-default);
+  padding: var(--space-5);
+  min-height: 180px;
+}
+
+.line,
+.lineShort {
+  height: 12px;
+  margin-top: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--slate-100);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.lineShort {
+  width: 60%;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .line,
+  .lineShort {
+    animation: none;
+  }
+}

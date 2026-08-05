@@ -100,4 +100,12 @@ export type AdminAuditAction =
   | "essential-number-duplicated"
   | "essential-number-deleted"
   | "contact-message-status-updated"
-  | "contact-message-deleted";
+  | "contact-message-deleted"
+  | "whatsapp-group-created"
+  | "whatsapp-group-updated"
+  | "whatsapp-group-published"
+  | "whatsapp-group-unpublished"
+  | "whatsapp-group-archived"
+  | "whatsapp-group-reordered"
+  | "whatsapp-group-duplicated"
+  | "whatsapp-group-deleted";

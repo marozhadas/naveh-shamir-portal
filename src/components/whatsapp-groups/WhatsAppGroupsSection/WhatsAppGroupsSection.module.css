@@ -1,0 +1,25 @@
+.featuredSection {
+  margin-bottom: var(--space-8);
+}
+
+.featuredTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+  color: var(--yellow-700, var(--color-text-primary));
+  margin: 0 0 var(--space-4);
+}
+
+.resultsCount {
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-4);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-5);
+}

@@ -13,7 +13,10 @@ export type AnalyticsEventName =
   | "contact-email-click"
   | "contact-form-submit"
   | "contact-form-success"
-  | "contact-form-error";
+  | "contact-form-error"
+  | "whatsapp-group-click"
+  | "whatsapp-group-search"
+  | "whatsapp-group-filter";
 
 export type AnalyticsEventRow = {
   id: string;

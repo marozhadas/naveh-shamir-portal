@@ -5,6 +5,7 @@ import { ConnectedMovableSections } from "@/editor/connected/ConnectedMovableSec
 import { EditableRegion } from "@/editor/components/EditableRegion/EditableRegion";
 import { MarketplaceSection } from "@/components/home/MarketplaceSection/MarketplaceSection";
 import { EssentialNumbersHomeSection } from "@/components/home/EssentialNumbersHomeSection/EssentialNumbersHomeSection";
+import { WhatsAppGroupsHomeSection } from "@/components/home/WhatsAppGroupsHomeSection/WhatsAppGroupsHomeSection";
 import { ContactCtaSection } from "@/components/home/ContactCtaSection/ContactCtaSection";
 import { listHeroGalleryImages } from "@/repositories/hero-gallery-service";
 import { getPublishedEvents } from "@/repositories/community-events-service";
@@ -13,6 +14,8 @@ import { getFeaturedApprovedBusinesses } from "@/repositories/featured-businesse
 import { getActiveListings } from "@/repositories/marketplace-service";
 import { getPublishedEssentialNumbers } from "@/repositories/essential-numbers-service";
 import { sortEssentialNumbers } from "@/utils/essential-number-filters";
+import { getPublishedWhatsAppGroups } from "@/repositories/whatsapp-groups-service";
+import { sortWhatsAppGroups } from "@/utils/whatsapp-group-filters";
 import { getListingAccessByBusinessId } from "@/domain/get-business-listing-access";
 import { subscriptionRepository } from "@/repositories/mock-subscription-repository";
 import { mapRegistrationToBusiness } from "@/utils/map-registration-to-business";
@@ -20,12 +23,13 @@ import { mapRegistrationToBusiness } from "@/utils/map-registration-to-business"
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [galleryImages, allPublishedEvents, featuredRegistrations, marketplaceListings, publishedEssentialNumbers] = await Promise.all([
+  const [galleryImages, allPublishedEvents, featuredRegistrations, marketplaceListings, publishedEssentialNumbers, publishedWhatsAppGroups] = await Promise.all([
     listHeroGalleryImages(),
     getPublishedEvents(),
     getFeaturedApprovedBusinesses(),
     getActiveListings(),
     getPublishedEssentialNumbers(),
+    getPublishedWhatsAppGroups(),
   ]);
 
   const upcomingEvents = pickHomepageTeaserEvents(allPublishedEvents);
@@ -42,6 +46,7 @@ export default async function Home() {
 
   const marketplaceTeaser = marketplaceListings.slice(0, 4);
   const essentialNumbersTeaser = sortEssentialNumbers(publishedEssentialNumbers).slice(0, 4);
+  const whatsappGroupsTeaser = sortWhatsAppGroups(publishedWhatsAppGroups).slice(0, 4);
 
   return (
     <>
@@ -58,6 +63,7 @@ export default async function Home() {
         <ConnectedMovableSections upcomingEvents={upcomingEvents} featuredBusinesses={featuredBusinesses} />
         <MarketplaceSection listings={marketplaceTeaser} />
         <EssentialNumbersHomeSection entries={essentialNumbersTeaser} />
+        <WhatsAppGroupsHomeSection groups={whatsappGroupsTeaser} />
         <ContactCtaSection />
       </main>
       <EditableRegion id="home.footer" label="פוטר">

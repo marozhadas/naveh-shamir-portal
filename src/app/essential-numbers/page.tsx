@@ -6,7 +6,10 @@ import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { PageHeader } from "@/components/shared/PageHeader/PageHeader";
 import { EssentialNumbersArchive } from "@/components/essential-numbers/EssentialNumbersArchive/EssentialNumbersArchive";
 import { EssentialNumbersGridSkeleton } from "@/components/essential-numbers/EssentialNumbersGridSkeleton/EssentialNumbersGridSkeleton";
+import { WhatsAppGroupsSection } from "@/components/whatsapp-groups/WhatsAppGroupsSection/WhatsAppGroupsSection";
+import { WhatsAppGroupsGridSkeleton } from "@/components/whatsapp-groups/WhatsAppGroupsGridSkeleton/WhatsAppGroupsGridSkeleton";
 import { getPublishedEssentialNumbers } from "@/repositories/essential-numbers-service";
+import { getPublishedWhatsAppGroups } from "@/repositories/whatsapp-groups-service";
 import styles from "./essential-numbers.module.css";
 
 const PAGE_TITLE = "מספרים חיוניים | הפורטל של השכונה";
@@ -27,6 +30,11 @@ async function EssentialNumbersArchiveLoader() {
   return <EssentialNumbersArchive entries={entries} />;
 }
 
+async function WhatsAppGroupsLoader() {
+  const groups = await getPublishedWhatsAppGroups();
+  return <WhatsAppGroupsSection groups={groups} />;
+}
+
 export default function EssentialNumbersPage() {
   return (
     <>
@@ -42,6 +50,26 @@ export default function EssentialNumbersPage() {
             <EssentialNumbersArchiveLoader />
           </Suspense>
         </div>
+
+        <div className={styles.sectionDivider} aria-hidden="true" />
+
+        <section id="whatsapp-groups" className={styles.whatsappGroupsSection} aria-labelledby="whatsapp-groups-heading">
+          <div className={styles.container}>
+            <h2 id="whatsapp-groups-heading" className={styles.whatsappGroupsTitle}>
+              קבוצות WhatsApp של נווה שמיר
+            </h2>
+            <p className={styles.whatsappGroupsDescription}>כל קבוצות ה־WhatsApp השכונתיות במקום אחד — לפי נושא, קהל ותחום עניין.</p>
+            <p className={styles.supportText}>לחצו על הקבוצה המתאימה כדי לעבור ל־WhatsApp ולבקש להצטרף.</p>
+
+            <Suspense fallback={<WhatsAppGroupsGridSkeleton />}>
+              <WhatsAppGroupsLoader />
+            </Suspense>
+
+            <p className={styles.disclaimer}>
+              הקבוצות מנוהלות על ידי מנהלים עצמאיים. פורטל נווה שמיר מרכז את הקישורים בלבד ואינו אחראי לתוכן המתפרסם בקבוצות. לפני הצטרפות לקבוצה מומלץ לעבור על תיאור הקבוצה והכללים שלה.
+            </p>
+          </div>
+        </section>
       </main>
       <Footer settings={defaultFooterSettings} />
     </>
