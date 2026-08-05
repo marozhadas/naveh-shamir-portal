@@ -1,4 +1,5 @@
 import type { BusinessPublicationStatus } from "./business-status";
+import type { BusinessPlanId } from "./business-plan";
 
 export type BusinessCategory = "אוכל" | "חוגים" | 'גמ"ח' | "שירותים";
 
@@ -94,6 +95,10 @@ export type Business = {
 
   ownerId?: string;
   status?: BusinessPublicationStatus;
+  /** What the owner chose at registration — never overwritten downstream (see src/types/business-plan.ts). */
+  selectedPlanId?: BusinessPlanId;
+  /** What's actually live on the site right now — the only field getBusinessListingAccess() gates display on. */
+  activePlanId?: BusinessPlanId;
   fullDescription?: string;
   image?: { src: string; alt: string };
   gallery?: BusinessGalleryImage[];

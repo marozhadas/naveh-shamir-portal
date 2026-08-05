@@ -45,9 +45,10 @@ export function BusinessCard({ business, access }: BusinessCardProps) {
   const PlaceholderIcon = PLACEHOLDER_ICON[business.category] ?? Utensils;
   const description = business.shortDescription || business.description;
   const locationLabel = business.serviceArea || business.address;
-  const isPremium = access.canOpenProfile;
+  const isClickable = access.canOpenProfile;
   const profileHref = `/businesses/${business.slug}`;
-  const whatsappLink = business.whatsappUrl ? createWhatsappLink(business.whatsappUrl) : "";
+  // Basic never shows WhatsApp — only a phone number (spec: "אין להציג כפתור WhatsApp כלל" for Basic).
+  const whatsappLink = access.tier !== "basic" && business.whatsappUrl ? createWhatsappLink(business.whatsappUrl) : "";
 
   const imageContent = (
     <div className={styles.imageArea}>
@@ -69,8 +70,8 @@ export function BusinessCard({ business, access }: BusinessCardProps) {
   );
 
   return (
-    <Card noPadding hoverable={isPremium} className={`${styles.card} ${isPremium ? "" : styles.basicCard}`} data-testid="archive-business-card">
-      {isPremium ? (
+    <Card noPadding hoverable={isClickable} className={`${styles.card} ${isClickable ? "" : styles.basicCard}`} data-testid="archive-business-card">
+      {isClickable ? (
         <Link href={profileHref} className={styles.imageLink} aria-label={business.name}>
           {imageContent}
         </Link>
@@ -82,10 +83,10 @@ export function BusinessCard({ business, access }: BusinessCardProps) {
         <div className={styles.tags}>
           <CategoryTag label={primaryCategoryLabel} category={business.category} />
           {extraCategoryCount > 0 && <span className={styles.extraTag}>{`+${extraCategoryCount}`}</span>}
-          {!isPremium && <span className={styles.basicTag}>רישום בסיסי</span>}
+          {!isClickable && <span className={styles.basicTag}>רישום בסיסי</span>}
         </div>
 
-        <h3 className={styles.name}>{isPremium ? <Link href={profileHref}>{business.name}</Link> : business.name}</h3>
+        <h3 className={styles.name}>{isClickable ? <Link href={profileHref}>{business.name}</Link> : business.name}</h3>
 
         {description && <p className={styles.description}>{description}</p>}
 
@@ -121,7 +122,7 @@ export function BusinessCard({ business, access }: BusinessCardProps) {
               וואטסאפ
             </Button>
           )}
-          {isPremium && (
+          {isClickable && (
             <Button href={profileHref} variant="secondary" size="compact" icon={<ArrowLeft size={15} aria-hidden="true" />}>
               לעמוד העסק
             </Button>

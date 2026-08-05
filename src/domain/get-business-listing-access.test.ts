@@ -15,6 +15,7 @@ function makeBusiness(overrides: Partial<Business> = {}): Business {
     imageUrl: "",
     imageAlt: "",
     status: "published",
+    activePlanId: "basic",
     ...overrides,
   };
 }
@@ -24,7 +25,7 @@ function makeSubscription(overrides: Partial<BusinessSubscription> = {}): Busine
     id: "sub1",
     businessId: "b1",
     ownerId: "owner1",
-    planId: "business-monthly",
+    planId: "premium",
     status: "active",
     trialStartedAt: "2026-01-01T00:00:00.000Z",
     trialEndsAt: "2026-01-31T00:00:00.000Z",
@@ -36,7 +37,7 @@ function makeSubscription(overrides: Partial<BusinessSubscription> = {}): Busine
 }
 
 describe("getBusinessListingAccess", () => {
-  it("approved business with no subscription -> basic, still appears in archive", () => {
+  it("approved business with no subscription and activePlanId=basic -> basic, still appears in archive", () => {
     const access = getBusinessListingAccess(makeBusiness(), null, NOW);
     expect(access.tier).toBe("basic");
     expect(access.canAppearInArchive).toBe(true);
@@ -45,73 +46,103 @@ describe("getBusinessListingAccess", () => {
     expect(access.reason).toBe("basic-listing");
   });
 
-  it("active trial -> premium", () => {
+  // The core bug fix: a chosen plan (subscription.planId, or the registration's plan_tier) never
+  // by itself grants access — only business.activePlanId does. This is what makes a Plus/Premium
+  // registration correctly show as Basic until it's actually activated (by a trial or an admin).
+  it("subscription exists and is active, but activePlanId is still basic -> basic (not yet activated)", () => {
+    const access = getBusinessListingAccess(makeBusiness({ activePlanId: "basic" }), makeSubscription({ status: "active" }), NOW);
+    expect(access.tier).toBe("basic");
+  });
+
+  it("activePlanId=plus with no subscription at all -> plus, granted by an admin (reason: admin-granted)", () => {
+    const access = getBusinessListingAccess(makeBusiness({ activePlanId: "plus" }), null, NOW);
+    expect(access.tier).toBe("plus");
+    expect(access.canOpenProfile).toBe(true);
+    expect(access.canShowVerifiedBadge).toBe(false);
+    expect(access.reason).toBe("admin-granted");
+  });
+
+  it("activePlanId=premium with no subscription at all -> premium, granted by an admin", () => {
+    const access = getBusinessListingAccess(makeBusiness({ activePlanId: "premium" }), null, NOW);
+    expect(access.tier).toBe("premium");
+    expect(access.canShowVerifiedBadge).toBe(true);
+    expect(access.reason).toBe("admin-granted");
+  });
+
+  it("activePlanId=premium + active trial -> premium, reason trial-active", () => {
     const subscription = makeSubscription({ status: "trialing", trialEndsAt: "2026-07-01T00:00:00.000Z" });
-    const access = getBusinessListingAccess(makeBusiness(), subscription, NOW);
+    const access = getBusinessListingAccess(makeBusiness({ activePlanId: "premium" }), subscription, NOW);
     expect(access.tier).toBe("premium");
     expect(access.canOpenProfile).toBe(true);
     expect(access.canShowVerifiedBadge).toBe(true);
     expect(access.reason).toBe("trial-active");
   });
 
-  it("expired trial -> basic, business still appears in archive", () => {
+  it("activePlanId=plus + active trial -> plus (not premium), even though the trial subscription itself carries no tier info anymore", () => {
+    const subscription = makeSubscription({ status: "trialing", trialEndsAt: "2026-07-01T00:00:00.000Z" });
+    const access = getBusinessListingAccess(makeBusiness({ activePlanId: "plus" }), subscription, NOW);
+    expect(access.tier).toBe("plus");
+    expect(access.canShowVerifiedBadge).toBe(false);
+  });
+
+  it("expired trial -> basic regardless of activePlanId (automatic safety net)", () => {
     const subscription = makeSubscription({ status: "trialing", trialEndsAt: "2026-06-01T00:00:00.000Z" });
-    const access = getBusinessListingAccess(makeBusiness(), subscription, NOW);
+    const access = getBusinessListingAccess(makeBusiness({ activePlanId: "premium" }), subscription, NOW);
     expect(access.tier).toBe("basic");
     expect(access.canAppearInArchive).toBe(true);
     expect(access.reason).toBe("subscription-expired");
   });
 
-  it("active subscription -> premium", () => {
-    const access = getBusinessListingAccess(makeBusiness(), makeSubscription({ status: "active" }), NOW);
+  it("active subscription + activePlanId=premium -> premium", () => {
+    const access = getBusinessListingAccess(makeBusiness({ activePlanId: "premium" }), makeSubscription({ status: "active" }), NOW);
     expect(access.tier).toBe("premium");
     expect(access.reason).toBe("subscription-active");
   });
 
-  it("past-due -> basic (no grace period)", () => {
-    const access = getBusinessListingAccess(makeBusiness(), makeSubscription({ status: "past-due" }), NOW);
+  it("past-due -> basic regardless of activePlanId (no grace period)", () => {
+    const access = getBusinessListingAccess(makeBusiness({ activePlanId: "premium" }), makeSubscription({ status: "past-due" }), NOW);
     expect(access.tier).toBe("basic");
     expect(access.reason).toBe("subscription-past-due");
   });
 
-  it("canceled but within the paid period (cancelAtPeriodEnd) -> premium until currentPeriodEndsAt", () => {
+  it("canceled but within the paid period (cancelAtPeriodEnd) -> full access until currentPeriodEndsAt", () => {
     const subscription = makeSubscription({
       status: "canceled",
       cancelAtPeriodEnd: true,
       currentPeriodEndsAt: "2026-07-01T00:00:00.000Z",
     });
-    const access = getBusinessListingAccess(makeBusiness(), subscription, NOW);
+    const access = getBusinessListingAccess(makeBusiness({ activePlanId: "premium" }), subscription, NOW);
     expect(access.tier).toBe("premium");
   });
 
-  it("canceled past currentPeriodEndsAt -> basic", () => {
+  it("canceled past currentPeriodEndsAt -> basic regardless of activePlanId", () => {
     const subscription = makeSubscription({
       status: "canceled",
       cancelAtPeriodEnd: true,
       currentPeriodEndsAt: "2026-06-01T00:00:00.000Z",
     });
-    const access = getBusinessListingAccess(makeBusiness(), subscription, NOW);
+    const access = getBusinessListingAccess(makeBusiness({ activePlanId: "premium" }), subscription, NOW);
     expect(access.tier).toBe("basic");
   });
 
   it("canceled without cancelAtPeriodEnd -> basic immediately", () => {
     const subscription = makeSubscription({ status: "canceled", cancelAtPeriodEnd: false, currentPeriodEndsAt: "2026-07-01T00:00:00.000Z" });
-    const access = getBusinessListingAccess(makeBusiness(), subscription, NOW);
+    const access = getBusinessListingAccess(makeBusiness({ activePlanId: "premium" }), subscription, NOW);
     expect(access.tier).toBe("basic");
   });
 
-  it("expired subscription -> basic", () => {
-    const access = getBusinessListingAccess(makeBusiness(), makeSubscription({ status: "expired" }), NOW);
+  it("expired subscription -> basic regardless of activePlanId", () => {
+    const access = getBusinessListingAccess(makeBusiness({ activePlanId: "premium" }), makeSubscription({ status: "expired" }), NOW);
     expect(access.tier).toBe("basic");
   });
 
-  it("paused subscription -> basic", () => {
-    const access = getBusinessListingAccess(makeBusiness(), makeSubscription({ status: "paused" }), NOW);
+  it("paused subscription -> basic regardless of activePlanId", () => {
+    const access = getBusinessListingAccess(makeBusiness({ activePlanId: "premium" }), makeSubscription({ status: "paused" }), NOW);
     expect(access.tier).toBe("basic");
   });
 
-  it("suspended business -> not shown at all, regardless of subscription", () => {
-    const access = getBusinessListingAccess(makeBusiness({ status: "suspended" }), makeSubscription({ status: "active" }), NOW);
+  it("suspended business -> not shown at all, regardless of activePlanId/subscription", () => {
+    const access = getBusinessListingAccess(makeBusiness({ status: "suspended", activePlanId: "premium" }), makeSubscription({ status: "active" }), NOW);
     expect(access.canAppearInArchive).toBe(false);
     expect(access.canOpenProfile).toBe(false);
     expect(access.reason).toBe("business-suspended");
@@ -122,8 +153,8 @@ describe("getBusinessListingAccess", () => {
     expect(access.canAppearInArchive).toBe(false);
   });
 
-  it("draft / pending-review business -> not shown, regardless of subscription", () => {
-    const draft = getBusinessListingAccess(makeBusiness({ status: "draft" }), makeSubscription({ status: "active" }), NOW);
+  it("draft / pending-review business -> not shown, regardless of activePlanId/subscription", () => {
+    const draft = getBusinessListingAccess(makeBusiness({ status: "draft", activePlanId: "premium" }), makeSubscription({ status: "active" }), NOW);
     expect(draft.canAppearInArchive).toBe(false);
     expect(draft.reason).toBe("business-not-approved");
 
@@ -138,7 +169,14 @@ describe("getBusinessListingAccess", () => {
     expect(access.canAppearInArchive).toBe(true);
   });
 
-  it("basic never gets the verified badge or a public URL's worth of content flags", () => {
+  it("a business with no activePlanId field at all defaults to basic (legacy records predating the column)", () => {
+    const business = makeBusiness();
+    delete business.activePlanId;
+    const access = getBusinessListingAccess(business, makeSubscription({ status: "active" }), NOW);
+    expect(access.tier).toBe("basic");
+  });
+
+  it("basic never gets the verified badge or the full-profile content flags", () => {
     const access = getBusinessListingAccess(makeBusiness(), null, NOW);
     expect(access.canShowVerifiedBadge).toBe(false);
     expect(access.canShowGallery).toBe(false);
@@ -147,7 +185,7 @@ describe("getBusinessListingAccess", () => {
   });
 
   it("premium gets the verified badge and full content flags", () => {
-    const access = getBusinessListingAccess(makeBusiness(), makeSubscription({ status: "active" }), NOW);
+    const access = getBusinessListingAccess(makeBusiness({ activePlanId: "premium" }), makeSubscription({ status: "active" }), NOW);
     expect(access.canShowVerifiedBadge).toBe(true);
     expect(access.canShowGallery).toBe(true);
     expect(access.canShowServices).toBe(true);
@@ -156,7 +194,7 @@ describe("getBusinessListingAccess", () => {
   });
 
   it("plus plan gets the full profile (gallery/services/hours) but never the verified badge or self-edit", () => {
-    const access = getBusinessListingAccess(makeBusiness(), makeSubscription({ status: "active", planId: "plus" }), NOW);
+    const access = getBusinessListingAccess(makeBusiness({ activePlanId: "plus" }), makeSubscription({ status: "active" }), NOW);
     expect(access.tier).toBe("plus");
     expect(access.canOpenProfile).toBe(true);
     expect(access.canShowGallery).toBe(true);
@@ -166,23 +204,16 @@ describe("getBusinessListingAccess", () => {
     expect(access.canSelfEdit).toBe(false);
   });
 
-  it("plus plan on an active trial is still tier=plus, not premium", () => {
-    const subscription = makeSubscription({ status: "trialing", planId: "plus", trialEndsAt: "2026-07-01T00:00:00.000Z" });
-    const access = getBusinessListingAccess(makeBusiness(), subscription, NOW);
-    expect(access.tier).toBe("plus");
-    expect(access.canShowVerifiedBadge).toBe(false);
-  });
-
   it("basic tier never gets self-edit access", () => {
     const access = getBusinessListingAccess(makeBusiness(), null, NOW);
     expect(access.canSelfEdit).toBe(false);
   });
 
-  it("only an active premium subscription is eligible for homepage-featured placement", () => {
-    const premium = getBusinessListingAccess(makeBusiness(), makeSubscription({ status: "active" }), NOW);
+  it("only activePlanId=premium is eligible for homepage-featured placement", () => {
+    const premium = getBusinessListingAccess(makeBusiness({ activePlanId: "premium" }), makeSubscription({ status: "active" }), NOW);
     expect(premium.canBeHomepageFeatured).toBe(true);
 
-    const plus = getBusinessListingAccess(makeBusiness(), makeSubscription({ status: "active", planId: "plus" }), NOW);
+    const plus = getBusinessListingAccess(makeBusiness({ activePlanId: "plus" }), makeSubscription({ status: "active" }), NOW);
     expect(plus.canBeHomepageFeatured).toBe(false);
 
     const basic = getBusinessListingAccess(makeBusiness(), null, NOW);

@@ -104,6 +104,9 @@ export async function submitBusinessRegistration(
       featured: false,
       verified: false,
       plan_tier: planTier,
+      // Every fresh registration starts inactive — activated later by a trial (startRealBusinessTrial)
+      // or an admin (changeBusinessPlanAction), never at registration time itself.
+      active_plan_id: "basic",
     });
 
     if (!error) {

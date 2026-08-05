@@ -80,6 +80,19 @@ export async function updateRegistrationFields(id: string, fields: BusinessRegis
   return data;
 }
 
+/**
+ * The one dedicated write path for active_plan_id — deliberately separate from
+ * updateRegistrationFields (whose doc comment already excludes plan/status/consent/trial fields,
+ * "which have their own dedicated, audited flows"). Only ever called from
+ * changeBusinessPlanAction, which is the single place that validates admin auth + records the
+ * audit log for this specific change.
+ */
+export async function updateRegistrationActivePlan(id: string, activePlanId: "basic" | "plus" | "premium"): Promise<void> {
+  const supabase = createAdminSupabaseClient();
+  const { error } = await supabase.from("business_registrations").update({ active_plan_id: activePlanId }).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
 /** FK constraints on subscriptions/events-log/notifications all cascade on delete; analytics rows keep their history with business_id set to null. */
 export async function deleteRegistration(id: string): Promise<void> {
   const supabase = createAdminSupabaseClient();

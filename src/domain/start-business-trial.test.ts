@@ -29,4 +29,13 @@ describe("startBusinessTrial", () => {
   it("marks the payment provider as mock", () => {
     expect(subscription.paymentProvider).toBe("mock");
   });
+
+  it("defaults planId to premium when none is given", () => {
+    expect(subscription.planId).toBe("premium");
+  });
+
+  it("uses the given planId instead of the default when one is passed", () => {
+    const plusSubscription = startBusinessTrial("biz-2", "owner-2", now, "plus");
+    expect(plusSubscription.planId).toBe("plus");
+  });
 });

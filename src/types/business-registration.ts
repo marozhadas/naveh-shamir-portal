@@ -23,8 +23,16 @@ export type BusinessRegistrationRow = {
   rejection_reason: string | null;
   /** Set once the owner claims this registration via the magic-link callback (email match) — see /auth/callback. Null until then. */
   owner_id: string | null;
-  /** Which /business/plans tier the registrant chose (see the "add_plan_tier_to_business_registrations" migration) — defaults to "free" at the DB level. */
+  /** Which /business/plans tier the registrant chose (see the "add_plan_tier_to_business_registrations" migration) — defaults to "free" at the DB level. NEVER overwritten downstream — this is `selectedPlanId` in BusinessPlanState terms (see src/types/business-plan.ts). "free" maps to "basic" at the map-registration-to-business.ts boundary. */
   plan_tier: "free" | "plus" | "premium";
+  /**
+   * The plan tier actually live on the site right now — `activePlanId` in BusinessPlanState terms
+   * (see the "add_active_plan_id_to_business_registrations" migration). Starts at "basic" even for
+   * a plus/premium registration until a trial/subscription starts (startRealBusinessTrial sets
+   * this) or an admin explicitly activates it (changeBusinessPlanAction). This — not plan_tier, and
+   * not business_subscriptions.plan_id — is what getBusinessListingAccess() gates display on.
+   */
+  active_plan_id: "basic" | "plus" | "premium";
   /**
    * Fields collected only by the Plus/Premium wizard (see the "add_plus_registration_fields"
    * migration) — always null for a "free" registration, which never sets them.

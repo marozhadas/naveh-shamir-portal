@@ -1,7 +1,13 @@
 import type { Business, BusinessCategory } from "@/types/business";
 import type { BusinessPublicationStatus } from "@/types/business-status";
 import type { BusinessRegistrationRow, BusinessRegistrationStatus } from "@/types/business-registration";
+import type { BusinessPlanId } from "@/types/business-plan";
 import { toBusinessId } from "@/utils/business-id";
+
+/** The one place "free" (the DB's historical spelling) becomes "basic" (the app-wide BusinessPlanId spelling). */
+export function toBusinessPlanId(planTier: "free" | "plus" | "premium" | BusinessPlanId): BusinessPlanId {
+  return planTier === "free" ? "basic" : planTier;
+}
 
 /**
  * The registration form uses the archive's richer category taxonomy (src/data/business-categories.ts),
@@ -71,6 +77,8 @@ export function mapRegistrationToBusiness(row: BusinessRegistrationRow): Busines
     createdAt: row.created_at,
     status: REGISTRATION_TO_PUBLICATION_STATUS[row.status],
     ownerId: row.owner_id ?? undefined,
+    selectedPlanId: toBusinessPlanId(row.plan_tier),
+    activePlanId: toBusinessPlanId(row.active_plan_id),
     fullDescription: row.description,
     image: row.cover_image ? { src: row.cover_image.url, alt: row.cover_image.alt } : undefined,
     gallery: row.gallery?.map((image, index) => ({ id: `${row.id}-gallery-${index}`, src: image.url, alt: image.alt, order: image.order })),

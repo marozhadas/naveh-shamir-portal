@@ -134,7 +134,9 @@ export class MockSubscriptionRepository implements SubscriptionRepository {
     if (this.store.has(businessId)) {
       throw new Error(`A subscription already exists for business "${businessId}" — a trial can only be used once.`);
     }
-    const subscription = startBusinessTrial(businessId, ownerId, new Date());
+    const draft = await businessRepository.getDraftById(businessId, ownerId);
+    const planId = draft?.selectedPlanId === "plus" ? "plus" : "premium";
+    const subscription = startBusinessTrial(businessId, ownerId, new Date(), planId);
     this.store.set(businessId, subscription);
     return subscription;
   }

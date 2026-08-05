@@ -9,7 +9,9 @@ import { getAdminSubscriptionSummary, SUBSCRIPTION_STATUS_LABEL } from "@/lib/ad
 import { Button } from "@/components/ui/Button";
 import { ApproveRejectPanel } from "./ApproveRejectPanel";
 import { DeleteBusinessButton } from "./DeleteBusinessButton";
+import { BusinessPlanControl } from "./BusinessPlanControl";
 import { retryNotificationEmailAction } from "./actions";
+import { toBusinessPlanId } from "@/utils/map-registration-to-business";
 import styles from "./detail.module.css";
 
 const PLAN_TIER_LABEL: Record<string, string> = { free: "חינמי", plus: "Plus", premium: "Premium" };
@@ -114,6 +116,12 @@ export default async function AdminBusinessDetailPage({ params }: BusinessDetail
           )}
         </dl>
       </section>
+
+      <BusinessPlanControl
+        businessId={registration.id}
+        selectedPlanId={toBusinessPlanId(registration.plan_tier)}
+        currentActivePlanId={toBusinessPlanId(registration.active_plan_id)}
+      />
 
       <section className={styles.section} aria-labelledby="description-heading">
         <h2 id="description-heading" className={styles.sectionTitle}>

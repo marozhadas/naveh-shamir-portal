@@ -7,7 +7,7 @@ import type { BusinessRegistrationRow } from "@/types/business-registration";
 import type { BusinessSubscription } from "@/types/subscription";
 import type { BusinessListingAccess } from "@/types/business-listing-access";
 
-export type AdminSubscriptionFilter = "all" | "no-subscription" | "trialing" | "active" | "expired" | "basic" | "premium";
+export type AdminSubscriptionFilter = "all" | "no-subscription" | "trialing" | "active" | "expired" | "basic" | "plus" | "premium";
 
 export const ADMIN_SUBSCRIPTION_FILTER_TABS: { value: AdminSubscriptionFilter; label: string }[] = [
   { value: "all", label: "כל סוגי המנוי" },
@@ -16,6 +16,7 @@ export const ADMIN_SUBSCRIPTION_FILTER_TABS: { value: AdminSubscriptionFilter; l
   { value: "active", label: "מנוי פעיל" },
   { value: "expired", label: "ניסיון הסתיים" },
   { value: "basic", label: "כרטיס בסיסי" },
+  { value: "plus", label: "כרטיס Plus" },
   { value: "premium", label: "כרטיס פרימיום" },
 ];
 
@@ -37,10 +38,12 @@ export type AdminSubscriptionSummary = {
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
- * Everything an admin needs to know about a registration's Basic/Premium state in one place —
+ * Everything an admin needs to know about a registration's Basic/Plus/Premium state in one place —
  * the real subscription (fetched via the same repository the trial flow writes through, never a
  * direct table read) plus the derived access and days-remaining, so the admin UI never has to
- * re-derive tier logic itself (spec section 15: admin must not be able to set the tier directly).
+ * re-derive tier logic itself. The admin CAN change the active tier directly — see
+ * changeBusinessPlanAction ([id]/actions.ts) — but always through that single audited server
+ * action, never by writing access/tier fields from the client.
  */
 export async function getAdminSubscriptionSummary(registration: BusinessRegistrationRow, now: Date): Promise<AdminSubscriptionSummary> {
   const business = mapRegistrationToBusiness(registration);
@@ -56,6 +59,7 @@ export async function getAdminSubscriptionSummary(registration: BusinessRegistra
 export function matchesSubscriptionFilter(summary: AdminSubscriptionSummary, filter: AdminSubscriptionFilter): boolean {
   if (filter === "all") return true;
   if (filter === "basic") return summary.access.tier === "basic";
+  if (filter === "plus") return summary.access.tier === "plus";
   if (filter === "premium") return summary.access.tier === "premium";
   if (filter === "no-subscription") return summary.subscription === null;
   return summary.subscription?.status === filter;

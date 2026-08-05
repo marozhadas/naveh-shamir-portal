@@ -86,6 +86,21 @@ export async function startRealBusinessTrial(businessId: string, ownerId: string
 
   const admin = createAdminSupabaseClient();
   const registrationId = toRegistrationId(businessId);
+
+  // The actual plan tier the owner chose — NOT a fixed "business-monthly" placeholder. This is the
+  // fix for the bug where every trial's plan_id carried no real tier information at all, and
+  // getBusinessListingAccess() had no way to tell Plus from Premium.
+  const { data: registration, error: registrationError } = await admin
+    .from("business_registrations")
+    .select("plan_tier")
+    .eq("id", registrationId)
+    .maybeSingle();
+  if (registrationError || !registration) {
+    console.error("[startRealBusinessTrial] could not re-fetch plan_tier:", registrationError?.message);
+    return { success: false, reason: "unknown-error" };
+  }
+  const planId: "plus" | "premium" = registration.plan_tier === "premium" ? "premium" : "plus";
+
   const now = new Date();
   const trialEndsAt = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
 
@@ -94,7 +109,7 @@ export async function startRealBusinessTrial(businessId: string, ownerId: string
     .insert({
       business_registration_id: registrationId,
       owner_id: ownerId,
-      plan_id: "business-monthly",
+      plan_id: planId,
       status: "trialing",
       trial_started_at: now.toISOString(),
       trial_ends_at: trialEndsAt.toISOString(),
@@ -109,11 +124,16 @@ export async function startRealBusinessTrial(businessId: string, ownerId: string
     return { success: false, reason: "unknown-error" };
   }
 
+  // Activate the plan immediately alongside the trial — this, not business_subscriptions.plan_id,
+  // is what getBusinessListingAccess() actually gates display on (see src/types/business-plan.ts).
+  const { error: activateError } = await admin.from("business_registrations").update({ active_plan_id: planId }).eq("id", registrationId);
+  if (activateError) console.error("[startRealBusinessTrial] failed to activate plan:", activateError.message);
+
   const { error: logError } = await admin.from("business_events_log").insert({
     business_registration_id: registrationId,
     event_type: "trial_started",
     actor_id: ownerId,
-    metadata: {},
+    metadata: { planId },
   });
   if (logError) console.error("[startRealBusinessTrial] audit log insert failed:", logError.message);
 

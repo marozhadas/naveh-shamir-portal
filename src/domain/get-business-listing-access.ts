@@ -72,8 +72,7 @@ function premiumAccess(reason: BusinessListingAccessReason): BusinessListingAcce
   };
 }
 
-/** Any planId other than "plus" is treated as Premium — matches every subscription created before this tier existed (planId="business-monthly"). */
-function fullAccessForPlan(planId: string, reason: BusinessListingAccessReason): BusinessListingAccess {
+function fullAccessForPlan(planId: "plus" | "premium", reason: BusinessListingAccessReason): BusinessListingAccess {
   return planId === "plus" ? plusAccess(reason) : premiumAccess(reason);
 }
 
@@ -81,8 +80,17 @@ function fullAccessForPlan(planId: string, reason: BusinessListingAccessReason):
  * The single central place that decides what a business is allowed to show — no component or
  * page should re-derive this from raw `subscription.status` checks (spec section 2). Admin
  * approval (business.status) only ever determines whether a business is allowed to exist in
- * public listings at all; the subscription/trial state on top of that determines whether it gets
- * the full "premium" experience (open profile, verified badge, gallery, services, hours).
+ * public listings at all.
+ *
+ * `business.activePlanId` — NOT `subscription.planId` — is the single source of truth for which
+ * paid tier is live (see src/types/business-plan.ts). This is deliberate: it's what lets an admin
+ * grant/revoke Plus or Premium with one click (changeBusinessPlanAction) with no subscription row
+ * required at all, and it's what fixes the bug where every real subscription's `planId` was
+ * hardcoded to `"business-monthly"` — a value that carried no actual plan-tier information. The
+ * `subscription` argument is still consulted for two narrow, automatic safety nets that override
+ * even an admin-set activePlanId (a payment that's actively failing; a trial whose end date has
+ * already passed but the hourly cron hasn't caught up yet) and to pick a more specific `reason` for
+ * admin-facing display — it never itself grants access.
  */
 export function getBusinessListingAccess(
   business: Business,
@@ -101,27 +109,33 @@ export function getBusinessListingAccess(
     return basicAccess(false, "business-not-approved");
   }
 
+  const activePlanId = business.activePlanId ?? "basic";
+  const grantOrBasic = (reason: BusinessListingAccessReason): BusinessListingAccess =>
+    activePlanId === "basic" ? basicAccess(true, "basic-listing") : fullAccessForPlan(activePlanId, reason);
+
+  // No subscription row at all: purely activePlanId-driven — this is what lets an admin grant a
+  // tier with zero subscription rows required (changeBusinessPlanAction), and what a fresh
+  // plus/premium registration looks like before any trial has started (activePlanId is "basic"
+  // until then, matching spec section 6's "pending" state).
   if (!subscription) {
-    return basicAccess(true, "basic-listing");
+    return grantOrBasic("admin-granted");
   }
 
   if (subscription.status === "active") {
-    return fullAccessForPlan(subscription.planId, "subscription-active");
+    return grantOrBasic("subscription-active");
   }
 
   if (subscription.status === "trialing") {
     const trialActive = new Date(subscription.trialEndsAt).getTime() > now.getTime();
-    return trialActive ? fullAccessForPlan(subscription.planId, "trial-active") : basicAccess(true, "subscription-expired");
+    return trialActive ? grantOrBasic("trial-active") : basicAccess(true, "subscription-expired");
   }
 
   if (subscription.status === "canceled") {
-    // cancelAtPeriodEnd keeps full access through the period already paid for.
+    // cancelAtPeriodEnd keeps access through the period already paid for.
     const stillWithinPaidPeriod = Boolean(
-      subscription.cancelAtPeriodEnd &&
-        subscription.currentPeriodEndsAt &&
-        new Date(subscription.currentPeriodEndsAt).getTime() > now.getTime(),
+      subscription.cancelAtPeriodEnd && subscription.currentPeriodEndsAt && new Date(subscription.currentPeriodEndsAt).getTime() > now.getTime(),
     );
-    return stillWithinPaidPeriod ? fullAccessForPlan(subscription.planId, "subscription-active") : basicAccess(true, "subscription-expired");
+    return stillWithinPaidPeriod ? grantOrBasic("subscription-active") : basicAccess(true, "subscription-expired");
   }
 
   if (subscription.status === "past-due") {

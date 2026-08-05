@@ -3,12 +3,20 @@
 import { revalidatePath } from "next/cache";
 import { getAdminId, isAdminAuthenticated } from "@/lib/admin-session";
 import { isSupabaseAdminConfigured } from "@/lib/supabase/admin-client";
-import { deleteRegistration, getRegistrationById, updateRegistrationFields, updateRegistrationStatus } from "@/lib/admin/business-registrations";
+import {
+  deleteRegistration,
+  getRegistrationById,
+  updateRegistrationActivePlan,
+  updateRegistrationFields,
+  updateRegistrationStatus,
+} from "@/lib/admin/business-registrations";
 import { getNotificationById, resolveNotificationForEntity } from "@/lib/admin/notifications";
 import { recordAuditLog } from "@/lib/admin/audit-log";
 import { sendRegistrationNotificationEmail } from "@/lib/email/send-registration-notification-email";
 import { deleteBusinessMediaByUrl, uploadBusinessMedia } from "@/repositories/business-media-service";
 import { businessEditFormSchema, type BusinessEditFormValues } from "./schema";
+import { changeBusinessPlanSchema, type ChangeBusinessPlanInput } from "./change-plan-schema";
+import type { BusinessPlanId } from "@/types/business-plan";
 
 async function requireAdmin(): Promise<string> {
   if (!(await isAdminAuthenticated())) throw new Error("Not authenticated.");
@@ -222,6 +230,65 @@ export async function uploadBusinessImageAction(registrationId: string, file: Fi
   const result = await uploadBusinessMedia(registrationId, "cover", file);
   if (!result.success) return { success: false, message: UPLOAD_ERROR_MESSAGE[result.reason] };
   return { success: true, url: result.url };
+}
+
+export type ChangeBusinessPlanResult =
+  | { status: "success"; previousPlanId: BusinessPlanId; newPlanId: BusinessPlanId }
+  | { status: "validation-error"; message: string }
+  | { status: "not-found"; message: string }
+  | { status: "server-error"; message: string };
+
+const PLAN_LABEL: Record<BusinessPlanId, string> = { basic: "Basic", plus: "Plus", premium: "Premium" };
+
+/**
+ * The single, audited, server-only way to change which plan tier is live for a business (spec
+ * section 15: "אין לאפשר שינוי חבילה דרך Client בלבד" — the client only ever calls this action, it
+ * never writes access/tier fields itself). Deliberately separate from updateBusinessAction, which
+ * explicitly excludes plan/status fields.
+ */
+export async function changeBusinessPlanAction(input: ChangeBusinessPlanInput): Promise<ChangeBusinessPlanResult> {
+  const adminId = await requireAdmin();
+
+  const parsed = changeBusinessPlanSchema.safeParse(input);
+  if (!parsed.success) {
+    return { status: "validation-error", message: parsed.error.issues[0]?.message ?? "קלט לא תקין." };
+  }
+  const { businessId, newPlanId, reason } = parsed.data;
+  const typedNewPlanId = newPlanId as BusinessPlanId;
+
+  const registration = await getRegistrationById(businessId);
+  if (!registration) return { status: "not-found", message: "העסק לא נמצא." };
+
+  const previousPlanId: BusinessPlanId = registration.active_plan_id;
+  if (previousPlanId === typedNewPlanId) {
+    return { status: "success", previousPlanId, newPlanId: typedNewPlanId };
+  }
+
+  try {
+    await updateRegistrationActivePlan(businessId, typedNewPlanId);
+
+    await recordAuditLog({
+      adminId,
+      action: "business-plan-changed",
+      entityType: "business-registration",
+      entityId: businessId,
+      metadata: {
+        businessName: registration.business_name,
+        previousPlan: previousPlanId,
+        newPlan: typedNewPlanId,
+        reason: reason ?? null,
+      },
+    });
+
+    revalidateBusinessViews(businessId);
+    revalidatePath("/");
+    if (registration.slug) revalidatePath(`/businesses/${registration.slug}`);
+
+    return { status: "success", previousPlanId, newPlanId: typedNewPlanId };
+  } catch (error) {
+    console.error("[changeBusinessPlanAction] failed:", error);
+    return { status: "server-error", message: `לא הצלחנו לשנות את החבילה מ-${PLAN_LABEL[previousPlanId]} ל-${PLAN_LABEL[typedNewPlanId]} כרגע. נסו שוב.` };
+  }
 }
 
 export async function deleteBusinessAction(registrationId: string): Promise<void> {

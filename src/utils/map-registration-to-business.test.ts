@@ -25,6 +25,7 @@ function makeRow(overrides: Partial<BusinessRegistrationRow> = {}): BusinessRegi
     rejection_reason: null,
     owner_id: null,
     plan_tier: "free",
+    active_plan_id: "basic",
     category_ids: null,
     business_type: null,
     public_phone: null,
@@ -82,5 +83,38 @@ describe("mapRegistrationToBusiness", () => {
     expect(business.contact?.email).toBe("noa@example.com");
     expect(business.location?.address).toBe("רחוב הדקל 4");
     expect(business.location?.serviceArea).toBe("נווה שמיר");
+  });
+
+  // Regression coverage for the "Plus registered as Basic" bug: plan_tier ("free"/"plus"/"premium")
+  // must map to selectedPlanId ("basic"/"plus"/"premium") — this is the value that's never
+  // overwritten downstream — and active_plan_id must map straight through to activePlanId, which
+  // is the only field getBusinessListingAccess() actually gates display on.
+  it("maps plan_tier='free' to selectedPlanId='basic'", () => {
+    const business = mapRegistrationToBusiness(makeRow({ plan_tier: "free" }));
+    expect(business.selectedPlanId).toBe("basic");
+  });
+
+  it("maps plan_tier='plus' to selectedPlanId='plus', unmodified", () => {
+    const business = mapRegistrationToBusiness(makeRow({ plan_tier: "plus" }));
+    expect(business.selectedPlanId).toBe("plus");
+  });
+
+  it("maps plan_tier='premium' to selectedPlanId='premium', unmodified", () => {
+    const business = mapRegistrationToBusiness(makeRow({ plan_tier: "premium" }));
+    expect(business.selectedPlanId).toBe("premium");
+  });
+
+  it("maps active_plan_id straight through to activePlanId", () => {
+    const basic = mapRegistrationToBusiness(makeRow({ active_plan_id: "basic" }));
+    expect(basic.activePlanId).toBe("basic");
+
+    const plus = mapRegistrationToBusiness(makeRow({ active_plan_id: "plus" }));
+    expect(plus.activePlanId).toBe("plus");
+  });
+
+  it("a plus registration that hasn't been activated yet has selectedPlanId=plus but activePlanId=basic — the two are never conflated", () => {
+    const business = mapRegistrationToBusiness(makeRow({ plan_tier: "plus", active_plan_id: "basic" }));
+    expect(business.selectedPlanId).toBe("plus");
+    expect(business.activePlanId).toBe("basic");
   });
 });

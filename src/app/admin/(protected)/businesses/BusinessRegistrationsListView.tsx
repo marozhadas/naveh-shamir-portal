@@ -60,7 +60,8 @@ export function BusinessRegistrationsListView({ rows, emptyMessage }: BusinessRe
           <span className={styles.tierBadge}>חבילה נבחרת: {TIER_LABEL[registration.plan_tier === "free" ? "basic" : registration.plan_tier]}</span>
           {registration.status === "approved" && (
             <span className={styles.tierBadge}>
-              סוג כרטיס: {TIER_LABEL[summary.access.tier]} · {getSubscriptionLabel(summary)}
+              חבילה פעילה: {TIER_LABEL[summary.access.tier]} · {getSubscriptionLabel(summary)}
+              {registration.plan_tier !== "free" && registration.plan_tier !== summary.access.tier && summary.access.tier === "basic" && " · ממתין להפעלה"}
             </span>
           )}
           <div className={styles.cardActions}>
