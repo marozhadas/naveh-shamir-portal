@@ -90,4 +90,12 @@ export type AdminAuditAction =
   | "event-unpublished"
   | "event-canceled"
   | "event-deleted"
-  | "event-duplicated";
+  | "event-duplicated"
+  | "essential-number-created"
+  | "essential-number-updated"
+  | "essential-number-published"
+  | "essential-number-unpublished"
+  | "essential-number-archived"
+  | "essential-number-reordered"
+  | "essential-number-duplicated"
+  | "essential-number-deleted";

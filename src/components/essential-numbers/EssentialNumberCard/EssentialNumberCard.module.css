@@ -1,0 +1,125 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  height: 100%;
+}
+
+.emergency {
+  border-inline-start: 4px solid var(--red-600);
+}
+
+.top {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.iconWrap {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.iconImage {
+  object-fit: cover;
+}
+
+.headingArea {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-body);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.emergencyBadge {
+  display: inline-block;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-demibold);
+  color: var(--red-600);
+  background: var(--red-100);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  margin-inline-start: 6px;
+  vertical-align: middle;
+}
+
+.description {
+  font-size: var(--fs-body-sm);
+  color: var(--slate-600);
+  line-height: var(--lh-body);
+  margin: 4px 0 0;
+}
+
+.phoneLink {
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-black);
+  color: var(--color-text-primary);
+  direction: ltr;
+  text-align: end;
+  text-decoration: none;
+}
+
+.phoneLink:hover,
+.phoneLink:focus-visible {
+  text-decoration: underline;
+}
+
+.meta {
+  font-size: 13.5px;
+  color: var(--slate-600);
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+}
+
+.notes {
+  font-size: var(--fs-caption);
+  color: var(--slate-600);
+  background: var(--slate-100);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding-top: var(--space-2);
+}
+
+/* Element+class beats Button.module.css's bare ".button { min-width: 0 }" regardless of stylesheet load order. */
+.actions > a,
+.actions > button {
+  flex: 1;
+  min-width: 140px;
+}
+
+.websiteLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-body-sm);
+  font-weight: var(--fw-demibold);
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.websiteLink:hover,
+.websiteLink:focus-visible {
+  text-decoration: underline;
+}

@@ -18,10 +18,15 @@
   --red-600: #dc2626;
   --red-100: #fde8e8;
   --orange-500: #f2590c;
+  --orange-100: #fde8d8;
   --cyan-500: #1fc5db;
   /* Used consistently across the source export for the "גמ"ח" tag and the
      blue quick-link tile, but was never promoted to a token upstream. */
   --blue-100: #eaf1fb;
+  --blue-700: #2a5aa3;
+  /* Added for the essential-numbers icon-tone picker (spec: a closed set of tones, no free CSS). */
+  --purple-100: #f0e7fb;
+  --purple-700: #6b3fa0;
 
   /* Semantic tokens */
   --color-bg-base: var(--slate-50);

@@ -10,6 +10,7 @@ import type { SiteContentPageRow } from "@/types/site-content";
 import type { AnalyticsEventRow } from "@/types/analytics";
 import type { MarketplaceListingRow } from "@/types/marketplace";
 import type { CommunityEventRow } from "@/types/community-event";
+import type { EssentialNumberRow } from "@/types/essential-number";
 
 export type BusinessEventLogRow = {
   id: string;
@@ -196,6 +197,16 @@ export type Database = {
           display_order?: number;
         };
         Update: Partial<CommunityEventRow>;
+        Relationships: [];
+      };
+      essential_numbers: {
+        Row: EssentialNumberRow;
+        Insert: Omit<EssentialNumberRow, "id" | "created_at" | "updated_at"> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<EssentialNumberRow>;
         Relationships: [];
       };
     };

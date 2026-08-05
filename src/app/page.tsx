@@ -4,11 +4,14 @@ import { ConnectedHero } from "@/editor/connected/ConnectedHero";
 import { ConnectedMovableSections } from "@/editor/connected/ConnectedMovableSections";
 import { EditableRegion } from "@/editor/components/EditableRegion/EditableRegion";
 import { MarketplaceSection } from "@/components/home/MarketplaceSection/MarketplaceSection";
+import { EssentialNumbersHomeSection } from "@/components/home/EssentialNumbersHomeSection/EssentialNumbersHomeSection";
 import { listHeroGalleryImages } from "@/repositories/hero-gallery-service";
 import { getPublishedEvents } from "@/repositories/community-events-service";
 import { pickHomepageTeaserEvents } from "@/utils/map-community-events-to-teaser-cards";
 import { getFeaturedApprovedBusinesses } from "@/repositories/featured-businesses-service";
 import { getActiveListings } from "@/repositories/marketplace-service";
+import { getPublishedEssentialNumbers } from "@/repositories/essential-numbers-service";
+import { sortEssentialNumbers } from "@/utils/essential-number-filters";
 import { getListingAccessByBusinessId } from "@/domain/get-business-listing-access";
 import { subscriptionRepository } from "@/repositories/mock-subscription-repository";
 import { mapRegistrationToBusiness } from "@/utils/map-registration-to-business";
@@ -16,11 +19,12 @@ import { mapRegistrationToBusiness } from "@/utils/map-registration-to-business"
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [galleryImages, allPublishedEvents, featuredRegistrations, marketplaceListings] = await Promise.all([
+  const [galleryImages, allPublishedEvents, featuredRegistrations, marketplaceListings, publishedEssentialNumbers] = await Promise.all([
     listHeroGalleryImages(),
     getPublishedEvents(),
     getFeaturedApprovedBusinesses(),
     getActiveListings(),
+    getPublishedEssentialNumbers(),
   ]);
 
   const upcomingEvents = pickHomepageTeaserEvents(allPublishedEvents);
@@ -36,6 +40,7 @@ export default async function Home() {
   }));
 
   const marketplaceTeaser = marketplaceListings.slice(0, 4);
+  const essentialNumbersTeaser = sortEssentialNumbers(publishedEssentialNumbers).slice(0, 4);
 
   return (
     <>
@@ -51,6 +56,7 @@ export default async function Home() {
         </EditableRegion>
         <ConnectedMovableSections upcomingEvents={upcomingEvents} featuredBusinesses={featuredBusinesses} />
         <MarketplaceSection listings={marketplaceTeaser} />
+        <EssentialNumbersHomeSection entries={essentialNumbersTeaser} />
       </main>
       <EditableRegion id="home.footer" label="פוטר">
         <ConnectedFooter />

@@ -3,3 +3,11 @@
   margin: 0 auto;
   padding: 0 24px var(--space-16);
 }
+
+.supportText {
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-secondary);
+  max-width: 1280px;
+  margin: -16px auto var(--space-6);
+  padding: 0 24px;
+}
