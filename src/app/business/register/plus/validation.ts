@@ -69,8 +69,15 @@ export function validateStepThree(services: ServiceDraft[]): WizardErrors {
   const errors: WizardErrors = {};
   const arrayCheck = plusStepThreeSchema.safeParse({ services });
   if (!arrayCheck.success) {
-    const arrayErrors = firstFieldErrors(arrayCheck.error);
-    if (arrayErrors.services) errors.services = arrayErrors.services;
+    // Only a genuine array-level issue (path === ["services"], e.g. min/max count) belongs on the
+    // "services" key. z.array(serviceSchema) also validates every item, and Zod's flatten() groups
+    // ALL issues by their path's first segment — so a per-item issue like services.0.title would
+    // otherwise get grouped under "services" too, even though it's already reported precisely as
+    // service-title-{index} below. That false positive used to make "services" (which has no
+    // matching DOM element) win the first-invalid-field lookup ahead of the real field, silently
+    // breaking focus. Reading .issues directly (instead of .flatten()) keeps only true array-level issues here.
+    const arrayLevelIssue = arrayCheck.error.issues.find((issue) => issue.path.length === 1 && issue.path[0] === "services");
+    if (arrayLevelIssue) errors.services = arrayLevelIssue.message;
   }
   services.forEach((service, index) => {
     const result = serviceSchema.safeParse(service);

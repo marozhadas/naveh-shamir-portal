@@ -148,6 +148,20 @@ describe("validateStepThree", () => {
     expect(errors["service-title-1"]).toBe("יש להזין שם שירות");
     expect(errors["service-title-0"]).toBeUndefined();
   });
+
+  // Regression: z.array(serviceSchema) validates every item, and Zod's flatten() groups ALL issues
+  // (including nested per-item ones like services.0.title) under the array's own top-level key. That
+  // used to leak a spurious `errors.services` alongside the correct `errors["service-title-0"]" — and
+  // since "services" has no matching DOM element, it used to win STEP_KEYS' first-invalid-field lookup
+  // ahead of the real field and silently break focus (see PlusRegistrationWizard.tsx's firstInvalidFieldId).
+  it("does not set a spurious top-level 'services' error when only a specific item is invalid", () => {
+    const errors = validateStepThree([
+      { title: "", description: "", priceLabel: "" },
+      { title: "שירות תקין", description: "", priceLabel: "" },
+    ]);
+    expect(errors["service-title-0"]).toBe("יש להזין שם שירות");
+    expect(errors.services).toBeUndefined();
+  });
 });
 
 describe("validateStepFour", () => {
