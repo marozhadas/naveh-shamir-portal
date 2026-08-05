@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 import { VerifiedBusinessBadge } from "@/components/ui/VerifiedBusinessBadge/VerifiedBusinessBadge";
 import { getCategoryLabel } from "@/data/business-categories";
+import { createWhatsappLink } from "@/utils/create-whatsapp-link";
 import { normalizePhoneForTelLink } from "@/utils/normalize-phone-for-tel-link";
 import type { Business } from "@/types/business";
 import type { BusinessListingAccess } from "@/types/business-listing-access";
@@ -46,6 +47,7 @@ export function BusinessCard({ business, access }: BusinessCardProps) {
   const locationLabel = business.serviceArea || business.address;
   const isPremium = access.canOpenProfile;
   const profileHref = `/businesses/${business.slug}`;
+  const whatsappLink = business.whatsappUrl ? createWhatsappLink(business.whatsappUrl) : "";
 
   const imageContent = (
     <div className={styles.imageArea}>
@@ -106,9 +108,9 @@ export function BusinessCard({ business, access }: BusinessCardProps) {
               התקשרו
             </Button>
           )}
-          {business.whatsappUrl && (
+          {whatsappLink && (
             <Button
-              href={business.whatsappUrl}
+              href={whatsappLink}
               variant="whatsapp"
               size="compact"
               icon={<WhatsAppIcon size={15} aria-hidden="true" />}

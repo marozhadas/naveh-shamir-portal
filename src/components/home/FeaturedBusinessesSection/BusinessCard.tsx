@@ -6,6 +6,7 @@ import { CategoryTag } from "@/components/ui/CategoryTag";
 import { Button } from "@/components/ui/Button";
 import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 import { colorTokenToCssVar, radiusTokenToCssVar, shadowTokenToCssVar } from "@/styles/token-to-css-variable";
+import { createWhatsappLink } from "@/utils/create-whatsapp-link";
 import { normalizePhoneForTelLink } from "@/utils/normalize-phone-for-tel-link";
 import type { BusinessCardContentSettings, FeaturedBusinessesEditorSettings } from "@/editor/schemas/businesses.schema";
 import styles from "./BusinessCard.module.css";
@@ -37,6 +38,7 @@ type BusinessCardProps = {
 export function BusinessCard({ card, appearance }: BusinessCardProps) {
   const PlaceholderIcon = PLACEHOLDER_ICON[card.category] ?? Utensils;
   const placeholderClass = PLACEHOLDER_CLASS[card.category] ?? styles.default;
+  const whatsappLink = card.whatsappUrl ? createWhatsappLink(card.whatsappUrl) : "";
 
   const cardStyle = {
     // Set as real properties (not custom-property overrides) so they reliably win over
@@ -85,9 +87,9 @@ export function BusinessCard({ card, appearance }: BusinessCardProps) {
               {card.callButtonLabel}
             </Button>
           )}
-          {card.whatsappUrl && (
+          {whatsappLink && (
             <Button
-              href={card.whatsappUrl}
+              href={whatsappLink}
               variant="whatsapp"
               size="compact"
               icon={<WhatsAppIcon size={15} aria-hidden="true" />}
