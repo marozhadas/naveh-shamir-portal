@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 import { VerifiedBusinessBadge } from "@/components/ui/VerifiedBusinessBadge/VerifiedBusinessBadge";
 import { getCategoryLabel } from "@/data/business-categories";
+import { normalizePhoneForTelLink } from "@/utils/normalize-phone-for-tel-link";
 import type { Business } from "@/types/business";
 import type { BusinessListingAccess } from "@/types/business-listing-access";
 import styles from "./BusinessCard.module.css";
@@ -96,7 +97,7 @@ export function BusinessCard({ business, access }: BusinessCardProps) {
         <div className={styles.actions}>
           {business.phone && (
             <Button
-              href={business.phone}
+              href={`tel:${normalizePhoneForTelLink(business.phone)}`}
               variant="secondary"
               size="compact"
               icon={<Phone size={15} aria-hidden="true" />}

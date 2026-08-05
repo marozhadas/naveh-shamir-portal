@@ -517,7 +517,7 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
     setSubmitError(result.message ?? "אירעה שגיאה. נסו שוב.");
   }
 
-  const shortDescCount = `${values.shortDescription.length}/180`;
+  const shortDescCount = `${values.shortDescription.length} תווים (עד 300 תווים)`;
   const fullDescCount = `${values.fullDescription.length} תווים (מינימום 100)`;
 
   const currentStepErrorKeys = (STEP_KEYS[step] ?? []).filter((key) => errors[key]);
@@ -856,11 +856,11 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
 
             <div className={`${styles.field} ${errors.shortDescription ? styles.fieldInvalid : ""}`}>
               <label htmlFor="shortDescription">תיאור קצר *</label>
-              <p className={styles.hintText}>יופיע בכרטיס העסק באינדקס.</p>
-              <input
+              <p className={styles.hintText}>יופיע בכרטיס העסק באינדקס. עד 300 תווים.</p>
+              <textarea
                 id="shortDescription"
-                type="text"
-                maxLength={180}
+                rows={2}
+                maxLength={300}
                 value={values.shortDescription}
                 onChange={(e) => update("shortDescription", e.target.value)}
                 aria-invalid={Boolean(errors.shortDescription)}

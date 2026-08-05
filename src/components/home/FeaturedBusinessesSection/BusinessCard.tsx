@@ -6,6 +6,7 @@ import { CategoryTag } from "@/components/ui/CategoryTag";
 import { Button } from "@/components/ui/Button";
 import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 import { colorTokenToCssVar, radiusTokenToCssVar, shadowTokenToCssVar } from "@/styles/token-to-css-variable";
+import { normalizePhoneForTelLink } from "@/utils/normalize-phone-for-tel-link";
 import type { BusinessCardContentSettings, FeaturedBusinessesEditorSettings } from "@/editor/schemas/businesses.schema";
 import styles from "./BusinessCard.module.css";
 
@@ -75,7 +76,7 @@ export function BusinessCard({ card, appearance }: BusinessCardProps) {
         <div className={styles.actions}>
           {card.phone && (
             <Button
-              href={card.phone}
+              href={`tel:${normalizePhoneForTelLink(card.phone)}`}
               variant={appearance.buttonVariant}
               size="compact"
               icon={<Phone size={15} aria-hidden="true" />}

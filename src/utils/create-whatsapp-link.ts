@@ -1,4 +1,4 @@
-export const DEFAULT_WHATSAPP_MESSAGE = "היי, הגעתי אליכם דרך פורטל נווה שמיר ואשמח לקבל פרטים.";
+export const DEFAULT_WHATSAPP_MESSAGE = "שלום, הגעתי אליך דרך פורטל נווה שמיר, אשמח לשמוע פרטים לגבי..";
 
 /** A wa.me (or api.whatsapp.com) URL only — never accepts an arbitrary scheme. */
 function isSafeWhatsappUrl(url: string): boolean {

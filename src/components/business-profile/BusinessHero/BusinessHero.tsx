@@ -8,6 +8,7 @@ import { ShareButton } from "@/components/business-profile/ShareButton/ShareButt
 import { getCategoryLabel } from "@/data/business-categories";
 import { SITE_CONFIG } from "@/data/config";
 import { createWhatsappLink } from "@/utils/create-whatsapp-link";
+import { normalizePhoneForTelLink } from "@/utils/normalize-phone-for-tel-link";
 import { getBusinessAddressLine, getBusinessContact, getBusinessHeroImage, getBusinessServiceArea } from "@/utils/business-profile";
 import { getBusinessOpenStatus } from "@/utils/get-business-open-status";
 import type { Business } from "@/types/business";
@@ -81,7 +82,7 @@ export function BusinessHero({ business, access }: BusinessHeroProps) {
           )}
           {contact.phone && (
             <Button
-              href={contact.phone}
+              href={`tel:${normalizePhoneForTelLink(contact.phone)}`}
               variant="secondary"
               icon={<Phone size={16} aria-hidden="true" />}
               data-analytics-event="business_phone_click"

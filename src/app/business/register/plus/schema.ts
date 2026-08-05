@@ -102,7 +102,7 @@ export const plusBusinessRegistrationObjectSchema = z.object({
   publicWhatsapp: z.string().trim().refine((value) => !value || PHONE_PATTERN.test(value), { message: "מספר הוואטסאפ אינו תקין" }),
   publicEmail: z.string().trim().refine((value) => !value || EMAIL_PATTERN.test(value), { message: "כתובת המייל הציבורית אינה תקינה" }),
 
-  shortDescription: z.string().trim().min(1, "יש להזין תיאור קצר").max(180, "התיאור הקצר ארוך מדי — עד 180 תווים"),
+  shortDescription: z.string().trim().min(1, "יש להזין תיאור קצר").max(300, "התיאור הקצר ארוך מדי — עד 300 תווים"),
   fullDescription: z.string().trim().min(100, "התיאור המלא קצר מדי — לפחות 100 תווים").max(2000, "התיאור המלא ארוך מדי"),
 
   addressType: z.enum(["physical", "service-area", "both"]),
