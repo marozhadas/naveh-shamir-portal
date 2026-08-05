@@ -296,9 +296,17 @@
   cursor: pointer;
 }
 
+.categoryChip:hover {
+  background: var(--navy-700);
+  color: var(--color-text-inverse);
+  border-color: var(--navy-700);
+}
+
+/* Bug fix: this previously read var(--color-text-on-accent), which resolves to navy-900 — dark
+   text on this chip's navy-900 selected background, making the label invisible. */
 .categoryChip.selected {
   background: var(--navy-900);
-  color: var(--color-text-on-accent);
+  color: var(--color-text-inverse);
   border-color: var(--navy-900);
 }
 
