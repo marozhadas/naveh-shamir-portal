@@ -1,5 +1,217 @@
+.supportText {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-secondary);
+}
+
 .container {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 0 24px var(--space-16);
+  padding: var(--space-6) 24px var(--space-16);
+  display: grid;
+  /* Contact cards (narrower) on the reading-start side, form (wider) taking the rest — DOM order
+     already matches, so this is also what mobile sees stacked (cards first, then the form). */
+  grid-template-columns: minmax(280px, 380px) 1fr;
+  gap: var(--space-8);
+  align-items: start;
+}
+
+.formTitle {
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-bold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-2);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: var(--fs-body-sm);
+  font-weight: var(--fw-demibold);
+  color: var(--color-text-primary);
+}
+
+.field input,
+.field textarea,
+.field select {
+  font-family: var(--font-family-base);
+  font-size: var(--fs-body-sm);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  color: var(--color-text-primary);
+  background: #fff;
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 140px;
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible,
+.field select:focus-visible {
+  outline: 2px solid var(--color-border-strong);
+  outline-offset: 1px;
+}
+
+.fieldHint {
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* Invalid fields never rely on border color alone — the message below plus aria-invalid carry the
+   same information for screen readers and colorblind users. */
+.fieldInvalid input,
+.fieldInvalid textarea,
+.fieldInvalid select {
+  border-color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+
+.fieldErrorMessage {
+  font-size: var(--fs-caption);
+  color: var(--color-danger);
+  margin: 0;
+}
+
+.consentField {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 6px var(--space-2);
+}
+
+.consentField label {
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-primary);
+  line-height: var(--lh-body);
+}
+
+.consentField input {
+  margin-top: 3px;
+}
+
+.consentField .fieldErrorMessage {
+  grid-column: 2;
+}
+
+/* Visually hidden, not display:none — some bots skip fields display/visibility hides. */
+.honeypot {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.error {
+  font-size: var(--fs-body-sm);
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  margin: 0;
+}
+
+.summary {
+  border: 1px solid var(--color-danger);
+  background: var(--color-danger-bg);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.summaryTitle {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.summaryDescription {
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.summaryList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summaryList a {
+  font-size: var(--fs-body-sm);
+  font-weight: var(--fw-demibold);
+  color: var(--color-danger);
+  text-decoration: underline;
+}
+
+.successBox {
+  background: var(--color-success-bg);
+  border: 1px solid var(--green-100);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  grid-column: 1 / -1;
+}
+
+.successTitle {
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-h3);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-2);
+}
+
+.successDetail {
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: var(--lh-body);
+}
+
+@media (max-width: 900px) {
+  .container {
+    /* Cards then form, top to bottom — this is exactly DOM order, so no `order` override needed. */
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+
+  .form {
+    padding: var(--space-4);
+  }
 }

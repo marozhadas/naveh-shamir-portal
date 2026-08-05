@@ -5,6 +5,7 @@ import { ConnectedMovableSections } from "@/editor/connected/ConnectedMovableSec
 import { EditableRegion } from "@/editor/components/EditableRegion/EditableRegion";
 import { MarketplaceSection } from "@/components/home/MarketplaceSection/MarketplaceSection";
 import { EssentialNumbersHomeSection } from "@/components/home/EssentialNumbersHomeSection/EssentialNumbersHomeSection";
+import { ContactCtaSection } from "@/components/home/ContactCtaSection/ContactCtaSection";
 import { listHeroGalleryImages } from "@/repositories/hero-gallery-service";
 import { getPublishedEvents } from "@/repositories/community-events-service";
 import { pickHomepageTeaserEvents } from "@/utils/map-community-events-to-teaser-cards";
@@ -57,6 +58,7 @@ export default async function Home() {
         <ConnectedMovableSections upcomingEvents={upcomingEvents} featuredBusinesses={featuredBusinesses} />
         <MarketplaceSection listings={marketplaceTeaser} />
         <EssentialNumbersHomeSection entries={essentialNumbersTeaser} />
+        <ContactCtaSection />
       </main>
       <EditableRegion id="home.footer" label="פוטר">
         <ConnectedFooter />

@@ -8,7 +8,12 @@ export type AnalyticsEventName =
   | "essential-number-whatsapp-click"
   | "essential-number-website-click"
   | "essential-number-search"
-  | "essential-number-filter";
+  | "essential-number-filter"
+  | "contact-whatsapp-click"
+  | "contact-email-click"
+  | "contact-form-submit"
+  | "contact-form-success"
+  | "contact-form-error";
 
 export type AnalyticsEventRow = {
   id: string;

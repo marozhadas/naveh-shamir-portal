@@ -3,11 +3,12 @@ import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
 import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { PageHeader } from "@/components/shared/PageHeader/PageHeader";
-import { PageComingSoon } from "@/components/shared/PageComingSoon/PageComingSoon";
+import { ContactMethodCards } from "@/components/contact/ContactMethodCards/ContactMethodCards";
+import { ContactForm } from "./ContactForm";
 import styles from "./contact.module.css";
 
-const PAGE_TITLE = "צור קשר עם פורטל נווה שמיר | הפורטל של השכונה";
-const PAGE_DESCRIPTION = "יש לכם רעיון, תיקון, שאלה או הצעה לפורטל? נשמח לשמוע.";
+const PAGE_TITLE = "צור קשר | פורטל נווה שמיר";
+const PAGE_DESCRIPTION = "יצירת קשר עם פורטל נווה שמיר באמצעות WhatsApp, מייל או טופס פנייה.";
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,
@@ -24,9 +25,19 @@ export default function ContactPage() {
       </a>
       <ConnectedHeader />
       <main id="main-content">
-        <PageHeader breadcrumbs={[{ label: "בית", href: "/" }, { label: "צור קשר" }]} title="צור קשר" description={PAGE_DESCRIPTION} />
+        <PageHeader
+          breadcrumbs={[{ label: "בית", href: "/" }, { label: "צור קשר" }]}
+          title="צרו איתנו קשר"
+          description="יש לכם שאלה, עדכון או בקשה? אפשר לפנות אלינו ב־WhatsApp, במייל או דרך הטופס."
+        />
+        <p className={styles.supportText}>הפניות מתקבלות ב־WhatsApp ובמייל בלבד.</p>
         <div className={styles.container}>
-          <PageComingSoon title="הטופס בבנייה" description="בקרוב תוכלו לשלוח פנייה ישירות דרך העמוד הזה." />
+          <div className={styles.cardsColumn}>
+            <ContactMethodCards />
+          </div>
+          <div className={styles.formColumn}>
+            <ContactForm />
+          </div>
         </div>
       </main>
       <Footer settings={defaultFooterSettings} />

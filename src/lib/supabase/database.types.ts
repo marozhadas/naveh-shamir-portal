@@ -11,6 +11,7 @@ import type { AnalyticsEventRow } from "@/types/analytics";
 import type { MarketplaceListingRow } from "@/types/marketplace";
 import type { CommunityEventRow } from "@/types/community-event";
 import type { EssentialNumberRow } from "@/types/essential-number";
+import type { ContactMessageRow } from "@/types/contact-message";
 
 export type BusinessEventLogRow = {
   id: string;
@@ -207,6 +208,17 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<EssentialNumberRow>;
+        Relationships: [];
+      };
+      contact_messages: {
+        Row: ContactMessageRow;
+        Insert: Omit<ContactMessageRow, "id" | "created_at" | "updated_at" | "status"> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          status?: ContactMessageRow["status"];
+        };
+        Update: Partial<ContactMessageRow>;
         Relationships: [];
       };
     };

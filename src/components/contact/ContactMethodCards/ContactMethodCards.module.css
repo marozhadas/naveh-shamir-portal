@@ -1,0 +1,62 @@
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+}
+
+.iconWrap {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.whatsappIconWrap {
+  background: var(--green-100);
+  color: #25d366;
+}
+
+.emailIconWrap {
+  background: var(--blue-100);
+  color: var(--navy-900);
+}
+
+.title {
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.description {
+  font-size: var(--fs-body-sm);
+  color: var(--slate-600);
+  margin: 0;
+}
+
+.value {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-demibold);
+  color: var(--color-text-primary);
+  text-align: end;
+  margin: 0 0 var(--space-1);
+}
+
+@media (max-width: 640px) {
+  .card {
+    padding: var(--space-4);
+  }
+}

@@ -98,4 +98,6 @@ export type AdminAuditAction =
   | "essential-number-archived"
   | "essential-number-reordered"
   | "essential-number-duplicated"
-  | "essential-number-deleted";
+  | "essential-number-deleted"
+  | "contact-message-status-updated"
+  | "contact-message-deleted";

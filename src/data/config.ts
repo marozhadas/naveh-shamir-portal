@@ -6,6 +6,14 @@ export const SITE_CONFIG = {
   siteUrl: "https://naveh-shamir-portal.example",
 };
 
+/** The portal's own contact details (/contact page) — not to be confused with EMERGENCY_NUMBERS or the neighborhood WhatsApp group above. */
+export const CONTACT_INFO = {
+  whatsappDisplay: "054-521-8644",
+  whatsappUrl: "https://wa.me/972545218644",
+  email: "marozhadas@gmail.com",
+  emailUrl: "mailto:marozhadas@gmail.com",
+};
+
 export type EmergencyNumber = {
   id: string;
   label: string;

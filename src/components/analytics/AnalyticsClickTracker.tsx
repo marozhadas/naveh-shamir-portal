@@ -10,6 +10,8 @@ const TRACKED_EVENT_NAMES: AnalyticsEventName[] = [
   "essential-number-phone-click",
   "essential-number-whatsapp-click",
   "essential-number-website-click",
+  "contact-whatsapp-click",
+  "contact-email-click",
 ];
 
 /**
