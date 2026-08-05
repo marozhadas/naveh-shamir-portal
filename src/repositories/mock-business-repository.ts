@@ -52,10 +52,13 @@ async function getSupabaseBusinessForOwner(registrationId: string, ownerId: stri
 export class MockBusinessRepository implements BusinessRepository {
   private readonly store: Business[] = ALL_BUSINESSES;
 
+  /**
+   * Public-facing — deliberately does NOT read `this.store` (the static demo/seed businesses).
+   * That store still backs the owner-dashboard/mock-trial simulation below (getDraftById,
+   * getByOwnerId, ...), but real visitors must only ever see admin-approved Supabase
+   * registrations, never invented demo listings.
+   */
   async getPublishedBySlug(slug: string): Promise<Business | null> {
-    const business = this.store.find((entry) => entry.slug === slug);
-    if (business) return business.status === "published" ? business : null;
-
     const approved = await getApprovedSupabaseBusinesses();
     return approved.find((entry) => entry.slug === slug) ?? null;
   }
@@ -90,14 +93,15 @@ export class MockBusinessRepository implements BusinessRepository {
     return business;
   }
 
+  /** Public-facing (see getPublishedBySlug's note) — never suggests a demo business as "related" to a real one. */
   async getRelated(business: Business, limit: number): Promise<Business[]> {
     const approved = await getApprovedSupabaseBusinesses();
-    return getRelatedBusinesses(business, [...this.store, ...approved], limit);
+    return getRelatedBusinesses(business, approved, limit);
   }
 
+  /** Public-facing (see getPublishedBySlug's note) — the archive (/businesses) only ever lists real, admin-approved businesses. */
   async getAllPublished(): Promise<Business[]> {
-    const approved = await getApprovedSupabaseBusinesses();
-    return [...this.store.filter((entry) => entry.status === "published"), ...approved];
+    return getApprovedSupabaseBusinesses();
   }
 
   /**
