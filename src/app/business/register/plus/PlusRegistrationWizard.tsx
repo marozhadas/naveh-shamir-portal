@@ -6,6 +6,17 @@ import { Button } from "@/components/ui/Button";
 import { getVisibleBusinessCategories } from "@/data/business-categories";
 import { uploadBusinessMediaAction, submitPlusRegistrationAction, submitPremiumRegistrationAction } from "./actions";
 import { BUSINESS_TYPE_OPTIONS, WEEKDAYS, WEEKDAY_LABEL } from "./schema";
+import {
+  validateStepOne,
+  validateStepTwo,
+  validateStepThree,
+  validateStepFour,
+  validateStepFive,
+  getFirstInvalidStep,
+  stepHasError,
+  errorKeyToElementId,
+  type WizardErrors,
+} from "./validation";
 import type { PlusBusinessRegistrationInput } from "@/types/business-plus-registration";
 import styles from "./plus-wizard.module.css";
 
@@ -14,8 +25,6 @@ const DRAFT_KEY_BY_PLAN = {
   plus: "naveh-shamir-plus-registration-draft-v1",
   premium: "naveh-shamir-premium-registration-draft-v1",
 } as const;
-const PHONE_PATTERN = /^\+?[0-9-\s]{6,}$/;
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const STEP_LABELS = ["פרטי העסק", "תמונות ותיאור", "שירותים", "שעות ופרטי קשר", "בדיקה ושליחה"];
 
@@ -59,6 +68,45 @@ type WizardValues = {
   dashboardAccessConsent: boolean;
   honeypot: string;
 };
+
+const FIELD_LABEL: Record<string, string> = {
+  businessName: "שם העסק",
+  categoryIds: "קטגוריה",
+  businessType: "סוג העסק",
+  contactName: "שם איש/אשת קשר",
+  contactPhone: "טלפון",
+  contactEmail: "אימייל",
+  address: "כתובת",
+  serviceArea: "אזור שירות",
+  coverImage: "תמונה ראשית",
+  gallery: "גלריית תמונות",
+  shortDescription: "תיאור קצר",
+  fullDescription: "תיאור מלא",
+  services: "שירותים",
+  publicPhone: "טלפון ציבורי",
+  publicWhatsapp: "WhatsApp ציבורי",
+  publicEmail: "אימייל עסקי",
+  websiteUrl: "אתר",
+  instagramUrl: "Instagram",
+  facebookUrl: "Facebook",
+  tiktokUrl: "TikTok",
+  publicationConsent: "אישור פרסום הפרטים",
+  termsAccepted: "אישור תנאי השימוש",
+  trialConsent: "אישור חודש הניסיון",
+  dashboardAccessConsent: "אישור גישה לאזור האישי",
+};
+
+/** Human label for an error key shown in a step's error summary — services/hours get a dynamic, position-aware label instead of a static lookup. */
+function labelForErrorKey(key: string): string {
+  if (key.startsWith("service-title-")) return `שירות ${Number(key.split("-")[2]) + 1} — שם השירות`;
+  if (key.startsWith("service-desc-")) return `שירות ${Number(key.split("-")[2]) + 1} — תיאור`;
+  if (key.startsWith("service-price-")) return `שירות ${Number(key.split("-")[2]) + 1} — מחיר`;
+  if (key.startsWith("hours_")) {
+    const day = key.slice("hours_".length) as (typeof WEEKDAYS)[number];
+    return `שעות פעילות — יום ${WEEKDAY_LABEL[day]}`;
+  }
+  return FIELD_LABEL[key] ?? key;
+}
 
 function createEmptyHours(): HoursState {
   return WEEKDAYS.reduce((acc, day) => {
@@ -104,6 +152,30 @@ function createEmptyValues(): WizardValues {
   };
 }
 
+/** Removes every error key that belongs to `step` from `errors` — used before merging in that step's freshly-computed errors, so other steps' stored errors are left untouched. */
+function stripStepErrors(errors: WizardErrors, step: number, stepKeys: string[]): WizardErrors {
+  const stepKeySet = new Set(stepKeys);
+  const next: WizardErrors = {};
+  for (const [key, value] of Object.entries(errors)) {
+    if (!stepKeySet.has(key)) next[key] = value;
+  }
+  return next;
+}
+
+function omitKey(errors: WizardErrors, key: string): WizardErrors {
+  const next = { ...errors };
+  delete next[key];
+  return next;
+}
+
+function focusAndReveal(elementId: string) {
+  const node = document.getElementById(elementId);
+  if (!node) return;
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  node.focus();
+  node.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "center" });
+}
+
 type PlusRegistrationWizardProps = {
   planId: "plus" | "premium";
   priceLabel: string;
@@ -115,7 +187,8 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
   const registrationIdRef = useRef<string>(crypto.randomUUID());
   const [step, setStep] = useState(1);
   const [values, setValues] = useState<WizardValues>(createEmptyValues);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<WizardErrors>({});
+  const [attemptedSteps, setAttemptedSteps] = useState<Set<number>>(new Set());
   const [draftRestored, setDraftRestored] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [uploadingGallery, setUploadingGallery] = useState(false);
@@ -152,10 +225,6 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
     return () => clearTimeout(timeout);
   }, [step, values, draftKey]);
 
-  function update<K extends keyof WizardValues>(key: K, value: WizardValues[K]) {
-    setValues((current) => ({ ...current, [key]: value }));
-  }
-
   function clearDraft() {
     try {
       sessionStorage.removeItem(draftKey);
@@ -164,83 +233,84 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
     }
   }
 
-  // ---- Step 1 validation ----
-  function validateStep1(): Record<string, string> {
-    const next: Record<string, string> = {};
-    if (!values.businessName.trim()) next.businessName = "יש להזין שם עסק";
-    if (values.categoryIds.length === 0) next.categoryIds = "יש לבחור לפחות קטגוריה אחת";
-    if (!values.businessType) next.businessType = "יש לבחור סוג עסק";
-    if (!values.contactName.trim()) next.contactName = "יש להזין שם איש/אשת קשר";
-    if (!PHONE_PATTERN.test(values.contactPhone.trim())) next.contactPhone = "מספר הטלפון אינו תקין";
-    if (!EMAIL_PATTERN.test(values.contactEmail.trim())) next.contactEmail = "כתובת המייל אינה תקינה";
-    if (values.addressType !== "service-area" && !values.address.trim()) next.address = "יש להזין כתובת";
-    if (values.addressType !== "physical" && !values.serviceArea.trim()) next.serviceArea = "יש להזין אזור שירות";
-    return next;
-  }
+  // ---- Per-step validation (single source of truth: the Zod schemas in ./schema, via ./validation) ----
 
-  // ---- Step 2 validation ----
-  function validateStep2(): Record<string, string> {
-    const next: Record<string, string> = {};
-    if (!values.coverImage) next.coverImage = "יש להעלות תמונה ראשית";
-    if (!values.shortDescription.trim()) next.shortDescription = "יש להזין תיאור קצר";
-    else if (values.shortDescription.length > 180) next.shortDescription = "התיאור הקצר ארוך מדי — עד 180 תווים";
-    if (values.fullDescription.trim().length < 100) next.fullDescription = "התיאור המלא קצר מדי — לפחות 100 תווים";
-    return next;
-  }
-
-  // ---- Step 3 validation ----
-  function validateStep3(): Record<string, string> {
-    const next: Record<string, string> = {};
-    const realServices = values.services.filter((s) => s.title.trim());
-    if (realServices.length === 0) next.services = "יש להוסיף לפחות שירות אחד";
-    return next;
-  }
-
-  // ---- Step 4 validation ----
-  function validateStep4(): Record<string, string> {
-    const next: Record<string, string> = {};
-    // publicPhone defaults from contactPhone (step 1) when left empty — only flag it if neither is a valid phone.
-    const effectivePhone = values.publicPhone.trim() || values.contactPhone.trim();
-    if (!PHONE_PATTERN.test(effectivePhone)) next.publicPhone = "מספר הטלפון הציבורי אינו תקין";
-    if (!values.whatsappSameAsPublicPhone && values.publicWhatsapp && !PHONE_PATTERN.test(values.publicWhatsapp.trim()))
-      next.publicWhatsapp = "מספר הוואטסאפ אינו תקין";
-    if (values.publicEmail && !EMAIL_PATTERN.test(values.publicEmail.trim())) next.publicEmail = "כתובת המייל אינה תקינה";
-    return next;
-  }
-
-  function validateStep5(): Record<string, string> {
-    const next: Record<string, string> = {};
-    if (!values.publicationConsent) next.publicationConsent = "יש לאשר את פרסום הפרטים";
-    if (!values.termsAccepted) next.termsAccepted = "יש לאשר את תנאי השימוש";
-    if (planId === "premium") {
-      if (!values.dashboardAccessConsent) next.dashboardAccessConsent = "יש לאשר קבלת גישה מאובטחת לאזור האישי במייל";
-    } else if (!values.trialConsent) {
-      next.trialConsent = "יש לאשר את הפעלת חודש הניסיון";
+  function computeStepErrors(stepNumber: number, source: WizardValues): WizardErrors {
+    switch (stepNumber) {
+      case 1:
+        return validateStepOne(source);
+      case 2:
+        return validateStepTwo(source);
+      case 3:
+        return validateStepThree(source.services);
+      case 4: {
+        const effectiveWhatsapp = source.whatsappSameAsPublicPhone ? "" : source.publicWhatsapp;
+        return validateStepFour({ ...source, publicWhatsapp: effectiveWhatsapp });
+      }
+      case 5:
+        return validateStepFive(source, planId);
+      default:
+        return {};
     }
-    return next;
   }
 
-  function validateCurrentStep(): boolean {
-    const validators = [validateStep1, validateStep2, validateStep3, validateStep4, validateStep5];
-    const next = validators[step - 1]();
-    setErrors(next);
-    return Object.keys(next).length === 0;
+  const STEP_KEYS: Record<number, string[]> = useMemo(
+    () => ({
+      1: ["businessName", "categoryIds", "businessType", "contactName", "contactPhone", "contactEmail", "address", "serviceArea"],
+      2: ["coverImage", "gallery", "shortDescription", "fullDescription"],
+      3: ["services", ...values.services.flatMap((_, i) => [`service-title-${i}`, `service-desc-${i}`, `service-price-${i}`])],
+      4: ["publicPhone", "publicWhatsapp", "publicEmail", "websiteUrl", "instagramUrl", "facebookUrl", "tiktokUrl", ...WEEKDAYS.map((d) => `hours_${d}`)],
+      5: ["publicationConsent", "termsAccepted", "trialConsent", "dashboardAccessConsent"],
+    }),
+    [values.services],
+  );
+
+  /** Runs the given step's validation, merges its errors into the shared error state (only replacing that step's own keys — other steps' stored errors are untouched), and returns whether it passed. */
+  function runAndMergeStepValidation(stepNumber: number, source: WizardValues): boolean {
+    const stepErrors = computeStepErrors(stepNumber, source);
+    setErrors((current) => ({ ...stripStepErrors(current, stepNumber, STEP_KEYS[stepNumber] ?? []), ...stepErrors }));
+    return Object.keys(stepErrors).length === 0;
+  }
+
+  function firstInvalidFieldId(stepErrors: WizardErrors, stepNumber: number): string | null {
+    const order = STEP_KEYS[stepNumber] ?? [];
+    const firstKey = order.find((key) => stepErrors[key]);
+    return firstKey ? errorKeyToElementId(firstKey) : null;
+  }
+
+  function update<K extends keyof WizardValues>(key: K, value: WizardValues[K]) {
+    setValues((current) => {
+      const next = { ...current, [key]: value };
+      if (attemptedSteps.has(step)) {
+        // Live re-validation after a first failed attempt: fixed fields lose their error immediately,
+        // without waiting for another "המשך" click.
+        queueMicrotask(() => runAndMergeStepValidation(step, next));
+      }
+      return next;
+    });
   }
 
   function goNext() {
-    if (!validateCurrentStep()) return;
+    setAttemptedSteps((current) => new Set(current).add(step));
+    const passed = runAndMergeStepValidation(step, values);
+    if (!passed) {
+      const stepErrors = computeStepErrors(step, values);
+      const firstId = firstInvalidFieldId(stepErrors, step);
+      if (firstId) focusAndReveal(firstId);
+      return;
+    }
     setStep((s) => Math.min(5, s + 1));
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    focusAndReveal("wizard-step-heading");
   }
 
   function goToStep(target: number) {
     setStep(target);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    focusAndReveal("wizard-step-heading");
   }
 
   function goBack() {
     setStep((s) => Math.max(1, s - 1));
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    focusAndReveal("wizard-step-heading");
   }
 
   async function handleCoverUpload(file: File) {
@@ -253,14 +323,20 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
       setErrors((e) => ({ ...e, coverImage: result.message }));
       return;
     }
+    setErrors((e) => omitKey(e, "coverImage"));
     update("coverImage", { url: result.url, alt: values.businessName || "תמונת העסק" });
   }
 
   async function handleGalleryUpload(files: FileList) {
     if (values.gallery.length >= 7) return;
-    setUploadingGallery(true);
     const remaining = 7 - values.gallery.length;
     const toUpload = Array.from(files).slice(0, remaining);
+    if (files.length > remaining) {
+      setErrors((e) => ({ ...e, gallery: `ניתן להעלות עד 8 תמונות בסך הכול (כולל התמונה הראשית) — הועלו רק ${remaining} התמונות הראשונות שבחרתם.` }));
+    } else {
+      setErrors((e) => omitKey(e, "gallery"));
+    }
+    setUploadingGallery(true);
     for (const file of toUpload) {
       const formData = new FormData();
       formData.set("file", file);
@@ -292,10 +368,11 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
   }
 
   function updateService(index: number, patch: Partial<ServiceDraft>) {
-    setValues((current) => ({
-      ...current,
-      services: current.services.map((s, i) => (i === index ? { ...s, ...patch } : s)),
-    }));
+    setValues((current) => {
+      const next = { ...current, services: current.services.map((s, i) => (i === index ? { ...s, ...patch } : s)) };
+      if (attemptedSteps.has(step)) queueMicrotask(() => runAndMergeStepValidation(step, next));
+      return next;
+    });
   }
 
   function addService() {
@@ -304,7 +381,11 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
   }
 
   function removeService(index: number) {
-    setValues((current) => ({ ...current, services: current.services.filter((_, i) => i !== index) }));
+    setValues((current) => {
+      const next = { ...current, services: current.services.filter((_, i) => i !== index) };
+      if (attemptedSteps.has(step)) queueMicrotask(() => runAndMergeStepValidation(step, next));
+      return next;
+    });
   }
 
   function moveService(index: number, direction: -1 | 1) {
@@ -318,15 +399,21 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
   }
 
   function updateDayHours(day: (typeof WEEKDAYS)[number], patch: Partial<DayHours>) {
-    setValues((current) => ({ ...current, openingHours: { ...current.openingHours, [day]: { ...current.openingHours[day], ...patch } } }));
+    setValues((current) => {
+      const next = { ...current, openingHours: { ...current.openingHours, [day]: { ...current.openingHours[day], ...patch } } };
+      if (attemptedSteps.has(step)) queueMicrotask(() => runAndMergeStepValidation(step, next));
+      return next;
+    });
   }
 
   function copyHoursToAllDays(day: (typeof WEEKDAYS)[number]) {
     setValues((current) => {
       const source = current.openingHours[day];
-      const next = { ...current.openingHours };
-      for (const d of WEEKDAYS) next[d] = { closed: source.closed, intervals: source.intervals.map((i) => ({ ...i })) };
-      return { ...current, openingHours: next };
+      const nextHours = { ...current.openingHours };
+      for (const d of WEEKDAYS) nextHours[d] = { closed: source.closed, intervals: source.intervals.map((i) => ({ ...i })) };
+      const next = { ...current, openingHours: nextHours };
+      if (attemptedSteps.has(step)) queueMicrotask(() => runAndMergeStepValidation(step, next));
+      return next;
     });
   }
 
@@ -334,7 +421,31 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
   const effectivePublicWhatsapp = values.whatsappSameAsPublicPhone ? effectivePublicPhone : values.publicWhatsapp;
 
   async function handleSubmit() {
-    if (!validateCurrentStep()) return;
+    // Full-form check across ALL steps before ever touching the server — this is what closes the
+    // original bug: previously only the current (5th) step was validated here, so an invalid field
+    // left behind in an earlier step surfaced only as a generic, un-locatable server error.
+    setAttemptedSteps(new Set([1, 2, 3, 4, 5]));
+    const allErrors: WizardErrors = {
+      ...computeStepErrors(1, values),
+      ...computeStepErrors(2, values),
+      ...computeStepErrors(3, values),
+      ...computeStepErrors(4, values),
+      ...computeStepErrors(5, values),
+    };
+    setErrors(allErrors);
+    const firstInvalidStep = getFirstInvalidStep(allErrors);
+    if (firstInvalidStep !== null) {
+      setStep(firstInvalidStep);
+      const stepErrors = computeStepErrors(firstInvalidStep, values);
+      const firstId = firstInvalidFieldId(stepErrors, firstInvalidStep);
+      // Wait for the step switch to render before focusing its field.
+      setTimeout(() => {
+        if (firstId) focusAndReveal(firstId);
+        else focusAndReveal("wizard-step-heading");
+      }, 0);
+      return;
+    }
+
     setSubmitting(true);
     setSubmitError(null);
 
@@ -371,9 +482,10 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
         facebookUrl: values.facebookUrl.trim() || undefined,
         tiktokUrl: values.tiktokUrl.trim() || undefined,
       },
-      promotion: values.promotionEnabled && values.promotionTitle.trim()
-        ? { title: values.promotionTitle.trim(), description: values.promotionDescription.trim() || undefined, validUntil: values.promotionValidUntil || undefined }
-        : null,
+      promotion:
+        values.promotionEnabled && values.promotionTitle.trim()
+          ? { title: values.promotionTitle.trim(), description: values.promotionDescription.trim() || undefined, validUntil: values.promotionValidUntil || undefined }
+          : null,
       publicationConsent: values.publicationConsent,
       termsAccepted: values.termsAccepted,
       trialConsent: values.trialConsent,
@@ -390,8 +502,16 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
       return;
     }
     if (result.status === "validation-error") {
-      setErrors((e) => ({ ...e, ...Object.fromEntries(Object.entries(result.fieldErrors ?? {}).map(([k, v]) => [k, v[0]])) }));
+      // Server rejected something the client didn't catch (defense in depth) — never surface this as
+      // a dangling generic message: map every offending field back to its owning step and jump there.
+      const serverErrors = Object.fromEntries(Object.entries(result.fieldErrors ?? {}).map(([k, v]) => [k, v[0]]));
+      setErrors((e) => ({ ...e, ...serverErrors }));
       setSubmitError(result.message ?? null);
+      const serverInvalidStep = getFirstInvalidStep(serverErrors);
+      if (serverInvalidStep !== null) {
+        setStep(serverInvalidStep);
+        setTimeout(() => focusAndReveal("wizard-step-heading"), 0);
+      }
       return;
     }
     setSubmitError(result.message ?? "אירעה שגיאה. נסו שוב.");
@@ -400,6 +520,8 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
   const shortDescCount = `${values.shortDescription.length}/180`;
   const fullDescCount = `${values.fullDescription.length} תווים (מינימום 100)`;
 
+  const currentStepErrorKeys = (STEP_KEYS[step] ?? []).filter((key) => errors[key]);
+
   return (
     <div>
       {draftRestored && step === 1 && <p className={styles.draftNotice}>שחזרנו את הפרטים שמילאתם</p>}
@@ -407,11 +529,17 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
       <ol className={styles.progress}>
         {STEP_LABELS.map((label, index) => {
           const stepNumber = index + 1;
+          const hasError = stepHasError(errors, stepNumber);
+          const stateClass = hasError ? styles.error : stepNumber === step ? styles.active : stepNumber < step ? styles.done : "";
           return (
-            <li key={label} className={`${styles.progressStep} ${stepNumber === step ? styles.active : ""} ${stepNumber < step ? styles.done : ""}`}>
+            <li key={label} className={`${styles.progressStep} ${stateClass}`}>
               <div className={styles.progressBar} />
               <span className={styles.progressLabel}>
-                {stepNumber}. {label}
+                <span className={styles.progressStepIcon} aria-hidden="true">
+                  {hasError ? "!" : stepNumber < step ? "✓" : stepNumber}
+                </span>
+                {label}
+                <span className="sr-only">{hasError ? " — יש שגיאות בשלב זה" : stepNumber < step ? " — הושלם" : ""}</span>
               </span>
             </li>
           );
@@ -424,17 +552,34 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
         </p>
       )}
 
-      {Object.keys(errors).length > 0 && (
+      {currentStepErrorKeys.length > 0 && (
         <div className={styles.summary} role="alert" aria-live="assertive">
           <p className={styles.summaryTitle}>יש כמה פרטים שצריך לתקן</p>
           <p className={styles.summaryDescription}>כל מה שמילאתם נשמר. עברו על השדות המסומנים והשלימו את החסר.</p>
+          <ul className={styles.summaryList}>
+            {currentStepErrorKeys.map((key) => (
+              <li key={key}>
+                <a
+                  href={`#${errorKeyToElementId(key)}`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    focusAndReveal(errorKeyToElementId(key));
+                  }}
+                >
+                  {labelForErrorKey(key)}
+                </a>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
       <div className={styles.stepCard}>
         {step === 1 && (
           <>
-            <h2 className={styles.stepTitle}>ספרו לנו על העסק</h2>
+            <h2 id="wizard-step-heading" tabIndex={-1} className={styles.stepTitle}>
+              ספרו לנו על העסק
+            </h2>
 
             <div className={`${styles.field} ${errors.businessName ? styles.fieldInvalid : ""}`}>
               <label htmlFor="businessName">שם העסק *</label>
@@ -455,7 +600,9 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
             </div>
 
             <div className={styles.field}>
-              <label id="category-label">קטגוריה *</label>
+              <label id="category-label" tabIndex={-1}>
+                קטגוריה *
+              </label>
               <div className={styles.categoryGrid} role="group" aria-labelledby="category-label">
                 {CATEGORIES.map((category) => {
                   const selected = values.categoryIds.includes(category.id);
@@ -478,7 +625,7 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
                 })}
               </div>
               {errors.categoryIds && (
-                <p className={styles.fieldErrorMessage} role="alert">
+                <p id="categoryIds-error" className={styles.fieldErrorMessage} role="alert">
                   {errors.categoryIds}
                 </p>
               )}
@@ -491,6 +638,7 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
                 value={values.businessType}
                 onChange={(e) => update("businessType", e.target.value)}
                 aria-invalid={Boolean(errors.businessType)}
+                aria-describedby={errors.businessType ? "businessType-error" : undefined}
               >
                 <option value="" disabled>
                   בחרו סוג עסק
@@ -502,7 +650,7 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
                 ))}
               </select>
               {errors.businessType && (
-                <p className={styles.fieldErrorMessage} role="alert">
+                <p id="businessType-error" className={styles.fieldErrorMessage} role="alert">
                   {errors.businessType}
                 </p>
               )}
@@ -516,10 +664,11 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
                 value={values.contactName}
                 onChange={(e) => update("contactName", e.target.value)}
                 aria-invalid={Boolean(errors.contactName)}
+                aria-describedby={errors.contactName ? "contactName-error" : undefined}
               />
               <p className={styles.hintText}>המידע מיועד לניהול ההרשמה ולא בהכרח יוצג באתר.</p>
               {errors.contactName && (
-                <p className={styles.fieldErrorMessage} role="alert">
+                <p id="contactName-error" className={styles.fieldErrorMessage} role="alert">
                   {errors.contactName}
                 </p>
               )}
@@ -536,9 +685,10 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
                   value={values.contactPhone}
                   onChange={(e) => update("contactPhone", e.target.value)}
                   aria-invalid={Boolean(errors.contactPhone)}
+                  aria-describedby={errors.contactPhone ? "contactPhone-error" : undefined}
                 />
                 {errors.contactPhone && (
-                  <p className={styles.fieldErrorMessage} role="alert">
+                  <p id="contactPhone-error" className={styles.fieldErrorMessage} role="alert">
                     {errors.contactPhone}
                   </p>
                 )}
@@ -552,10 +702,11 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
                   value={values.contactEmail}
                   onChange={(e) => update("contactEmail", e.target.value)}
                   aria-invalid={Boolean(errors.contactEmail)}
+                  aria-describedby={errors.contactEmail ? "contactEmail-error" : undefined}
                 />
                 <p className={styles.hintText}>ישמש לעדכונים בנוגע להרשמה ולמנוי.</p>
                 {errors.contactEmail && (
-                  <p className={styles.fieldErrorMessage} role="alert">
+                  <p id="contactEmail-error" className={styles.fieldErrorMessage} role="alert">
                     {errors.contactEmail}
                   </p>
                 )}
@@ -578,9 +729,16 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
             {values.addressType !== "service-area" && (
               <div className={`${styles.field} ${errors.address ? styles.fieldInvalid : ""}`}>
                 <label htmlFor="address">כתובת</label>
-                <input id="address" type="text" value={values.address} onChange={(e) => update("address", e.target.value)} />
+                <input
+                  id="address"
+                  type="text"
+                  value={values.address}
+                  onChange={(e) => update("address", e.target.value)}
+                  aria-invalid={Boolean(errors.address)}
+                  aria-describedby={errors.address ? "address-error" : undefined}
+                />
                 {errors.address && (
-                  <p className={styles.fieldErrorMessage} role="alert">
+                  <p id="address-error" className={styles.fieldErrorMessage} role="alert">
                     {errors.address}
                   </p>
                 )}
@@ -589,9 +747,16 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
             {values.addressType !== "physical" && (
               <div className={`${styles.field} ${errors.serviceArea ? styles.fieldInvalid : ""}`}>
                 <label htmlFor="serviceArea">אזור שירות</label>
-                <input id="serviceArea" type="text" value={values.serviceArea} onChange={(e) => update("serviceArea", e.target.value)} />
+                <input
+                  id="serviceArea"
+                  type="text"
+                  value={values.serviceArea}
+                  onChange={(e) => update("serviceArea", e.target.value)}
+                  aria-invalid={Boolean(errors.serviceArea)}
+                  aria-describedby={errors.serviceArea ? "serviceArea-error" : undefined}
+                />
                 {errors.serviceArea && (
-                  <p className={styles.fieldErrorMessage} role="alert">
+                  <p id="serviceArea-error" className={styles.fieldErrorMessage} role="alert">
                     {errors.serviceArea}
                   </p>
                 )}
@@ -602,10 +767,12 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
 
         {step === 2 && (
           <>
-            <h2 className={styles.stepTitle}>בואו נראה ללקוחות מה מיוחד בעסק</h2>
+            <h2 id="wizard-step-heading" tabIndex={-1} className={styles.stepTitle}>
+              בואו נראה ללקוחות מה מיוחד בעסק
+            </h2>
 
             <div className={`${styles.imageUpload} ${errors.coverImage ? styles.fieldInvalid : ""}`}>
-              <label>תמונה ראשית *</label>
+              <label id="coverImage-label">תמונה ראשית *</label>
               <p className={styles.hintText}>זו התמונה המרכזית שתופיע בכרטיס העסק ובעמוד העסק. יחס מומלץ 16:9. JPG, PNG או WebP, עד 5MB.</p>
               {values.coverImage ? (
                 <div className={styles.imagePreviewGrid}>
@@ -618,9 +785,12 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
                 </div>
               ) : (
                 <input
+                  id="coverImage"
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   aria-label="העלאת תמונה ראשית"
+                  aria-invalid={Boolean(errors.coverImage)}
+                  aria-describedby={errors.coverImage ? "coverImage-error" : undefined}
                   disabled={uploadingCover}
                   onChange={(e) => {
                     const file = e.target.files?.[0];
@@ -630,14 +800,14 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
               )}
               {uploadingCover && <p className={styles.hintText}>מעלה תמונה…</p>}
               {errors.coverImage && (
-                <p className={styles.fieldErrorMessage} role="alert">
+                <p id="coverImage-error" className={styles.fieldErrorMessage} role="alert">
                   {errors.coverImage}
                 </p>
               )}
             </div>
 
             <div className={styles.imageUpload}>
-              <label>גלריית תמונות (עד 8 תמונות כולל התמונה הראשית)</label>
+              <label id="gallery-label">גלריית תמונות (עד 8 תמונות כולל התמונה הראשית)</label>
               <div className={styles.imagePreviewGrid}>
                 {values.gallery.map((image, index) => (
                   <div key={image.url} className={styles.imagePreview}>
@@ -664,10 +834,12 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
               </div>
               {values.gallery.length < 7 && (
                 <input
+                  id="gallery"
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   multiple
                   aria-label="הוספת תמונות לגלריה"
+                  aria-describedby={errors.gallery ? "gallery-error" : undefined}
                   disabled={uploadingGallery}
                   onChange={(e) => {
                     if (e.target.files?.length) void handleGalleryUpload(e.target.files);
@@ -676,7 +848,7 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
               )}
               {uploadingGallery && <p className={styles.hintText}>מעלה תמונות…</p>}
               {errors.gallery && (
-                <p className={styles.fieldErrorMessage} role="alert">
+                <p id="gallery-error" className={styles.fieldErrorMessage} role="alert">
                   {errors.gallery}
                 </p>
               )}
@@ -692,10 +864,11 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
                 value={values.shortDescription}
                 onChange={(e) => update("shortDescription", e.target.value)}
                 aria-invalid={Boolean(errors.shortDescription)}
+                aria-describedby={errors.shortDescription ? "shortDescription-error" : undefined}
               />
               <span className={styles.charCount}>{shortDescCount}</span>
               {errors.shortDescription && (
-                <p className={styles.fieldErrorMessage} role="alert">
+                <p id="shortDescription-error" className={styles.fieldErrorMessage} role="alert">
                   {errors.shortDescription}
                 </p>
               )}
@@ -711,10 +884,11 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
                 value={values.fullDescription}
                 onChange={(e) => update("fullDescription", e.target.value)}
                 aria-invalid={Boolean(errors.fullDescription)}
+                aria-describedby={errors.fullDescription ? "fullDescription-error" : undefined}
               />
               <span className={styles.charCount}>{fullDescCount}</span>
               {errors.fullDescription && (
-                <p className={styles.fieldErrorMessage} role="alert">
+                <p id="fullDescription-error" className={styles.fieldErrorMessage} role="alert">
                   {errors.fullDescription}
                 </p>
               )}
@@ -724,66 +898,92 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
 
         {step === 3 && (
           <>
-            <h2 className={styles.stepTitle}>אילו שירותים או מוצרים אתם מציעים?</h2>
+            <h2 id="wizard-step-heading" tabIndex={-1} className={styles.stepTitle}>
+              אילו שירותים או מוצרים אתם מציעים?
+            </h2>
             {errors.services && (
               <p className={styles.fieldErrorMessage} role="alert">
                 {errors.services}
               </p>
             )}
-            {values.services.map((service, index) => (
-              <div key={index} className={styles.serviceCard}>
-                <div className={styles.serviceCardHeader}>
-                  <span className={styles.hintText}>שירות {index + 1}</span>
-                  <div className={styles.imageMoveButtons}>
-                    <Button variant="secondary" size="compact" type="button" disabled={index === 0} onClick={() => moveService(index, -1)}>
-                      ‹
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="compact"
-                      type="button"
-                      disabled={index === values.services.length - 1}
-                      onClick={() => moveService(index, 1)}
-                    >
-                      ›
-                    </Button>
-                    {values.services.length > 1 && (
-                      <Button variant="secondary" size="compact" type="button" onClick={() => removeService(index)}>
-                        מחיקה
+            {values.services.map((service, index) => {
+              const hasCardError = Boolean(errors[`service-title-${index}`] || errors[`service-desc-${index}`] || errors[`service-price-${index}`]);
+              return (
+                <div key={index} className={`${styles.serviceCard} ${hasCardError ? styles.invalid : ""}`}>
+                  <div className={styles.serviceCardHeader}>
+                    <span className={styles.hintText}>שירות {index + 1}</span>
+                    <div className={styles.imageMoveButtons}>
+                      <Button variant="secondary" size="compact" type="button" disabled={index === 0} onClick={() => moveService(index, -1)}>
+                        ‹
                       </Button>
+                      <Button
+                        variant="secondary"
+                        size="compact"
+                        type="button"
+                        disabled={index === values.services.length - 1}
+                        onClick={() => moveService(index, 1)}
+                      >
+                        ›
+                      </Button>
+                      {values.services.length > 1 && (
+                        <Button variant="secondary" size="compact" type="button" onClick={() => removeService(index)}>
+                          מחיקה
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <div className={`${styles.field} ${errors[`service-title-${index}`] ? styles.fieldInvalid : ""}`}>
+                    <label htmlFor={`service-title-${index}`}>שם השירות *</label>
+                    <input
+                      id={`service-title-${index}`}
+                      type="text"
+                      value={service.title}
+                      onChange={(e) => updateService(index, { title: e.target.value })}
+                      aria-invalid={Boolean(errors[`service-title-${index}`])}
+                      aria-describedby={errors[`service-title-${index}`] ? `service-title-${index}-error` : undefined}
+                    />
+                    {errors[`service-title-${index}`] && (
+                      <p id={`service-title-${index}-error`} className={styles.fieldErrorMessage} role="alert">
+                        {`שירות ${index + 1} — ${errors[`service-title-${index}`]}`}
+                      </p>
+                    )}
+                  </div>
+                  <div className={`${styles.field} ${errors[`service-desc-${index}`] ? styles.fieldInvalid : ""}`}>
+                    <label htmlFor={`service-desc-${index}`}>תיאור קצר</label>
+                    <input
+                      id={`service-desc-${index}`}
+                      type="text"
+                      value={service.description}
+                      onChange={(e) => updateService(index, { description: e.target.value })}
+                      aria-invalid={Boolean(errors[`service-desc-${index}`])}
+                      aria-describedby={errors[`service-desc-${index}`] ? `service-desc-${index}-error` : undefined}
+                    />
+                    {errors[`service-desc-${index}`] && (
+                      <p id={`service-desc-${index}-error`} className={styles.fieldErrorMessage} role="alert">
+                        {`שירות ${index + 1} — ${errors[`service-desc-${index}`]}`}
+                      </p>
+                    )}
+                  </div>
+                  <div className={`${styles.field} ${errors[`service-price-${index}`] ? styles.fieldInvalid : ""}`}>
+                    <label htmlFor={`service-price-${index}`}>מחיר או טווח מחיר</label>
+                    <input
+                      id={`service-price-${index}`}
+                      type="text"
+                      placeholder="החל מ־150 ₪ / לפי הצעת מחיר"
+                      value={service.priceLabel}
+                      onChange={(e) => updateService(index, { priceLabel: e.target.value })}
+                      aria-invalid={Boolean(errors[`service-price-${index}`])}
+                      aria-describedby={errors[`service-price-${index}`] ? `service-price-${index}-error` : undefined}
+                    />
+                    {errors[`service-price-${index}`] && (
+                      <p id={`service-price-${index}-error`} className={styles.fieldErrorMessage} role="alert">
+                        {`שירות ${index + 1} — ${errors[`service-price-${index}`]}`}
+                      </p>
                     )}
                   </div>
                 </div>
-                <div className={styles.field}>
-                  <label htmlFor={`service-title-${index}`}>שם השירות *</label>
-                  <input
-                    id={`service-title-${index}`}
-                    type="text"
-                    value={service.title}
-                    onChange={(e) => updateService(index, { title: e.target.value })}
-                  />
-                </div>
-                <div className={styles.field}>
-                  <label htmlFor={`service-desc-${index}`}>תיאור קצר</label>
-                  <input
-                    id={`service-desc-${index}`}
-                    type="text"
-                    value={service.description}
-                    onChange={(e) => updateService(index, { description: e.target.value })}
-                  />
-                </div>
-                <div className={styles.field}>
-                  <label htmlFor={`service-price-${index}`}>מחיר או טווח מחיר</label>
-                  <input
-                    id={`service-price-${index}`}
-                    type="text"
-                    placeholder="החל מ־150 ₪ / לפי הצעת מחיר"
-                    value={service.priceLabel}
-                    onChange={(e) => updateService(index, { priceLabel: e.target.value })}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {values.services.length < 12 && (
               <Button variant="secondary" type="button" onClick={addService}>
                 הוספת שירות נוסף
@@ -794,14 +994,17 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
 
         {step === 4 && (
           <>
-            <h2 className={styles.stepTitle}>מתי ואיך אפשר ליצור איתכם קשר?</h2>
+            <h2 id="wizard-step-heading" tabIndex={-1} className={styles.stepTitle}>
+              מתי ואיך אפשר ליצור איתכם קשר?
+            </h2>
 
             <div className={styles.field}>
               <label>שעות פעילות</label>
               {WEEKDAYS.map((day) => {
                 const dayValue = values.openingHours[day];
+                const dayError = errors[`hours_${day}`];
                 return (
-                  <div key={day} className={styles.hoursRow}>
+                  <div key={day} id={`hours-${day}`} tabIndex={-1} className={`${styles.hoursRow} ${dayError ? styles.invalid : ""}`}>
                     <span className={styles.hoursDay}>{WEEKDAY_LABEL[day]}</span>
                     <label className={styles.checkboxRow}>
                       <input type="checkbox" checked={!dayValue.closed} onChange={(e) => updateDayHours(day, { closed: !e.target.checked })} />
@@ -814,6 +1017,7 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
                             <input
                               type="time"
                               aria-label={`שעת פתיחה ${WEEKDAY_LABEL[day]}`}
+                              aria-invalid={Boolean(dayError)}
                               value={interval.opensAt}
                               onChange={(e) => {
                                 const intervals = dayValue.intervals.map((iv, i) => (i === intervalIndex ? { ...iv, opensAt: e.target.value } : iv));
@@ -824,6 +1028,7 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
                             <input
                               type="time"
                               aria-label={`שעת סגירה ${WEEKDAY_LABEL[day]}`}
+                              aria-invalid={Boolean(dayError)}
                               value={interval.closesAt}
                               onChange={(e) => {
                                 const intervals = dayValue.intervals.map((iv, i) => (i === intervalIndex ? { ...iv, closesAt: e.target.value } : iv));
@@ -832,15 +1037,15 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
                             />
                           </span>
                         ))}
-                        <Button
-                          variant="secondary"
-                          size="compact"
-                          type="button"
-                          onClick={() => copyHoursToAllDays(day)}
-                        >
+                        <Button variant="secondary" size="compact" type="button" onClick={() => copyHoursToAllDays(day)}>
                           העתקת השעות לכל ימי השבוע
                         </Button>
                       </div>
+                    )}
+                    {dayError && (
+                      <p className={`${styles.fieldErrorMessage} ${styles.hoursRowError}`} role="alert">
+                        {dayError}
+                      </p>
                     )}
                   </div>
                 );
@@ -858,9 +1063,10 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
                   value={values.publicPhone}
                   onChange={(e) => update("publicPhone", e.target.value)}
                   aria-invalid={Boolean(errors.publicPhone)}
+                  aria-describedby={errors.publicPhone ? "publicPhone-error" : undefined}
                 />
                 {errors.publicPhone && (
-                  <p className={styles.fieldErrorMessage} role="alert">
+                  <p id="publicPhone-error" className={styles.fieldErrorMessage} role="alert">
                     {errors.publicPhone}
                   </p>
                 )}
@@ -876,15 +1082,18 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
                 </label>
                 {!values.whatsappSameAsPublicPhone && (
                   <input
+                    id="publicWhatsapp"
                     type="tel"
                     dir="ltr"
                     aria-label="WhatsApp ציבורי"
+                    aria-invalid={Boolean(errors.publicWhatsapp)}
+                    aria-describedby={errors.publicWhatsapp ? "publicWhatsapp-error" : undefined}
                     value={values.publicWhatsapp}
                     onChange={(e) => update("publicWhatsapp", e.target.value)}
                   />
                 )}
                 {errors.publicWhatsapp && (
-                  <p className={styles.fieldErrorMessage} role="alert">
+                  <p id="publicWhatsapp-error" className={styles.fieldErrorMessage} role="alert">
                     {errors.publicWhatsapp}
                   </p>
                 )}
@@ -893,32 +1102,96 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
 
             <div className={`${styles.field} ${errors.publicEmail ? styles.fieldInvalid : ""}`}>
               <label htmlFor="publicEmail">אימייל עסקי (אופציונלי להצגה באתר)</label>
-              <input id="publicEmail" type="email" dir="ltr" value={values.publicEmail} onChange={(e) => update("publicEmail", e.target.value)} />
+              <input
+                id="publicEmail"
+                type="email"
+                dir="ltr"
+                value={values.publicEmail}
+                onChange={(e) => update("publicEmail", e.target.value)}
+                aria-invalid={Boolean(errors.publicEmail)}
+                aria-describedby={errors.publicEmail ? "publicEmail-error" : undefined}
+              />
               {errors.publicEmail && (
-                <p className={styles.fieldErrorMessage} role="alert">
+                <p id="publicEmail-error" className={styles.fieldErrorMessage} role="alert">
                   {errors.publicEmail}
                 </p>
               )}
             </div>
 
             <div className={styles.row}>
-              <div className={styles.field}>
+              <div className={`${styles.field} ${errors.websiteUrl ? styles.fieldInvalid : ""}`}>
                 <label htmlFor="websiteUrl">אתר</label>
-                <input id="websiteUrl" type="url" dir="ltr" placeholder="https://..." value={values.websiteUrl} onChange={(e) => update("websiteUrl", e.target.value)} />
+                <input
+                  id="websiteUrl"
+                  type="url"
+                  dir="ltr"
+                  placeholder="https://..."
+                  value={values.websiteUrl}
+                  onChange={(e) => update("websiteUrl", e.target.value)}
+                  aria-invalid={Boolean(errors.websiteUrl)}
+                  aria-describedby={errors.websiteUrl ? "websiteUrl-error" : undefined}
+                />
+                {errors.websiteUrl && (
+                  <p id="websiteUrl-error" className={styles.fieldErrorMessage} role="alert">
+                    {errors.websiteUrl}
+                  </p>
+                )}
               </div>
-              <div className={styles.field}>
+              <div className={`${styles.field} ${errors.instagramUrl ? styles.fieldInvalid : ""}`}>
                 <label htmlFor="instagramUrl">Instagram</label>
-                <input id="instagramUrl" type="url" dir="ltr" placeholder="https://instagram.com/..." value={values.instagramUrl} onChange={(e) => update("instagramUrl", e.target.value)} />
+                <input
+                  id="instagramUrl"
+                  type="url"
+                  dir="ltr"
+                  placeholder="https://instagram.com/..."
+                  value={values.instagramUrl}
+                  onChange={(e) => update("instagramUrl", e.target.value)}
+                  aria-invalid={Boolean(errors.instagramUrl)}
+                  aria-describedby={errors.instagramUrl ? "instagramUrl-error" : undefined}
+                />
+                {errors.instagramUrl && (
+                  <p id="instagramUrl-error" className={styles.fieldErrorMessage} role="alert">
+                    {errors.instagramUrl}
+                  </p>
+                )}
               </div>
             </div>
             <div className={styles.row}>
-              <div className={styles.field}>
+              <div className={`${styles.field} ${errors.facebookUrl ? styles.fieldInvalid : ""}`}>
                 <label htmlFor="facebookUrl">Facebook</label>
-                <input id="facebookUrl" type="url" dir="ltr" placeholder="https://facebook.com/..." value={values.facebookUrl} onChange={(e) => update("facebookUrl", e.target.value)} />
+                <input
+                  id="facebookUrl"
+                  type="url"
+                  dir="ltr"
+                  placeholder="https://facebook.com/..."
+                  value={values.facebookUrl}
+                  onChange={(e) => update("facebookUrl", e.target.value)}
+                  aria-invalid={Boolean(errors.facebookUrl)}
+                  aria-describedby={errors.facebookUrl ? "facebookUrl-error" : undefined}
+                />
+                {errors.facebookUrl && (
+                  <p id="facebookUrl-error" className={styles.fieldErrorMessage} role="alert">
+                    {errors.facebookUrl}
+                  </p>
+                )}
               </div>
-              <div className={styles.field}>
+              <div className={`${styles.field} ${errors.tiktokUrl ? styles.fieldInvalid : ""}`}>
                 <label htmlFor="tiktokUrl">TikTok</label>
-                <input id="tiktokUrl" type="url" dir="ltr" placeholder="https://tiktok.com/..." value={values.tiktokUrl} onChange={(e) => update("tiktokUrl", e.target.value)} />
+                <input
+                  id="tiktokUrl"
+                  type="url"
+                  dir="ltr"
+                  placeholder="https://tiktok.com/..."
+                  value={values.tiktokUrl}
+                  onChange={(e) => update("tiktokUrl", e.target.value)}
+                  aria-invalid={Boolean(errors.tiktokUrl)}
+                  aria-describedby={errors.tiktokUrl ? "tiktokUrl-error" : undefined}
+                />
+                {errors.tiktokUrl && (
+                  <p id="tiktokUrl-error" className={styles.fieldErrorMessage} role="alert">
+                    {errors.tiktokUrl}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -973,7 +1246,7 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
             </Button>
           ) : (
             <Button variant="accent" type="button" disabled={submitting} onClick={handleSubmit}>
-              {submitting ? "שולחים את העסק…" : "שליחת העסק לבדיקה"}
+              {submitting ? "בודקים…" : "שליחת העסק לבדיקה"}
             </Button>
           )}
         </div>
@@ -992,7 +1265,7 @@ type ReviewStepProps = {
   values: WizardValues;
   planId: "plus" | "premium";
   priceLabel: string;
-  errors: Record<string, string>;
+  errors: WizardErrors;
   onEdit: (step: number) => void;
   onChangeConsent: <K extends keyof WizardValues>(key: K, value: WizardValues[K]) => void;
 };
@@ -1006,7 +1279,9 @@ function ReviewStep({ values, planId, priceLabel, errors, onEdit, onChangeConsen
 
   return (
     <>
-      <h2 className={styles.stepTitle}>כמעט סיימנו</h2>
+      <h2 id="wizard-step-heading" tabIndex={-1} className={styles.stepTitle}>
+        כמעט סיימנו
+      </h2>
 
       <div className={styles.reviewSection}>
         <div className={styles.reviewSectionHeader}>
@@ -1096,22 +1371,34 @@ function ReviewStep({ values, planId, priceLabel, errors, onEdit, onChangeConsen
 
       <div className={`${styles.field} ${errors.publicationConsent ? styles.fieldInvalid : ""}`}>
         <label className={styles.checkboxRow}>
-          <input type="checkbox" checked={values.publicationConsent} onChange={(e) => onChangeConsent("publicationConsent", e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={values.publicationConsent}
+            onChange={(e) => onChangeConsent("publicationConsent", e.target.checked)}
+            aria-invalid={Boolean(errors.publicationConsent)}
+            aria-describedby={errors.publicationConsent ? "publicationConsent-error" : undefined}
+          />
           אני מאשר/ת שהפרטים שמסרתי נכונים ושניתן לפרסם אותם בפורטל לאחר אישור.
         </label>
         {errors.publicationConsent && (
-          <p className={styles.fieldErrorMessage} role="alert">
+          <p id="publicationConsent-error" className={styles.fieldErrorMessage} role="alert">
             {errors.publicationConsent}
           </p>
         )}
       </div>
       <div className={`${styles.field} ${errors.termsAccepted ? styles.fieldInvalid : ""}`}>
         <label className={styles.checkboxRow}>
-          <input type="checkbox" checked={values.termsAccepted} onChange={(e) => onChangeConsent("termsAccepted", e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={values.termsAccepted}
+            onChange={(e) => onChangeConsent("termsAccepted", e.target.checked)}
+            aria-invalid={Boolean(errors.termsAccepted)}
+            aria-describedby={errors.termsAccepted ? "termsAccepted-error" : undefined}
+          />
           קראתי ואישרתי את תנאי השימוש ומדיניות הפרטיות.
         </label>
         {errors.termsAccepted && (
-          <p className={styles.fieldErrorMessage} role="alert">
+          <p id="termsAccepted-error" className={styles.fieldErrorMessage} role="alert">
             {errors.termsAccepted}
           </p>
         )}
@@ -1119,11 +1406,17 @@ function ReviewStep({ values, planId, priceLabel, errors, onEdit, onChangeConsen
       {planId === "plus" ? (
         <div className={`${styles.field} ${errors.trialConsent ? styles.fieldInvalid : ""}`}>
           <label className={styles.checkboxRow}>
-            <input type="checkbox" checked={values.trialConsent} onChange={(e) => onChangeConsent("trialConsent", e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={values.trialConsent}
+              onChange={(e) => onChangeConsent("trialConsent", e.target.checked)}
+              aria-invalid={Boolean(errors.trialConsent)}
+              aria-describedby={errors.trialConsent ? "trialConsent-error" : undefined}
+            />
             אני מאשר/ת להפעיל את חודש הניסיון לאחר אישור העסק.
           </label>
           {errors.trialConsent && (
-            <p className={styles.fieldErrorMessage} role="alert">
+            <p id="trialConsent-error" className={styles.fieldErrorMessage} role="alert">
               {errors.trialConsent}
             </p>
           )}
@@ -1135,11 +1428,13 @@ function ReviewStep({ values, planId, priceLabel, errors, onEdit, onChangeConsen
               type="checkbox"
               checked={values.dashboardAccessConsent}
               onChange={(e) => onChangeConsent("dashboardAccessConsent", e.target.checked)}
+              aria-invalid={Boolean(errors.dashboardAccessConsent)}
+              aria-describedby={errors.dashboardAccessConsent ? "dashboardAccessConsent-error" : undefined}
             />
             אני מאשר/ת להשתמש בכתובת המייל שלי לצורך שליחת גישה מאובטחת לאזור האישי.
           </label>
           {errors.dashboardAccessConsent && (
-            <p className={styles.fieldErrorMessage} role="alert">
+            <p id="dashboardAccessConsent-error" className={styles.fieldErrorMessage} role="alert">
               {errors.dashboardAccessConsent}
             </p>
           )}

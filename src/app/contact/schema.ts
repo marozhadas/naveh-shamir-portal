@@ -46,7 +46,9 @@ export const contactFormSchema = z.object({
     .trim()
     .min(MIN_MESSAGE_LENGTH, `יש להזין הודעה מפורטת יותר — לפחות ${MIN_MESSAGE_LENGTH} תווים`)
     .max(3000, "ההודעה ארוכה מדי — עד 3000 תווים"),
-  consentAccepted: z.literal(true, { message: "יש לאשר שניתן ליצור איתך קשר כדי לשלוח את הפנייה" }),
+  // z.literal(true, { message }) silently drops the custom message in this Zod version (falls back
+  // to the raw "Invalid literal value, expected true") — z.boolean().refine() reliably keeps ours.
+  consentAccepted: z.boolean().refine((v) => v === true, { message: "יש לאשר שניתן ליצור איתך קשר כדי לשלוח את הפנייה" }),
   honeypot: z.string().max(0).optional(),
 });
 
