@@ -83,6 +83,7 @@ export type AdminAuditAction =
   | "business-updated"
   | "business-deleted"
   | "business-plan-changed"
+  | "business-slug-changed"
   | "notification-preferences-updated"
   | "notification-email-retry"
   | "event-created"

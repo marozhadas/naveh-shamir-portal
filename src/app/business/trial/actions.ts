@@ -14,6 +14,7 @@ const ELIGIBILITY_ERROR_MESSAGES: Record<string, string> = {
   "trial-already-used": "תקופת הניסיון החינמית כבר נוצלה עבור העסק הזה בעבר, ולא ניתן להפעיל אותה שוב.",
   "active-subscription": "כבר קיים מנוי פעיל לעסק הזה.",
   "subscription-not-eligible": "אירעה תקלה בבדיקת הזכאות. נסו שוב בעוד כמה רגעים.",
+  "invalid-slug": "לפני הפעלת עמוד העסק, הצוות שלנו צריך להגדיר כתובת URL לעסק. נציג/ת הפורטל ייצור/תיצור איתך קשר.",
 };
 const GENERIC_ERROR_MESSAGE = "אירעה תקלה בהפעלת הניסיון. נסו שוב בעוד כמה רגעים.";
 

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { ApproveRejectPanel } from "./ApproveRejectPanel";
 import { DeleteBusinessButton } from "./DeleteBusinessButton";
 import { BusinessPlanControl } from "./BusinessPlanControl";
+import { BusinessSlugControl } from "./BusinessSlugControl";
 import { retryNotificationEmailAction } from "./actions";
 import { toBusinessPlanId } from "@/utils/map-registration-to-business";
 import styles from "./detail.module.css";
@@ -121,6 +122,13 @@ export default async function AdminBusinessDetailPage({ params }: BusinessDetail
         businessId={registration.id}
         selectedPlanId={toBusinessPlanId(registration.plan_tier)}
         currentActivePlanId={toBusinessPlanId(registration.active_plan_id)}
+      />
+
+      <BusinessSlugControl
+        businessId={registration.id}
+        businessName={registration.business_name}
+        currentSlug={registration.slug}
+        isLive={subscriptionSummary?.access.canOpenProfile ?? false}
       />
 
       <section className={styles.section} aria-labelledby="description-heading">

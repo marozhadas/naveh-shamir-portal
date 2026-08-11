@@ -93,6 +93,18 @@ export async function updateRegistrationActivePlan(id: string, activePlanId: "ba
   if (error) throw new Error(error.message);
 }
 
+/**
+ * The one dedicated write path for slug — deliberately separate from updateRegistrationFields,
+ * same reasoning as updateRegistrationActivePlan: only ever called from changeBusinessSlugAction,
+ * which validates the new slug, records the redirect + audit log. Lets a Postgres unique-violation
+ * (23505, "this slug is already taken by another business") surface to the caller untouched.
+ */
+export async function updateRegistrationSlug(id: string, slug: string): Promise<void> {
+  const supabase = createAdminSupabaseClient();
+  const { error } = await supabase.from("business_registrations").update({ slug }).eq("id", id);
+  if (error) throw error;
+}
+
 /** FK constraints on subscriptions/events-log/notifications all cascade on delete; analytics rows keep their history with business_id set to null. */
 export async function deleteRegistration(id: string): Promise<void> {
   const supabase = createAdminSupabaseClient();

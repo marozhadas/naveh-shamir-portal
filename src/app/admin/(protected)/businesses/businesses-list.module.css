@@ -153,6 +153,11 @@
   white-space: nowrap;
 }
 
+.missingSlugBadge {
+  color: var(--color-danger);
+  font-weight: var(--fw-demibold);
+}
+
 .cardActions {
   flex-shrink: 0;
 }

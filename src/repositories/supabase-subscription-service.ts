@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminSupabaseClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin-client";
 import { mapSubscriptionRowToBusinessSubscription } from "@/utils/map-subscription-row";
 import { toRegistrationId } from "@/utils/business-id";
+import { isValidBusinessSlug } from "@/utils/business-slug";
 import type { BusinessSubscription } from "@/types/subscription";
 import type { TrialEligibility } from "@/types/trial";
 
@@ -41,12 +42,15 @@ export async function checkRealTrialEligibility(businessId: string, ownerId: str
 
   const { data: registration, error: registrationError } = await admin
     .from("business_registrations")
-    .select("id, status, owner_id")
+    .select("id, status, owner_id, slug")
     .eq("id", registrationId)
     .maybeSingle();
   if (registrationError || !registration) return { eligible: false, reason: "business-not-found" };
   if (registration.owner_id !== ownerId) return { eligible: false, reason: "business-not-owned" };
   if (registration.status !== "approved") return { eligible: false, reason: "business-not-approved" };
+  // Going live (what starting a trial does) requires a clean, admin-approved English slug —
+  // spec section 13: never publish a page with a Hebrew/auto-generated URL.
+  if (!isValidBusinessSlug(registration.slug)) return { eligible: false, reason: "invalid-slug" };
 
   const { data: existingSubscription, error: subscriptionError } = await admin
     .from("business_subscriptions")

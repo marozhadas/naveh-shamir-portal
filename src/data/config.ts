@@ -2,8 +2,8 @@ export const SITE_CONFIG = {
   name: "נווה שמיר — הפורטל של השכונה",
   whatsappCommunityUrl: "https://chat.whatsapp.com/nevesh-community-placeholder",
   designCredit: "עיצוב ופיתוח: הדס מרוז",
-  /** No real domain is deployed yet — used only to build absolute URLs for metadata/JSON-LD; swap for the real domain at launch. */
-  siteUrl: "https://naveh-shamir-portal.example",
+  /** The live production domain — used to build absolute URLs for metadata/JSON-LD/canonical/Open Graph (e.g. a business profile's clean slug URL). */
+  siteUrl: "https://naveh-shamir-portal.vercel.app",
 };
 
 /** The portal's own contact details (/contact page) — not to be confused with EMERGENCY_NUMBERS or the neighborhood WhatsApp group above. */

@@ -13,6 +13,7 @@ import type { CommunityEventRow } from "@/types/community-event";
 import type { EssentialNumberRow } from "@/types/essential-number";
 import type { ContactMessageRow } from "@/types/contact-message";
 import type { WhatsAppGroupRow } from "@/types/whatsapp-group";
+import type { BusinessSlugRedirectRow } from "@/types/business-slug-redirect";
 
 export type BusinessEventLogRow = {
   id: string;
@@ -230,6 +231,12 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<WhatsAppGroupRow>;
+        Relationships: [];
+      };
+      business_slug_redirects: {
+        Row: BusinessSlugRedirectRow;
+        Insert: Omit<BusinessSlugRedirectRow, "id" | "created_at"> & { id?: string; created_at?: string };
+        Update: Partial<BusinessSlugRedirectRow>;
         Relationships: [];
       };
     };

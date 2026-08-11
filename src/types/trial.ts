@@ -8,5 +8,6 @@ export type TrialEligibility = {
     | "business-not-approved"
     | "trial-already-used"
     | "active-subscription"
-    | "subscription-not-eligible";
+    | "subscription-not-eligible"
+    | "invalid-slug";
 };

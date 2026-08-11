@@ -1,6 +1,8 @@
+import { permanentRedirect } from "next/navigation";
 import { authAdapter } from "@/adapters/mock-auth-adapter";
 import { businessRepository } from "@/repositories/mock-business-repository";
 import { subscriptionRepository } from "@/repositories/mock-subscription-repository";
+import { findSlugRedirectTarget } from "@/repositories/business-slug-redirect-repository";
 import { getBusinessListingAccess } from "@/domain/get-business-listing-access";
 import type { Business } from "@/types/business";
 import type { AuthenticatedUser } from "@/types/auth";
@@ -65,7 +67,14 @@ export async function resolveBusinessView(rawSlug: string): Promise<BusinessProf
   }
 
   const business = await businessRepository.getBySlugUnfiltered(slug);
-  if (!business) return { kind: "not-found" };
+  if (!business) {
+    // Not a slug that exists today — check whether it used to be one (an admin changed it via
+    // changeBusinessSlugAction) before giving up with a real 404. permanentRedirect() (308) throws
+    // internally, so this short-circuits rendering exactly like notFound() does.
+    const newSlug = await findSlugRedirectTarget(slug);
+    if (newSlug) permanentRedirect(`/businesses/${newSlug}`);
+    return { kind: "not-found" };
+  }
 
   const viewer = await authAdapter.getCurrentUser();
   if (canPreviewAs(viewer, business)) {

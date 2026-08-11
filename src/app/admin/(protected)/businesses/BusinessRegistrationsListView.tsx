@@ -5,6 +5,7 @@ import { getCategoryLabel } from "@/data/business-categories";
 import { formatNotificationDateTime } from "@/utils/admin-notification-format";
 import { SUBSCRIPTION_STATUS_LABEL } from "@/lib/admin/subscription-summary";
 import { DeleteBusinessButton } from "./[id]/DeleteBusinessButton";
+import { isValidBusinessSlug } from "@/utils/business-slug";
 import type { AdminSubscriptionSummary } from "@/lib/admin/subscription-summary";
 import type { BusinessRegistrationRow, BusinessRegistrationStatus } from "@/types/business-registration";
 import type { BusinessListingTier } from "@/types/business-listing-access";
@@ -63,6 +64,9 @@ export function BusinessRegistrationsListView({ rows, emptyMessage }: BusinessRe
               חבילה פעילה: {TIER_LABEL[summary.access.tier]} · {getSubscriptionLabel(summary)}
               {registration.plan_tier !== "free" && registration.plan_tier !== summary.access.tier && summary.access.tier === "basic" && " · ממתין להפעלה"}
             </span>
+          )}
+          {registration.plan_tier !== "free" && !isValidBusinessSlug(registration.slug) && (
+            <span className={`${styles.tierBadge} ${styles.missingSlugBadge}`}>חסרה כתובת URL</span>
           )}
           <div className={styles.cardActions}>
             <Button href={`/admin/businesses/${registration.id}`} variant="secondary" size="compact">

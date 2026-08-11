@@ -8,6 +8,7 @@ import {
   getRegistrationById,
   updateRegistrationActivePlan,
   updateRegistrationFields,
+  updateRegistrationSlug,
   updateRegistrationStatus,
 } from "@/lib/admin/business-registrations";
 import { getNotificationById, resolveNotificationForEntity } from "@/lib/admin/notifications";
@@ -16,6 +17,9 @@ import { sendRegistrationNotificationEmail } from "@/lib/email/send-registration
 import { deleteBusinessMediaByUrl, uploadBusinessMedia } from "@/repositories/business-media-service";
 import { businessEditFormSchema, type BusinessEditFormValues } from "./schema";
 import { changeBusinessPlanSchema, type ChangeBusinessPlanInput } from "./change-plan-schema";
+import { changeBusinessSlugSchema, type ChangeBusinessSlugInput } from "./change-slug-schema";
+import { isValidBusinessSlug } from "@/utils/business-slug";
+import { recordSlugRedirect } from "@/repositories/business-slug-redirect-repository";
 import type { BusinessPlanId } from "@/types/business-plan";
 
 async function requireAdmin(): Promise<string> {
@@ -264,6 +268,13 @@ export async function changeBusinessPlanAction(input: ChangeBusinessPlanInput): 
     return { status: "success", previousPlanId, newPlanId: typedNewPlanId };
   }
 
+  // Basic never needs a public URL at all — only going live (Plus/Premium) requires a clean,
+  // already-admin-approved English slug (spec section 13: never publish with a UUID/undefined/
+  // Hebrew/unapproved-temp slug).
+  if (typedNewPlanId !== "basic" && !isValidBusinessSlug(registration.slug)) {
+    return { status: "validation-error", message: "לפני פרסום עמוד העסק יש להזין כתובת URL תקינה." };
+  }
+
   try {
     await updateRegistrationActivePlan(businessId, typedNewPlanId);
 
@@ -288,6 +299,73 @@ export async function changeBusinessPlanAction(input: ChangeBusinessPlanInput): 
   } catch (error) {
     console.error("[changeBusinessPlanAction] failed:", error);
     return { status: "server-error", message: `לא הצלחנו לשנות את החבילה מ-${PLAN_LABEL[previousPlanId]} ל-${PLAN_LABEL[typedNewPlanId]} כרגע. נסו שוב.` };
+  }
+}
+
+export type ChangeBusinessSlugResult =
+  | { status: "success"; previousSlug: string; newSlug: string }
+  | { status: "validation-error"; message: string }
+  | { status: "not-found"; message: string }
+  | { status: "conflict"; message: string }
+  | { status: "server-error"; message: string };
+
+/**
+ * The single, audited, server-only way to change a business's public URL slug (spec section 18:
+ * only an admin — never the business owner — can do this, and never from the client alone). On
+ * success, always records a redirect from the old slug to the new one (recordSlugRedirect) so a
+ * previously-shared/indexed URL keeps working instead of 404ing — see resolve-business-view.ts.
+ */
+export async function changeBusinessSlugAction(input: ChangeBusinessSlugInput): Promise<ChangeBusinessSlugResult> {
+  const adminId = await requireAdmin();
+
+  const parsed = changeBusinessSlugSchema.safeParse(input);
+  if (!parsed.success) {
+    return { status: "validation-error", message: parsed.error.issues[0]?.message ?? "כתובת ה-URL אינה תקינה." };
+  }
+  const { businessId, newSlug } = parsed.data;
+
+  const registration = await getRegistrationById(businessId);
+  if (!registration) return { status: "not-found", message: "העסק לא נמצא." };
+
+  const previousSlug = registration.slug;
+  if (previousSlug === newSlug) {
+    return { status: "success", previousSlug, newSlug };
+  }
+
+  try {
+    await updateRegistrationSlug(businessId, newSlug);
+  } catch (error) {
+    const code = (error as { code?: string } | null)?.code;
+    if (code === "23505") {
+      return { status: "conflict", message: "הכתובת הזו כבר בשימוש. נסו שם אחר." };
+    }
+    console.error("[changeBusinessSlugAction] update failed:", error);
+    return { status: "server-error", message: "לא הצלחנו לשנות את הכתובת כרגע. נסו שוב." };
+  }
+
+  try {
+    await recordSlugRedirect(businessId, previousSlug, newSlug);
+
+    await recordAuditLog({
+      adminId,
+      action: "business-slug-changed",
+      entityType: "business-registration",
+      entityId: businessId,
+      metadata: { businessName: registration.business_name, oldSlug: previousSlug, newSlug },
+    });
+
+    revalidateBusinessViews(businessId);
+    revalidatePath("/");
+    revalidatePath(`/businesses/${previousSlug}`);
+    revalidatePath(`/businesses/${newSlug}`);
+
+    return { status: "success", previousSlug, newSlug };
+  } catch (error) {
+    // The slug itself already changed successfully at this point — the redirect/audit-log/cache
+    // steps failing shouldn't be reported as if the rename itself failed (same "load-bearing write
+    // first" principle as approveRegistrationAction above).
+    console.error("[changeBusinessSlugAction] post-update steps failed:", error);
+    return { status: "success", previousSlug, newSlug };
   }
 }
 
