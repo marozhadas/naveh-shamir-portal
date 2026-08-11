@@ -32,13 +32,13 @@
 }
 
 .logo {
-  height: clamp(44px, 7vw, 71px);
+  height: clamp(39.6px, 6.3vw, 63.9px);
   width: auto;
   transition: height var(--duration-base) var(--ease-standard);
 }
 
 .header.scrolled .logo {
-  height: clamp(36px, 5vw, 52px);
+  height: clamp(32.4px, 4.5vw, 46.8px);
 }
 
 .desktopNav {
@@ -58,7 +58,7 @@
      it no longer fits at full size — flex-wrap stays nowrap on purpose, see below. Reaches the
      full 22px only around ~1300px+ (this design's comfortable width); below that it shrinks
      linearly so nothing ever wraps or overflows down to the ~880px mobile-menu breakpoint. */
-  font-size: clamp(14px, calc(2vw - 4px), 22px);
+  font-size: 1.3vw;
   font-weight: var(--fw-regular);
   flex-wrap: nowrap;
   white-space: nowrap;
