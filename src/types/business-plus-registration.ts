@@ -16,6 +16,12 @@ export type BusinessOpeningHoursInput = {
   intervals: BusinessOpeningHoursInterval[];
 };
 
+export type BusinessTestimonialInput = {
+  authorName: string;
+  text: string;
+  roleOrContext?: string;
+};
+
 export type BusinessPromotionInput = {
   title: string;
   description?: string;
@@ -62,6 +68,7 @@ export type PlusBusinessRegistrationInput = {
   gallery: BusinessGalleryImageInput[];
 
   services: BusinessServiceInput[];
+  testimonials: BusinessTestimonialInput[];
   openingHours: BusinessOpeningHoursInput[];
 
   websiteUrl: string;

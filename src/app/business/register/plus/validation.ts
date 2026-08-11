@@ -6,6 +6,7 @@ import {
   plusStepFourSchema,
   plusStepFiveSchema,
   serviceSchema,
+  testimonialSchema,
   openingHoursDaySchema,
   WEEKDAYS,
   WEEKDAY_LABEL,
@@ -63,21 +64,30 @@ export function validateStepTwo(input: StepTwoInput): WizardErrors {
 }
 
 export type ServiceDraft = { title: string; description: string; priceLabel: string };
+export type TestimonialDraft = { authorName: string; text: string; roleOrContext: string };
 
-/** Error keys match the DOM ids already used in the wizard's JSX (service-title-0, service-desc-0, ...), so focusFirstInvalidField needs no extra mapping table for these. */
-export function validateStepThree(services: ServiceDraft[]): WizardErrors {
+/**
+ * Error keys match the DOM ids already used in the wizard's JSX (service-title-0, service-desc-0,
+ * testimonial-author-0, ...), so focusFirstInvalidField needs no extra mapping table for these.
+ * `testimonials` defaults to [] so existing callers (e.g. tests) that only pass services still work.
+ */
+export function validateStepThree(services: ServiceDraft[], testimonials: TestimonialDraft[] = []): WizardErrors {
   const errors: WizardErrors = {};
-  const arrayCheck = plusStepThreeSchema.safeParse({ services });
+  const arrayCheck = plusStepThreeSchema.safeParse({ services, testimonials });
   if (!arrayCheck.success) {
-    // Only a genuine array-level issue (path === ["services"], e.g. min/max count) belongs on the
-    // "services" key. z.array(serviceSchema) also validates every item, and Zod's flatten() groups
-    // ALL issues by their path's first segment — so a per-item issue like services.0.title would
-    // otherwise get grouped under "services" too, even though it's already reported precisely as
-    // service-title-{index} below. That false positive used to make "services" (which has no
-    // matching DOM element) win the first-invalid-field lookup ahead of the real field, silently
-    // breaking focus. Reading .issues directly (instead of .flatten()) keeps only true array-level issues here.
-    const arrayLevelIssue = arrayCheck.error.issues.find((issue) => issue.path.length === 1 && issue.path[0] === "services");
-    if (arrayLevelIssue) errors.services = arrayLevelIssue.message;
+    // Only a genuine array-level issue (path.length === 1, e.g. min/max count) belongs on the
+    // "services"/"testimonials" key itself. z.array(itemSchema) also validates every item, and
+    // Zod's flatten() groups ALL issues by their path's first segment — so a per-item issue like
+    // services.0.title would otherwise get grouped under "services" too, even though it's already
+    // reported precisely as service-title-{index} below. That false positive used to make
+    // "services"/"testimonials" (which have no matching DOM element) win the first-invalid-field
+    // lookup ahead of the real field, silently breaking focus. Reading .issues directly (instead of
+    // .flatten()) keeps only true array-level issues here.
+    for (const issue of arrayCheck.error.issues) {
+      if (issue.path.length !== 1) continue;
+      if (issue.path[0] === "services" && !errors.services) errors.services = issue.message;
+      if (issue.path[0] === "testimonials" && !errors.testimonials) errors.testimonials = issue.message;
+    }
   }
   services.forEach((service, index) => {
     const result = serviceSchema.safeParse(service);
@@ -87,6 +97,20 @@ export function validateStepThree(services: ServiceDraft[]): WizardErrors {
       if (field === "title" && !errors[`service-title-${index}`]) errors[`service-title-${index}`] = issue.message;
       if (field === "description" && !errors[`service-desc-${index}`]) errors[`service-desc-${index}`] = issue.message;
       if (field === "priceLabel" && !errors[`service-price-${index}`]) errors[`service-price-${index}`] = issue.message;
+    }
+  });
+  testimonials.forEach((testimonial, index) => {
+    const result = testimonialSchema.safeParse({
+      authorName: testimonial.authorName,
+      text: testimonial.text,
+      roleOrContext: testimonial.roleOrContext || undefined,
+    });
+    if (result.success) return;
+    for (const issue of result.error.issues) {
+      const field = issue.path[0];
+      if (field === "authorName" && !errors[`testimonial-author-${index}`]) errors[`testimonial-author-${index}`] = issue.message;
+      if (field === "text" && !errors[`testimonial-text-${index}`]) errors[`testimonial-text-${index}`] = issue.message;
+      if (field === "roleOrContext" && !errors[`testimonial-role-${index}`]) errors[`testimonial-role-${index}`] = issue.message;
     }
   });
   return errors;
@@ -147,6 +171,7 @@ export function validateStepFive(input: StepFiveInput, planId: "plus" | "premium
 /** Which wizard step (1-5) a given error key belongs to — drives the progress indicator's error state and where "final submit" jumps to. */
 export function stepForErrorKey(key: string): number {
   if (key.startsWith("service")) return 3;
+  if (key.startsWith("testimonial")) return 3;
   if (key.startsWith("hours_")) return 4;
   const STEP_ONE = new Set(["businessName", "categoryIds", "businessType", "contactName", "contactPhone", "contactEmail", "addressType", "address", "serviceArea"]);
   const STEP_TWO = new Set(["coverImage", "gallery", "shortDescription", "fullDescription"]);

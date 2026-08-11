@@ -35,6 +35,7 @@ function makeRow(overrides: Partial<BusinessRegistrationRow> = {}): BusinessRegi
     cover_image: null,
     gallery: null,
     services: null,
+    testimonials: null,
     opening_hours: null,
     social_links: null,
     promotion: null,
@@ -116,5 +117,31 @@ describe("mapRegistrationToBusiness", () => {
     const business = mapRegistrationToBusiness(makeRow({ plan_tier: "plus", active_plan_id: "basic" }));
     expect(business.selectedPlanId).toBe("plus");
     expect(business.activePlanId).toBe("basic");
+  });
+
+  it("leaves testimonials undefined when the row has none", () => {
+    const business = mapRegistrationToBusiness(makeRow({ testimonials: null }));
+    expect(business.testimonials).toBeUndefined();
+  });
+
+  it("maps testimonials with generated ids, author/text/roleOrContext, and index-based order", () => {
+    const business = mapRegistrationToBusiness(
+      makeRow({
+        testimonials: [
+          { authorName: "דנה לוי", text: "שירות מעולה!", roleOrContext: "לקוחה קבועה" },
+          { authorName: "יוסי כהן", text: "ממליץ בחום" },
+        ],
+      }),
+    );
+    expect(business.testimonials).toHaveLength(2);
+    expect(business.testimonials?.[0]).toEqual({
+      id: "11111111-1111-1111-1111-111111111111-testimonial-0",
+      authorName: "דנה לוי",
+      text: "שירות מעולה!",
+      roleOrContext: "לקוחה קבועה",
+      order: 0,
+    });
+    expect(business.testimonials?.[1].roleOrContext).toBeUndefined();
+    expect(business.testimonials?.[1].order).toBe(1);
   });
 });

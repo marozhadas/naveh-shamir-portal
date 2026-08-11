@@ -46,6 +46,8 @@ export type BusinessRegistrationRow = {
   cover_image: { url: string; alt: string } | null;
   gallery: { url: string; alt: string; order: number }[] | null;
   services: { title: string; description?: string; priceLabel?: string }[] | null;
+  /** Plus/Premium-only customer testimonials shown in a carousel on the profile page (see the "add_testimonials_to_business_registrations" migration) — always null for a "free" registration. */
+  testimonials: { authorName: string; text: string; roleOrContext?: string }[] | null;
   opening_hours:
     | {
         day: "sunday" | "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday";

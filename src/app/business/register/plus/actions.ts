@@ -108,6 +108,7 @@ async function submitExtendedBusinessRegistration(
       cover_image: values.coverImage,
       gallery: values.gallery,
       services: values.services,
+      testimonials: values.testimonials.length > 0 ? values.testimonials : null,
       opening_hours: values.openingHours,
       social_links: {
         instagramUrl: values.instagramUrl || undefined,

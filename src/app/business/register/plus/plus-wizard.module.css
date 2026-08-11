@@ -240,6 +240,13 @@
   margin: 0;
 }
 
+.subStepTitle {
+  font-size: var(--fs-h4, var(--fs-body));
+  font-weight: var(--fw-bold);
+  color: var(--color-text-primary);
+  margin: var(--space-6) 0 0;
+}
+
 .field input[type="text"],
 .field input[type="tel"],
 .field input[type="email"],

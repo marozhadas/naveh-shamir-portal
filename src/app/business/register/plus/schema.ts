@@ -42,6 +42,12 @@ export const serviceSchema = z.object({
   priceLabel: z.string().trim().max(60, "התווית ארוכה מדי").optional(),
 });
 
+export const testimonialSchema = z.object({
+  authorName: z.string().trim().min(1, "יש להזין שם ממליץ/ה").max(80, "השם ארוך מדי"),
+  text: z.string().trim().min(1, "יש להזין את תוכן ההמלצה").max(500, "ההמלצה ארוכה מדי — עד 500 תווים"),
+  roleOrContext: z.string().trim().max(80, "השדה ארוך מדי").optional(),
+});
+
 export const intervalSchema = z
   .object({
     opensAt: z.string().regex(TIME_PATTERN, "שעת פתיחה אינה תקינה"),
@@ -113,6 +119,8 @@ export const plusBusinessRegistrationObjectSchema = z.object({
   gallery: z.array(gallerySchema).max(7, "עד 7 תמונות גלריה נוספות (8 בסך הכול כולל התמונה הראשית)"),
 
   services: z.array(serviceSchema).min(1, "יש להוסיף לפחות שירות אחד").max(12, "עד 12 שירותים"),
+  // No minimum — testimonials are optional marketing content, unlike services.
+  testimonials: z.array(testimonialSchema).max(10, "עד 10 המלצות"),
   openingHours: z.array(openingHoursDaySchema).length(7, "יש להגדיר את כל ימות השבוע"),
 
   websiteUrl: z.string().trim().refine((value) => !value || isSafeHrefOrEmpty(value), { message: "כתובת האתר אינה תקינה" }),
@@ -191,8 +199,8 @@ export const plusStepTwoSchema = plusBusinessRegistrationObjectSchema.pick({
   fullDescription: true,
 });
 
-/** Just the array-level rules (min/max count) — each service's own fields are checked per-item via `serviceSchema` directly, for index-specific messages. */
-export const plusStepThreeSchema = plusBusinessRegistrationObjectSchema.pick({ services: true });
+/** Just the array-level rules (min/max count) — each service's/testimonial's own fields are checked per-item via `serviceSchema`/`testimonialSchema` directly, for index-specific messages. */
+export const plusStepThreeSchema = plusBusinessRegistrationObjectSchema.pick({ services: true, testimonials: true });
 
 export const plusStepFourSchema = plusBusinessRegistrationObjectSchema.pick({
   publicPhone: true,

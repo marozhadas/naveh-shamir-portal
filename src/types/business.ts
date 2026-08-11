@@ -36,6 +36,15 @@ export type BusinessPromotion = {
   visible: boolean;
 };
 
+/** A customer testimonial/recommendation — Plus/Premium-only, shown in a carousel on the profile page. */
+export type BusinessTestimonial = {
+  id: string;
+  authorName: string;
+  text: string;
+  roleOrContext?: string;
+  order: number;
+};
+
 export type BusinessSocialLinks = {
   instagram?: string;
   facebook?: string;
@@ -106,6 +115,7 @@ export type Business = {
   location?: BusinessLocation;
   openingHours?: BusinessOpeningHours[];
   services?: BusinessService[];
+  testimonials?: BusinessTestimonial[];
   socialLinks?: BusinessSocialLinks;
   highlights?: string[];
   promotion?: BusinessPromotion;

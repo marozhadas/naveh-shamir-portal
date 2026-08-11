@@ -162,6 +162,47 @@ describe("validateStepThree", () => {
     expect(errors["service-title-0"]).toBe("יש להזין שם שירות");
     expect(errors.services).toBeUndefined();
   });
+
+  it("passes with zero testimonials — they're optional, unlike services", () => {
+    const errors = validateStepThree([{ title: "תספורת", description: "", priceLabel: "" }], []);
+    expect(errors).toEqual({});
+  });
+
+  it("passes with a fully valid testimonial", () => {
+    const errors = validateStepThree(
+      [{ title: "תספורת", description: "", priceLabel: "" }],
+      [{ authorName: "דנה לוי", text: "שירות מעולה!", roleOrContext: "לקוחה קבועה" }],
+    );
+    expect(errors).toEqual({});
+  });
+
+  it("blocks a testimonial missing an author name, by its index", () => {
+    const errors = validateStepThree(
+      [{ title: "תספורת", description: "", priceLabel: "" }],
+      [{ authorName: "", text: "שירות מעולה!", roleOrContext: "" }],
+    );
+    expect(errors["testimonial-author-0"]).toBe("יש להזין שם ממליץ/ה");
+  });
+
+  it("blocks a testimonial missing text, by its index", () => {
+    const errors = validateStepThree(
+      [{ title: "תספורת", description: "", priceLabel: "" }],
+      [{ authorName: "דנה לוי", text: "", roleOrContext: "" }],
+    );
+    expect(errors["testimonial-text-0"]).toBe("יש להזין את תוכן ההמלצה");
+  });
+
+  it("does not set a spurious top-level 'testimonials' error when only a specific item is invalid (same flatten() fix as services)", () => {
+    const errors = validateStepThree(
+      [{ title: "תספורת", description: "", priceLabel: "" }],
+      [
+        { authorName: "", text: "שירות מעולה!", roleOrContext: "" },
+        { authorName: "דנה לוי", text: "שירות מצוין", roleOrContext: "" },
+      ],
+    );
+    expect(errors["testimonial-author-0"]).toBe("יש להזין שם ממליץ/ה");
+    expect(errors.testimonials).toBeUndefined();
+  });
 });
 
 describe("validateStepFour", () => {
@@ -241,8 +282,10 @@ describe("stepForErrorKey / getFirstInvalidStep / stepHasError", () => {
     expect(stepForErrorKey("termsAccepted")).toBe(5);
   });
 
-  it("maps service-* and hours_* keys to steps 3 and 4", () => {
+  it("maps service-*, testimonial-*, and hours_* keys to steps 3 and 4", () => {
     expect(stepForErrorKey("service-title-2")).toBe(3);
+    expect(stepForErrorKey("testimonial-author-0")).toBe(3);
+    expect(stepForErrorKey("testimonials")).toBe(3);
     expect(stepForErrorKey("hours_sunday")).toBe(4);
   });
 

@@ -22,6 +22,7 @@ function makeValidInput(overrides: Record<string, unknown> = {}) {
     coverImage: { url: "https://example.com/cover.jpg", alt: "תמונה ראשית" },
     gallery: [],
     services: [{ title: "תספורת", description: "", priceLabel: "150 ₪" }],
+    testimonials: [],
     openingHours: WEEKDAYS.map((day) => ({ day, closed: day === "saturday", intervals: day === "saturday" ? [] : [{ opensAt: "09:00", closesAt: "18:00" }] })),
     websiteUrl: "",
     instagramUrl: "",
@@ -58,6 +59,34 @@ describe("plusBusinessRegistrationSchema", () => {
 
   it("requires at least one service", () => {
     const result = plusBusinessRegistrationSchema.safeParse(makeValidInput({ services: [] }));
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts zero testimonials — unlike services, they're optional", () => {
+    const result = plusBusinessRegistrationSchema.safeParse(makeValidInput({ testimonials: [] }));
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts a valid testimonial with an optional roleOrContext", () => {
+    const result = plusBusinessRegistrationSchema.safeParse(
+      makeValidInput({ testimonials: [{ authorName: "דנה לוי", text: "שירות מעולה ומקצועי!", roleOrContext: "לקוחה קבועה" }] }),
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a testimonial with no author name", () => {
+    const result = plusBusinessRegistrationSchema.safeParse(makeValidInput({ testimonials: [{ authorName: "", text: "שירות מעולה!" }] }));
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a testimonial with no text", () => {
+    const result = plusBusinessRegistrationSchema.safeParse(makeValidInput({ testimonials: [{ authorName: "דנה לוי", text: "" }] }));
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects more than 10 testimonials", () => {
+    const testimonials = Array.from({ length: 11 }, (_, i) => ({ authorName: `לקוח ${i}`, text: "שירות מצוין" }));
+    const result = plusBusinessRegistrationSchema.safeParse(makeValidInput({ testimonials }));
     expect(result.success).toBe(false);
   });
 

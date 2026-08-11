@@ -8,6 +8,7 @@ import { BusinessHero } from "@/components/business-profile/BusinessHero/Busines
 import { BusinessGallery } from "@/components/business-profile/BusinessGallery/BusinessGallery";
 import { BusinessAbout } from "@/components/business-profile/BusinessAbout/BusinessAbout";
 import { BusinessServices } from "@/components/business-profile/BusinessServices/BusinessServices";
+import { BusinessTestimonialsCarousel } from "@/components/business-profile/BusinessTestimonialsCarousel/BusinessTestimonialsCarousel";
 import { BusinessOpeningHoursList } from "@/components/business-profile/BusinessOpeningHoursList/BusinessOpeningHoursList";
 import { BusinessLocationCard } from "@/components/business-profile/BusinessLocationCard/BusinessLocationCard";
 import { BusinessPromotionBanner } from "@/components/business-profile/BusinessPromotionBanner/BusinessPromotionBanner";
@@ -64,6 +65,7 @@ export function BusinessProfilePage({ business, access, relatedBusinesses, relat
           {business.gallery && business.gallery.length > 0 && <BusinessGallery images={business.gallery} />}
           <BusinessAbout description={description} highlights={business.highlights} />
           {business.services && business.services.length > 0 && <BusinessServices services={business.services} />}
+          {business.testimonials && business.testimonials.length > 0 && <BusinessTestimonialsCarousel testimonials={business.testimonials} />}
           <div className={styles.twoColumn}>
             {business.openingHours && business.openingHours.length > 0 && (
               <BusinessOpeningHoursList openingHours={business.openingHours} />

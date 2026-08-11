@@ -30,6 +30,7 @@ const STEP_LABELS = ["פרטי העסק", "תמונות ותיאור", "שירו
 
 type GalleryImage = { url: string; alt: string };
 type ServiceDraft = { title: string; description: string; priceLabel: string };
+type TestimonialDraft = { authorName: string; text: string; roleOrContext: string };
 type Interval = { opensAt: string; closesAt: string };
 type DayHours = { closed: boolean; intervals: Interval[] };
 type HoursState = Record<(typeof WEEKDAYS)[number], DayHours>;
@@ -49,6 +50,7 @@ type WizardValues = {
   shortDescription: string;
   fullDescription: string;
   services: ServiceDraft[];
+  testimonials: TestimonialDraft[];
   openingHours: HoursState;
   publicPhone: string;
   whatsappSameAsPublicPhone: boolean;
@@ -83,6 +85,7 @@ const FIELD_LABEL: Record<string, string> = {
   shortDescription: "תיאור קצר",
   fullDescription: "תיאור מלא",
   services: "שירותים",
+  testimonials: "המלצות",
   publicPhone: "טלפון ציבורי",
   publicWhatsapp: "WhatsApp ציבורי",
   publicEmail: "אימייל עסקי",
@@ -101,6 +104,9 @@ function labelForErrorKey(key: string): string {
   if (key.startsWith("service-title-")) return `שירות ${Number(key.split("-")[2]) + 1} — שם השירות`;
   if (key.startsWith("service-desc-")) return `שירות ${Number(key.split("-")[2]) + 1} — תיאור`;
   if (key.startsWith("service-price-")) return `שירות ${Number(key.split("-")[2]) + 1} — מחיר`;
+  if (key.startsWith("testimonial-author-")) return `המלצה ${Number(key.split("-")[2]) + 1} — שם הממליץ/ה`;
+  if (key.startsWith("testimonial-text-")) return `המלצה ${Number(key.split("-")[2]) + 1} — תוכן ההמלצה`;
+  if (key.startsWith("testimonial-role-")) return `המלצה ${Number(key.split("-")[2]) + 1} — תפקיד/הקשר`;
   if (key.startsWith("hours_")) {
     const day = key.slice("hours_".length) as (typeof WEEKDAYS)[number];
     return `שעות פעילות — יום ${WEEKDAY_LABEL[day]}`;
@@ -131,6 +137,7 @@ function createEmptyValues(): WizardValues {
     shortDescription: "",
     fullDescription: "",
     services: [{ title: "", description: "", priceLabel: "" }],
+    testimonials: [],
     openingHours: createEmptyHours(),
     publicPhone: "",
     whatsappSameAsPublicPhone: true,
@@ -242,7 +249,7 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
       case 2:
         return validateStepTwo(source);
       case 3:
-        return validateStepThree(source.services);
+        return validateStepThree(source.services, source.testimonials);
       case 4: {
         const effectiveWhatsapp = source.whatsappSameAsPublicPhone ? "" : source.publicWhatsapp;
         return validateStepFour({ ...source, publicWhatsapp: effectiveWhatsapp });
@@ -258,11 +265,16 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
     () => ({
       1: ["businessName", "categoryIds", "businessType", "contactName", "contactPhone", "contactEmail", "address", "serviceArea"],
       2: ["coverImage", "gallery", "shortDescription", "fullDescription"],
-      3: ["services", ...values.services.flatMap((_, i) => [`service-title-${i}`, `service-desc-${i}`, `service-price-${i}`])],
+      3: [
+        "services",
+        ...values.services.flatMap((_, i) => [`service-title-${i}`, `service-desc-${i}`, `service-price-${i}`]),
+        "testimonials",
+        ...values.testimonials.flatMap((_, i) => [`testimonial-author-${i}`, `testimonial-text-${i}`, `testimonial-role-${i}`]),
+      ],
       4: ["publicPhone", "publicWhatsapp", "publicEmail", "websiteUrl", "instagramUrl", "facebookUrl", "tiktokUrl", ...WEEKDAYS.map((d) => `hours_${d}`)],
       5: ["publicationConsent", "termsAccepted", "trialConsent", "dashboardAccessConsent"],
     }),
-    [values.services],
+    [values.services, values.testimonials],
   );
 
   /** Runs the given step's validation, merges its errors into the shared error state (only replacing that step's own keys — other steps' stored errors are untouched), and returns whether it passed. */
@@ -398,6 +410,37 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
     });
   }
 
+  function updateTestimonial(index: number, patch: Partial<TestimonialDraft>) {
+    setValues((current) => {
+      const next = { ...current, testimonials: current.testimonials.map((t, i) => (i === index ? { ...t, ...patch } : t)) };
+      if (attemptedSteps.has(step)) queueMicrotask(() => runAndMergeStepValidation(step, next));
+      return next;
+    });
+  }
+
+  function addTestimonial() {
+    if (values.testimonials.length >= 10) return;
+    setValues((current) => ({ ...current, testimonials: [...current.testimonials, { authorName: "", text: "", roleOrContext: "" }] }));
+  }
+
+  function removeTestimonial(index: number) {
+    setValues((current) => {
+      const next = { ...current, testimonials: current.testimonials.filter((_, i) => i !== index) };
+      if (attemptedSteps.has(step)) queueMicrotask(() => runAndMergeStepValidation(step, next));
+      return next;
+    });
+  }
+
+  function moveTestimonial(index: number, direction: -1 | 1) {
+    setValues((current) => {
+      const next = [...current.testimonials];
+      const target = index + direction;
+      if (target < 0 || target >= next.length) return current;
+      [next[index], next[target]] = [next[target], next[index]];
+      return { ...current, testimonials: next };
+    });
+  }
+
   function updateDayHours(day: (typeof WEEKDAYS)[number], patch: Partial<DayHours>) {
     setValues((current) => {
       const next = { ...current, openingHours: { ...current.openingHours, [day]: { ...current.openingHours[day], ...patch } } };
@@ -474,6 +517,13 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
           title: s.title.trim(),
           description: s.description.trim() || undefined,
           priceLabel: s.priceLabel.trim() || undefined,
+        })),
+      testimonials: values.testimonials
+        .filter((t) => t.authorName.trim() && t.text.trim())
+        .map((t) => ({
+          authorName: t.authorName.trim(),
+          text: t.text.trim(),
+          roleOrContext: t.roleOrContext.trim() || undefined,
         })),
       openingHours: WEEKDAYS.map((day) => ({ day, closed: values.openingHours[day].closed, intervals: values.openingHours[day].intervals })),
       websiteUrl: values.websiteUrl.trim(),
@@ -989,6 +1039,98 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
                 הוספת שירות נוסף
               </Button>
             )}
+
+            <h3 className={styles.subStepTitle}>המלצות מלקוחות (אופציונלי)</h3>
+            <p className={styles.hintText}>הוסיפו ציטוטים קצרים מלקוחות מרוצים — הם יוצגו בקרוסלה בעמוד העסק.</p>
+            {errors.testimonials && (
+              <p className={styles.fieldErrorMessage} role="alert">
+                {errors.testimonials}
+              </p>
+            )}
+            {values.testimonials.map((testimonial, index) => {
+              const hasCardError = Boolean(
+                errors[`testimonial-author-${index}`] || errors[`testimonial-text-${index}`] || errors[`testimonial-role-${index}`],
+              );
+              return (
+                <div key={index} className={`${styles.serviceCard} ${hasCardError ? styles.invalid : ""}`}>
+                  <div className={styles.serviceCardHeader}>
+                    <span className={styles.hintText}>המלצה {index + 1}</span>
+                    <div className={styles.imageMoveButtons}>
+                      <Button variant="secondary" size="compact" type="button" disabled={index === 0} onClick={() => moveTestimonial(index, -1)}>
+                        ‹
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="compact"
+                        type="button"
+                        disabled={index === values.testimonials.length - 1}
+                        onClick={() => moveTestimonial(index, 1)}
+                      >
+                        ›
+                      </Button>
+                      <Button variant="secondary" size="compact" type="button" onClick={() => removeTestimonial(index)}>
+                        מחיקה
+                      </Button>
+                    </div>
+                  </div>
+                  <div className={`${styles.field} ${errors[`testimonial-author-${index}`] ? styles.fieldInvalid : ""}`}>
+                    <label htmlFor={`testimonial-author-${index}`}>שם הממליץ/ה *</label>
+                    <input
+                      id={`testimonial-author-${index}`}
+                      type="text"
+                      value={testimonial.authorName}
+                      onChange={(e) => updateTestimonial(index, { authorName: e.target.value })}
+                      aria-invalid={Boolean(errors[`testimonial-author-${index}`])}
+                      aria-describedby={errors[`testimonial-author-${index}`] ? `testimonial-author-${index}-error` : undefined}
+                    />
+                    {errors[`testimonial-author-${index}`] && (
+                      <p id={`testimonial-author-${index}-error`} className={styles.fieldErrorMessage} role="alert">
+                        {`המלצה ${index + 1} — ${errors[`testimonial-author-${index}`]}`}
+                      </p>
+                    )}
+                  </div>
+                  <div className={`${styles.field} ${errors[`testimonial-role-${index}`] ? styles.fieldInvalid : ""}`}>
+                    <label htmlFor={`testimonial-role-${index}`}>תפקיד או הקשר (אופציונלי)</label>
+                    <input
+                      id={`testimonial-role-${index}`}
+                      type="text"
+                      placeholder="לקוחה קבועה / בעל עסק שכן"
+                      value={testimonial.roleOrContext}
+                      onChange={(e) => updateTestimonial(index, { roleOrContext: e.target.value })}
+                      aria-invalid={Boolean(errors[`testimonial-role-${index}`])}
+                      aria-describedby={errors[`testimonial-role-${index}`] ? `testimonial-role-${index}-error` : undefined}
+                    />
+                    {errors[`testimonial-role-${index}`] && (
+                      <p id={`testimonial-role-${index}-error`} className={styles.fieldErrorMessage} role="alert">
+                        {`המלצה ${index + 1} — ${errors[`testimonial-role-${index}`]}`}
+                      </p>
+                    )}
+                  </div>
+                  <div className={`${styles.field} ${errors[`testimonial-text-${index}`] ? styles.fieldInvalid : ""}`}>
+                    <label htmlFor={`testimonial-text-${index}`}>תוכן ההמלצה *</label>
+                    <textarea
+                      id={`testimonial-text-${index}`}
+                      rows={3}
+                      maxLength={500}
+                      value={testimonial.text}
+                      onChange={(e) => updateTestimonial(index, { text: e.target.value })}
+                      aria-invalid={Boolean(errors[`testimonial-text-${index}`])}
+                      aria-describedby={errors[`testimonial-text-${index}`] ? `testimonial-text-${index}-error` : undefined}
+                    />
+                    {errors[`testimonial-text-${index}`] && (
+                      <p id={`testimonial-text-${index}-error`} className={styles.fieldErrorMessage} role="alert">
+                        {`המלצה ${index + 1} — ${errors[`testimonial-text-${index}`]}`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {values.testimonials.length < 10 && (
+              <Button variant="secondary" type="button" onClick={addTestimonial}>
+                הוספת המלצה
+              </Button>
+            )}
           </>
         )}
 
@@ -1276,6 +1418,7 @@ function ReviewStep({ values, planId, priceLabel, errors, onEdit, onChangeConsen
     [values.categoryIds],
   );
   const realServices = values.services.filter((s) => s.title.trim());
+  const realTestimonials = values.testimonials.filter((t) => t.authorName.trim() && t.text.trim());
 
   return (
     <>
@@ -1332,6 +1475,16 @@ function ReviewStep({ values, planId, priceLabel, errors, onEdit, onChangeConsen
             {s.priceLabel ? ` — ${s.priceLabel}` : ""}
           </p>
         ))}
+        {realTestimonials.length > 0 && (
+          <>
+            <p className={styles.reviewLabel}>המלצות ({realTestimonials.length})</p>
+            {realTestimonials.map((t) => (
+              <p key={t.authorName} className={styles.reviewValue}>
+                {`"${t.text}" — ${t.authorName}`}
+              </p>
+            ))}
+          </>
+        )}
       </div>
 
       <div className={styles.reviewSection}>

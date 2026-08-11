@@ -66,6 +66,7 @@ export type Database = {
           | "cover_image"
           | "gallery"
           | "services"
+          | "testimonials"
           | "opening_hours"
           | "social_links"
           | "promotion"
@@ -91,6 +92,7 @@ export type Database = {
           cover_image?: BusinessRegistrationRow["cover_image"];
           gallery?: BusinessRegistrationRow["gallery"];
           services?: BusinessRegistrationRow["services"];
+          testimonials?: BusinessRegistrationRow["testimonials"];
           opening_hours?: BusinessRegistrationRow["opening_hours"];
           social_links?: BusinessRegistrationRow["social_links"];
           promotion?: BusinessRegistrationRow["promotion"];

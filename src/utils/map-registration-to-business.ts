@@ -105,6 +105,13 @@ export function mapRegistrationToBusiness(row: BusinessRegistrationRow): Busines
       visible: true,
       order: index,
     })),
+    testimonials: row.testimonials?.map((testimonial, index) => ({
+      id: `${row.id}-testimonial-${index}`,
+      authorName: testimonial.authorName,
+      text: testimonial.text,
+      roleOrContext: testimonial.roleOrContext,
+      order: index,
+    })),
     socialLinks: row.social_links
       ? { instagram: row.social_links.instagramUrl, facebook: row.social_links.facebookUrl, tiktok: row.social_links.tiktokUrl }
       : undefined,
