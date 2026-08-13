@@ -22,12 +22,14 @@
   font-weight: var(--fw-bold);
   font-size: 18px;
   color: var(--whatsapp-title-color, inherit);
+  text-align: var(--whatsapp-text-align, start);
   margin: 0;
 }
 
 .subtitle {
   font-size: var(--fs-body-sm);
   color: var(--whatsapp-description-color, var(--slate-600));
+  text-align: var(--whatsapp-text-align, start);
   margin-top: 4px;
 }
 

@@ -19,6 +19,7 @@ import { sortWhatsAppGroups } from "@/utils/whatsapp-group-filters";
 import { getListingAccessByBusinessId } from "@/domain/get-business-listing-access";
 import { subscriptionRepository } from "@/repositories/mock-subscription-repository";
 import { mapRegistrationToBusiness } from "@/utils/map-registration-to-business";
+import { toBusinessId } from "@/utils/business-id";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,10 @@ export default async function Home() {
   const accessByBusinessId = await getListingAccessByBusinessId(featuredAsBusinesses, subscriptionRepository, new Date());
   const featuredBusinesses = featuredRegistrations.map((registration) => ({
     registration,
-    canOpenProfile: accessByBusinessId[registration.id]?.canOpenProfile ?? false,
+    // accessByBusinessId is keyed by the prefixed Business.id ("reg-<uuid>", see toBusinessId) —
+    // registration.id is the raw Supabase row id, so it must go through the same prefixing before
+    // the lookup, or every featured business silently falls back to "no access".
+    canOpenProfile: accessByBusinessId[toBusinessId(registration.id)]?.canOpenProfile ?? false,
   }));
 
   const marketplaceTeaser = marketplaceListings.slice(0, 4);

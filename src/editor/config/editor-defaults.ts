@@ -94,7 +94,7 @@ export const defaultQuickLinksSettings: QuickLinksEditorSettings = {
 export const defaultFeaturedBusinessesSettings: FeaturedBusinessesEditorSettings = {
   content: {
     sectionTitle: "הכירו את העסקים שלנו",
-    showAllLinkVisible: false,
+    showAllLinkVisible: true,
     showAllLinkLabel: "לכל העסקים",
     showAllLinkHref: "/businesses",
     visibleCount: 4,
@@ -204,7 +204,7 @@ export const defaultWhatsAppBannerSettings: WhatsAppBannerEditorSettings = {
     shadowToken: "none",
   },
   layout: {
-    contentAlignment: "space-between",
+    contentAlignment: "center",
     direction: "row",
     paddingBlock: { start: "0", end: "64" },
     maxContentWidth: "lg",

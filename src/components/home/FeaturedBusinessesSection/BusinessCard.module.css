@@ -5,6 +5,7 @@
 }
 
 .imageArea {
+  display: block;
   aspect-ratio: var(--card-image-aspect, 4 / 3);
   height: auto;
   position: relative;

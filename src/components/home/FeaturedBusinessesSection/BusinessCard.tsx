@@ -39,6 +39,11 @@ export function BusinessCard({ card, appearance }: BusinessCardProps) {
   const PlaceholderIcon = PLACEHOLDER_ICON[card.category] ?? Utensils;
   const placeholderClass = PLACEHOLDER_CLASS[card.category] ?? styles.default;
   const whatsappLink = card.whatsappUrl ? createWhatsappLink(card.whatsappUrl) : "";
+  // cardUrl is the sole, authoritative link signal (set by mapBusinessToTeaserCard only when
+  // the business actually has an accessible public profile) — a business without one must stay
+  // fully non-clickable, both name and image, rather than fall back to a slug-guessed URL that
+  // could point at a page the visitor isn't allowed to see.
+  const profileHref = card.cardUrl;
 
   const cardStyle = {
     // Set as real properties (not custom-property overrides) so they reliably win over
@@ -51,28 +56,34 @@ export function BusinessCard({ card, appearance }: BusinessCardProps) {
     "--card-image-aspect": ASPECT_RATIO_CSS[appearance.imageAspectRatio],
   } as CSSProperties;
 
+  const imageContent = card.image.src ? (
+    <Image
+      src={card.image.src}
+      alt={card.image.alt}
+      fill
+      sizes="(max-width: 640px) 100vw, 25vw"
+      className={styles.image}
+      style={{ objectFit: card.image.objectFit }}
+    />
+  ) : (
+    <div className={`${styles.placeholder} ${placeholderClass}`} aria-hidden="true">
+      <PlaceholderIcon size={36} strokeWidth={1.5} />
+    </div>
+  );
+
   return (
     <Card noPadding hoverable={appearance.cardHoverEffect === "lift"} className={styles.card} style={cardStyle} data-testid="business-card">
-      <div className={styles.imageArea}>
-        {card.image.src ? (
-          <Image
-            src={card.image.src}
-            alt={card.image.alt}
-            fill
-            sizes="(max-width: 640px) 100vw, 25vw"
-            className={styles.image}
-            style={{ objectFit: card.image.objectFit }}
-          />
-        ) : (
-          <div className={`${styles.placeholder} ${placeholderClass}`} aria-hidden="true">
-            <PlaceholderIcon size={36} strokeWidth={1.5} />
-          </div>
-        )}
-      </div>
+      {profileHref ? (
+        <a href={profileHref} className={styles.imageArea} aria-label={card.name}>
+          {imageContent}
+        </a>
+      ) : (
+        <div className={styles.imageArea}>{imageContent}</div>
+      )}
 
       <div className={styles.body}>
         <CategoryTag label={card.category} category={card.category} />
-        <h3 className={styles.name}>{card.cardUrl ? <a href={card.cardUrl}>{card.name}</a> : card.name}</h3>
+        <h3 className={styles.name}>{profileHref ? <a href={profileHref}>{card.name}</a> : card.name}</h3>
         <p className={styles.description}>{card.description}</p>
 
         <div className={styles.actions}>

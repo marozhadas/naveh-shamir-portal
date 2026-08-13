@@ -25,6 +25,9 @@ export function WhatsAppBanner({ settings }: WhatsAppBannerProps) {
     "--whatsapp-description-color": colorTokenToCssVar(settings.appearance.descriptionColorToken),
     "--whatsapp-max-width": containerWidthTokenToCssValue(settings.layout.maxContentWidth),
     "--whatsapp-justify": settings.layout.contentAlignment,
+    // text-align only understands start/center/end — "space-between" (a valid justify-content
+    // value, meaningless for text-align) falls back to the base RTL default instead.
+    "--whatsapp-text-align": settings.layout.contentAlignment === "space-between" ? "start" : settings.layout.contentAlignment,
     "--whatsapp-direction": settings.layout.direction,
     "--whatsapp-gap": spacingTokenToCssVar(settings.layout.gap),
     "--whatsapp-padding-block-start": spacingTokenToCssVar(settings.layout.paddingBlock.start),
