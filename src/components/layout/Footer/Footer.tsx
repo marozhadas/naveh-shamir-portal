@@ -89,7 +89,15 @@ export function Footer({ settings }: FooterProps) {
             ))}
           </nav>
         )}
-        <span>{settings.content.creditText}</span>
+        <span>
+          {settings.content.creditUrl ? (
+            <a href={settings.content.creditUrl} target="_blank" rel="noopener noreferrer">
+              {settings.content.creditText}
+            </a>
+          ) : (
+            settings.content.creditText
+          )}
+        </span>
       </div>
     </footer>
   );

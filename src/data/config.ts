@@ -2,6 +2,7 @@ export const SITE_CONFIG = {
   name: "נווה שמיר — הפורטל של השכונה",
   whatsappCommunityUrl: "https://chat.whatsapp.com/nevesh-community-placeholder",
   designCredit: "עיצוב ופיתוח: הדס מרוז",
+  designCreditUrl: "https://www.hadasdesign.co.il/",
   /** The live production domain — used to build absolute URLs for metadata/JSON-LD/canonical/Open Graph (e.g. a business profile's clean slug URL). */
   siteUrl: "https://naveh-shamir-portal.vercel.app",
 };

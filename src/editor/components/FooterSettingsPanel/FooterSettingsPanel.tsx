@@ -85,6 +85,11 @@ export function FooterSettingsPanel({ tab }: FooterSettingsPanelProps) {
           required
           onChange={(creditText) => onDiscreteChange({ ...footer, content: { ...footer.content, creditText } })}
         />
+        <LinkControl
+          label="קישור טקסט הקרדיט (אופציונלי)"
+          value={footer.content.creditUrl}
+          onChange={(creditUrl) => onDiscreteChange({ ...footer, content: { ...footer.content, creditUrl } })}
+        />
         <p style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
           קישורי המידע המשפטי (מדיניות פרטיות, תנאי שימוש, הצהרת נגישות) מוצגים תמיד ואינם ניתנים להסתרה.
         </p>

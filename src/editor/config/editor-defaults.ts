@@ -224,6 +224,7 @@ export const defaultFooterSettings: FooterEditorSettings = {
     navColumnTitle: "ניווט",
     essentialColumnTitle: "מידע חיוני",
     creditText: SITE_CONFIG.designCredit,
+    creditUrl: SITE_CONFIG.designCreditUrl,
     navItems: NAV_LINKS.map((link) => ({ id: link.id, label: link.label, href: link.href, visible: true })),
     legalLinks: FOOTER_LEGAL_LINKS,
     showLegalLinks: true,
