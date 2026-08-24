@@ -31,6 +31,12 @@ function toWhatsappHref(phone: string | null): string {
  * active access) — a basic-tier or lapsed business still shows its card (admin chose to feature
  * it) but with a non-clickable name, exactly like BusinessCard.tsx already renders a card with no
  * cardUrl, rather than linking to a page that would show "not available".
+ *
+ * `whatsappUrl` is likewise gated on `canOpenProfile` — a basic-tier business gets a phone
+ * number only, never a WhatsApp button, same as the archive's own BusinessCard.tsx ("אין להציג
+ * כפתור WhatsApp כלל" for basic; a deliberate upgrade incentive, not an oversight). The two
+ * gates share the exact same underlying signal since canOpenProfile is only ever true for
+ * Plus/Premium — see getBusinessListingAccess.
  */
 export function mapBusinessToTeaserCard(row: BusinessRegistrationRow, canOpenProfile: boolean): BusinessCardContentSettings {
   return {
@@ -43,7 +49,7 @@ export function mapBusinessToTeaserCard(row: BusinessRegistrationRow, canOpenPro
     callButtonLabel: "התקשרו",
     whatsappButtonLabel: "וואטסאפ",
     phone: toTelHref(row.public_phone || row.phone),
-    whatsappUrl: toWhatsappHref(row.public_whatsapp || row.whatsapp_phone),
+    whatsappUrl: canOpenProfile ? toWhatsappHref(row.public_whatsapp || row.whatsapp_phone) : "",
     cardUrl: canOpenProfile ? `/businesses/${row.slug}` : "",
     visible: true,
   };
