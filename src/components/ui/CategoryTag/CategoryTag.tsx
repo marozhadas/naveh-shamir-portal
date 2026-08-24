@@ -10,10 +10,11 @@ const CATEGORY_STYLE: Record<string, string> = {
 type CategoryTagProps = {
   label: string;
   category?: BusinessCategory | string;
+  className?: string;
 };
 
-export function CategoryTag({ label, category }: CategoryTagProps) {
+export function CategoryTag({ label, category, className }: CategoryTagProps) {
   const variantClass = CATEGORY_STYLE[category ?? label] ?? styles.default;
 
-  return <span className={`${styles.tag} ${variantClass}`}>{label}</span>;
+  return <span className={[styles.tag, variantClass, className].filter(Boolean).join(" ")}>{label}</span>;
 }

@@ -59,7 +59,7 @@ export const featuredBusinessesSettingsSchema = z
       // Not exposed in the editor; revisit as a per-category override map in a future phase.
       imageAspectRatio: z.enum(["1:1", "4:3", "16:9"]),
       cardHoverEffect: z.enum(["none", "lift"]),
-      buttonVariant: z.enum(["primary", "secondary", "accent", "whatsapp"]),
+      buttonVariant: z.enum(["primary", "secondary", "accent", "whatsapp", "navy"]),
     }),
     layout: z.object({
       columnsDesktop: z.union([z.literal(2), z.literal(3), z.literal(4)]),

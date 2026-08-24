@@ -27,8 +27,8 @@ const RADIUS_LABEL: Record<"sm" | "md" | "lg" | "xl" | "pill", string> = {
   pill: "עגול",
 };
 const SHADOW_OPTIONS: ShadowToken[] = ["none", "sm", "card", "card-hover", "modal"];
-const BUTTON_VARIANT_OPTIONS: ButtonVariant[] = ["primary", "secondary", "accent"];
-const BUTTON_VARIANT_LABEL: Record<ButtonVariant, string> = { primary: "ראשי", secondary: "משני", accent: "הדגשה", whatsapp: "וואטסאפ" };
+const BUTTON_VARIANT_OPTIONS: Array<"primary" | "secondary" | "accent"> = ["primary", "secondary", "accent"];
+const BUTTON_VARIANT_LABEL: Record<ButtonVariant, string> = { primary: "ראשי", secondary: "משני", accent: "הדגשה", whatsapp: "וואטסאפ", navy: "כחול כהה" };
 const ALIGN_OPTIONS: Array<"start" | "center"> = ["start", "center"];
 const ALIGN_LABEL: Record<"start" | "center", string> = { start: "התחלה", center: "מרכז" };
 const CONTAINER_WIDTH_OPTIONS: Array<"md" | "lg" | "xl"> = ["md", "lg", "xl"];

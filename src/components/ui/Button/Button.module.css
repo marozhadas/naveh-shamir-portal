@@ -88,11 +88,23 @@
   background: var(--color-yellow-hover);
 }
 
+/* a11y: white-on-#25d366 measures ~2:1 (fails WCAG AA 4.5:1 for this text size).
+   Navy-on-#25d366 measures ~6:1 (passes AA) — same reasoning as .primary above. */
 .whatsapp {
   background: var(--color-whatsapp);
-  color: var(--color-text-inverse);
+  color: var(--navy-900);
 }
 
 .whatsapp:hover:not(.disabled) {
   background: var(--color-whatsapp-hover);
+}
+
+/* Solid navy fill — the featured-business card's "call" button (see BusinessCard.tsx). */
+.navy {
+  background: var(--navy-900);
+  color: var(--color-text-inverse);
+}
+
+.navy:hover:not(.disabled) {
+  background: var(--color-navy-hover);
 }

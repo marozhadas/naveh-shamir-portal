@@ -1,7 +1,7 @@
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
 import styles from "./Button.module.css";
 
-export type ButtonVariant = "primary" | "secondary" | "accent" | "whatsapp";
+export type ButtonVariant = "primary" | "secondary" | "accent" | "whatsapp" | "navy";
 export type ButtonSize = "default" | "compact";
 
 type ButtonOwnProps = {

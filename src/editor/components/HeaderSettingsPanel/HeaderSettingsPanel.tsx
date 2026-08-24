@@ -20,8 +20,8 @@ const SPACING_OPTIONS: SpacingToken[] = ["0", "4", "8", "12", "16", "20", "24", 
 const SHADOW_OPTIONS: ShadowToken[] = ["none", "sm", "card"];
 const CONTAINER_WIDTH_OPTIONS: Array<"md" | "lg" | "xl"> = ["md", "lg", "xl"];
 const CONTAINER_WIDTH_LABEL: Record<"md" | "lg" | "xl", string> = { md: "בינוני (1024px)", lg: "גדול (1280px)", xl: "רחב (1440px)" };
-const BUTTON_VARIANT_OPTIONS: ButtonVariant[] = ["primary", "secondary", "accent"];
-const BUTTON_VARIANT_LABEL: Record<ButtonVariant, string> = { primary: "ראשי", secondary: "משני", accent: "הדגשה", whatsapp: "וואטסאפ" };
+const BUTTON_VARIANT_OPTIONS: Array<"primary" | "secondary" | "accent"> = ["primary", "secondary", "accent"];
+const BUTTON_VARIANT_LABEL: Record<ButtonVariant, string> = { primary: "ראשי", secondary: "משני", accent: "הדגשה", whatsapp: "וואטסאפ", navy: "כחול כהה" };
 
 type HeaderSettingsPanelProps = { tab: EditorPanelId };
 

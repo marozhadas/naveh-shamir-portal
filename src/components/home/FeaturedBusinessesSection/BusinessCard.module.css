@@ -1,3 +1,10 @@
+/* Pixel-matched to the Figma card design (node 28:10, "Frame 60") — the card's image proportions/
+   radius, per-element spacing, and type sizes below are taken directly from that spec rather than
+   the shared appearance-token scale, since none of the existing presets land on the exact values
+   it calls for. Outer padding comes from Card's own default (var(--space-5), 20px — an exact
+   match already); radius/shadow are set inline in BusinessCard.tsx for the same reason described
+   there (inline style reliably wins over Card.module.css's own class, unlike a same-specificity
+   CSS Modules class would). */
 .card {
   display: flex;
   flex-direction: column;
@@ -6,9 +13,11 @@
 
 .imageArea {
   display: block;
-  aspect-ratio: var(--card-image-aspect, 4 / 3);
+  aspect-ratio: 343 / 218;
   height: auto;
   position: relative;
+  border-radius: 18px;
+  overflow: hidden;
 }
 
 .placeholder {
@@ -44,21 +53,20 @@
 }
 
 .body {
-  padding: var(--space-4) var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
   flex: 1;
   color: var(--card-text-color, var(--color-text-primary));
 }
 
 .tag {
-  align-self: flex-start;
+  margin-top: 14px;
 }
 
 .name {
-  font-size: 17px;
+  font-size: 22px;
   font-weight: var(--fw-bold);
+  margin-top: 12px;
 }
 
 .name a {
@@ -71,25 +79,32 @@
 }
 
 .description {
-  font-size: var(--fs-body-sm);
-  color: var(--slate-600);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-regular);
   line-height: var(--lh-body);
   flex: 1;
+  margin-top: 11px;
+  /* Inherits navy from .body's --card-text-color, matching the design — previously a lighter grey. */
 }
 
 .actions {
   display: flex;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
+  gap: 23px;
+  margin-top: var(--space-10); /* 40px — exact match */
   flex-wrap: wrap;
 }
 
-/* Element+class beats Button.module.css's bare ".button { min-width: 0 }" (equal single-class
-   specificity would otherwise make the winner depend on unpredictable CSS-chunk load order) —
-   this floor is what makes the two buttons wrap onto their own row instead of being squeezed to
-   an unreadable/truncated width when the card itself is narrow. */
+/* Element+class beats Button.module.css's bare classes (equal single-class specificity would
+   otherwise make the winner depend on unpredictable CSS-chunk load order) — this is what lets a
+   business card pin its own button geometry without a global Button.module.css change. */
 .actions > a,
 .actions > button {
   flex: 1;
   min-width: 110px;
+  height: 47px;
+  padding: 9px 15px 9px 21px;
+  gap: 11px;
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-regular);
+  border-radius: var(--radius-pill);
 }

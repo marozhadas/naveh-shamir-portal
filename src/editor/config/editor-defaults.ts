@@ -117,7 +117,7 @@ export const defaultFeaturedBusinessesSettings: FeaturedBusinessesEditorSettings
   appearance: {
     sectionBackgroundColorToken: "background",
     titleColorToken: "text-primary",
-    textColorToken: "text-secondary",
+    textColorToken: "text-primary",
     cardBackgroundColorToken: "surface",
     cardRadiusToken: "lg",
     cardShadowToken: "card",
@@ -126,7 +126,7 @@ export const defaultFeaturedBusinessesSettings: FeaturedBusinessesEditorSettings
     // Not exposed in the editor; revisit as a per-category override map in a future phase.
     imageAspectRatio: "4:3",
     cardHoverEffect: "lift",
-    buttonVariant: "primary",
+    buttonVariant: "navy",
   },
   layout: {
     // Live grid is fluid (auto-fit, minmax(240px,1fr)); 4 is what it renders
