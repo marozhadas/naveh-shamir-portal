@@ -91,7 +91,12 @@
   display: flex;
   gap: 23px;
   margin-top: var(--space-10); /* 40px — exact match */
-  flex-wrap: wrap;
+  /* Always side by side — see the container query below for what happens when there isn't
+     room for both full-width pills. container-type turns this row into the query context that
+     its own children (not the viewport) get measured against. */
+  flex-wrap: nowrap;
+  container-type: inline-size;
+  container-name: cardActions;
 }
 
 /* Element+class beats Button.module.css's bare classes (equal single-class specificity would
@@ -100,14 +105,34 @@
 .actions > a,
 .actions > button {
   flex: 1;
-  /* Wide enough that the longer label ("וואטסאפ" + its 29px icon) never needs .label's
-     ellipsis at this font-size/padding — below this width .actions wraps the pair onto their
-     own full-width rows instead of squeezing both into a card too narrow to hold them. */
-  min-width: 168px;
+  min-width: 0; /* let the container query below shrink these below their natural label width */
   height: 47px;
   padding: 9px 15px 9px 21px;
   gap: 11px;
   font-size: var(--fs-h3);
   font-weight: var(--fw-regular);
   border-radius: var(--radius-pill);
+}
+
+/* Below ~168px per button (the comfortable width for the longer "וואטסאפ" label + its 29px
+   icon), keep both buttons side by side but drop the label and collapse each into a plain
+   47x47 circle around its icon instead of wrapping to a second row or truncating the text. The
+   Button component still renders the label text — an aria-label on <Button> (see BusinessCard.tsx)
+   keeps it as the accessible name once the visible span is hidden here. */
+@container cardActions (max-width: 379px) {
+  .actions > a,
+  .actions > button {
+    flex: 0 0 auto;
+    width: 47px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  /* Structural, not class-based: Button.module.css's classes are hashed per-module, so this
+     selector reaches the label span (always the last child when an icon is passed) without
+     needing to know its generated name. */
+  .actions > a > span:last-child,
+  .actions > button > span:last-child {
+    display: none;
+  }
 }

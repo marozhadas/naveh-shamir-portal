@@ -127,6 +127,7 @@ export function BusinessCard({ card, appearance }: BusinessCardProps) {
               href={`tel:${normalizePhoneForTelLink(card.phone)}`}
               variant={appearance.buttonVariant}
               icon={<PhoneGlyph />}
+              aria-label={card.callButtonLabel}
               data-analytics-event="business-call-click"
             >
               {card.callButtonLabel}
@@ -139,6 +140,7 @@ export function BusinessCard({ card, appearance }: BusinessCardProps) {
               icon={<WhatsAppGlyph />}
               target="_blank"
               rel="noopener noreferrer"
+              aria-label={card.whatsappButtonLabel}
               data-analytics-event="business-whatsapp-click"
             >
               {card.whatsappButtonLabel}
