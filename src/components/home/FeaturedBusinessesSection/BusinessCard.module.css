@@ -100,7 +100,10 @@
 .actions > a,
 .actions > button {
   flex: 1;
-  min-width: 110px;
+  /* Wide enough that the longer label ("וואטסאפ" + its 29px icon) never needs .label's
+     ellipsis at this font-size/padding — below this width .actions wraps the pair onto their
+     own full-width rows instead of squeezing both into a card too narrow to hold them. */
+  min-width: 168px;
   height: 47px;
   padding: 9px 15px 9px 21px;
   gap: 11px;

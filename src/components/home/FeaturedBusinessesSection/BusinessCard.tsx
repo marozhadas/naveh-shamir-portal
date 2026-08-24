@@ -4,7 +4,7 @@ import { GraduationCap, HandHeart, Utensils, Wrench } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { CategoryTag } from "@/components/ui/CategoryTag";
 import { Button } from "@/components/ui/Button";
-import { colorTokenToCssVar } from "@/styles/token-to-css-variable";
+import { colorTokenToCssVar, shadowTokenToCssVar } from "@/styles/token-to-css-variable";
 import { createWhatsappLink } from "@/utils/create-whatsapp-link";
 import { normalizePhoneForTelLink } from "@/utils/normalize-phone-for-tel-link";
 import type { BusinessCardContentSettings, FeaturedBusinessesEditorSettings } from "@/editor/schemas/businesses.schema";
@@ -82,10 +82,12 @@ export function BusinessCard({ card, appearance }: BusinessCardProps) {
     // Card.module.css's own hardcoded background/radius/shadow regardless of CSS Modules
     // stylesheet ordering — inline style always beats an external class at equal specificity.
     background: colorTokenToCssVar(appearance.cardBackgroundColorToken),
-    // Pixel-matched to the Figma card (node 28:10) — literal, not appearance.cardRadiusToken/
-    // cardShadowToken driven, since neither existing preset reaches these exact values.
+    // Radius is pixel-matched to the Figma card (node 28:10) — literal, since no existing
+    // radiusToken preset reaches 22px. Shadow, by contrast, uses the same admin-configurable
+    // token as every other card on the page (Figma's own drop shadow read too heavy/dark next
+    // to them once shipped, so this card was deliberately brought back in line).
     borderRadius: "22px",
-    boxShadow: "0px 4px 20px 1px rgba(21, 27, 56, 0.4)",
+    boxShadow: shadowTokenToCssVar(appearance.cardShadowToken),
     "--card-text-color": colorTokenToCssVar(appearance.textColorToken),
   } as CSSProperties;
 
