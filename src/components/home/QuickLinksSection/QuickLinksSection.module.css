@@ -50,26 +50,29 @@
 .iconWrap {
   width: 48px;
   height: 48px;
-  border-radius: var(--radius-md);
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
+/* Bold, saturated fills (was a pale tint + dark icon) — navy-on-yellow/green keep the same
+   accessible pairing already established for .primary's button (white fails contrast on these;
+   navy passes at ~6:1+), blue is dark enough on its own that white is the right icon color. */
 .yellow {
-  background: var(--yellow-100);
+  background: var(--yellow-500);
   color: var(--navy-900);
 }
 
 .green {
-  background: var(--green-100);
-  color: var(--green-700);
+  background: var(--green-600);
+  color: var(--navy-900);
 }
 
 .blue {
-  background: var(--color-highlight-blue-bg);
-  color: var(--navy-700);
+  background: var(--blue-700);
+  color: var(--color-text-inverse);
 }
 
 .label {
