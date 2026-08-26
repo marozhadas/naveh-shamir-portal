@@ -75,6 +75,11 @@
   color: var(--color-text-inverse);
 }
 
+.orange {
+  background: var(--orange-500);
+  color: var(--color-text-inverse);
+}
+
 .label {
   font-size: 13.5px;
   font-weight: var(--fw-bold);

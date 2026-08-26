@@ -1,4 +1,4 @@
-export type QuickLinkColorVariant = "yellow" | "green" | "blue";
+export type QuickLinkColorVariant = "yellow" | "green" | "blue" | "orange";
 
 export type QuickLink = {
   id: string;

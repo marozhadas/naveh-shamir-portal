@@ -15,6 +15,7 @@ const COLOR_CLASS: Record<string, string> = {
   yellow: styles.yellow,
   green: styles.green,
   blue: styles.blue,
+  orange: styles.orange,
 };
 
 const ICON_SIZE_PX: Record<"sm" | "md" | "lg", number> = { sm: 18, md: 22, lg: 28 };

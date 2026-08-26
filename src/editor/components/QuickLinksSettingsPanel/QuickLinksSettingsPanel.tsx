@@ -34,8 +34,8 @@ const HOVER_LABEL: Record<QuickLinksEditorSettings["appearance"]["itemHoverEffec
   lift: "הרמה",
 };
 const ICON_OPTIONS: IconToken[] = Object.keys(ICON_TOKEN_LABEL) as IconToken[];
-const COLOR_VARIANT_OPTIONS: QuickLinkColorVariant[] = ["yellow", "green", "blue"];
-const COLOR_VARIANT_LABEL: Record<QuickLinkColorVariant, string> = { yellow: "צהוב", green: "ירוק", blue: "כחול" };
+const COLOR_VARIANT_OPTIONS: QuickLinkColorVariant[] = ["yellow", "green", "blue", "orange"];
+const COLOR_VARIANT_LABEL: Record<QuickLinkColorVariant, string> = { yellow: "צהוב", green: "ירוק", blue: "כחול", orange: "כתום" };
 const ALIGN_OPTIONS: Array<"start" | "center"> = ["start", "center"];
 const ALIGN_LABEL: Record<"start" | "center", string> = { start: "התחלה", center: "מרכז" };
 const ICON_SIZE_OPTIONS: Array<"sm" | "md" | "lg"> = ["sm", "md", "lg"];

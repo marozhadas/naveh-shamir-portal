@@ -27,20 +27,24 @@ export const QUICK_LINKS: QuickLink[] = [
     label: "מדריך עסקים",
     href: "/businesses",
     icon: "store",
-    colorVariant: "yellow",
+    // yellow/green/blue alone can't avoid same-color neighbors on both the 2-col mobile and
+    // 3-col tablet grid at once with this fixed order (positions 3 and 4 are each adjacent —
+    // across one grid or the other — to every other item, so 3 colors is provably insufficient).
+    // This 4th color is what makes a same-color-neighbor-free layout possible at every breakpoint.
+    colorVariant: "orange",
   },
   {
     id: "whatsapp-groups",
     label: "קבוצות וואטסאפ",
     href: "#whatsapp",
     icon: "message-circle",
-    colorVariant: "green",
+    colorVariant: "yellow",
   },
   {
     id: "community-boards",
     label: "לוחות קהילה",
     href: "/community-board",
     icon: "clipboard-list",
-    colorVariant: "blue",
+    colorVariant: "green",
   },
 ];

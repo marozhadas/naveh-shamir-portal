@@ -8,7 +8,7 @@ export const quickLinkItemSettingsSchema = z.object({
   label: z.string().min(1, "הטקסט של הקישור לא יכול להיות ריק").max(CONTENT_LIMITS.ctaLabel),
   href: z.string().min(1).refine(isSafeHref, { message: "כתובת לא תקינה" }),
   icon: iconTokenSchema,
-  colorVariant: z.enum(["yellow", "green", "blue"]),
+  colorVariant: z.enum(["yellow", "green", "blue", "orange"]),
   visible: z.boolean(),
 });
 
