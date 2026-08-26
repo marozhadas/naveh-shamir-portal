@@ -14,6 +14,7 @@ import type { EssentialNumberRow } from "@/types/essential-number";
 import type { ContactMessageRow } from "@/types/contact-message";
 import type { WhatsAppGroupRow } from "@/types/whatsapp-group";
 import type { BusinessSlugRedirectRow } from "@/types/business-slug-redirect";
+import type { CommunityNewsRow } from "@/types/community-news";
 
 export type BusinessEventLogRow = {
   id: string;
@@ -239,6 +240,17 @@ export type Database = {
         Row: BusinessSlugRedirectRow;
         Insert: Omit<BusinessSlugRedirectRow, "id" | "created_at"> & { id?: string; created_at?: string };
         Update: Partial<BusinessSlugRedirectRow>;
+        Relationships: [];
+      };
+      community_news: {
+        Row: CommunityNewsRow;
+        Insert: Omit<CommunityNewsRow, "id" | "created_at" | "updated_at" | "display_order"> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          display_order?: number;
+        };
+        Update: Partial<CommunityNewsRow>;
         Relationships: [];
       };
     };

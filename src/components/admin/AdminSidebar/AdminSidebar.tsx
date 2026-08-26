@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Building2, Bell, Settings, BarChart3, Recycle, CalendarDays, Phone, MessageSquare, MessagesSquare, X } from "lucide-react";
+import { LayoutDashboard, Building2, Bell, Settings, BarChart3, Recycle, CalendarDays, Phone, MessageSquare, MessagesSquare, Newspaper, X } from "lucide-react";
 import { formatBadgeCount } from "@/utils/admin-notification-format";
 import styles from "./AdminSidebar.module.css";
 
@@ -36,6 +36,7 @@ export function AdminSidebar({ pendingBusinessesCount, openNotificationsCount, m
     },
     { href: "/admin/marketplace", label: "מסירה ומכירה", icon: <Recycle size={18} aria-hidden="true" /> },
     { href: "/admin/events", label: "אירועים", icon: <CalendarDays size={18} aria-hidden="true" /> },
+    { href: "/admin/community-news", label: "חדשות השכונה", icon: <Newspaper size={18} aria-hidden="true" /> },
     { href: "/admin/essential-numbers", label: "מספרים חיוניים", icon: <Phone size={18} aria-hidden="true" /> },
     { href: "/admin/whatsapp-groups", label: "קבוצות WhatsApp", icon: <MessagesSquare size={18} aria-hidden="true" /> },
     { href: "/admin/contact", label: "פניות", icon: <MessageSquare size={18} aria-hidden="true" /> },

@@ -110,4 +110,10 @@ export type AdminAuditAction =
   | "whatsapp-group-archived"
   | "whatsapp-group-reordered"
   | "whatsapp-group-duplicated"
-  | "whatsapp-group-deleted";
+  | "whatsapp-group-deleted"
+  | "community-news-created"
+  | "community-news-updated"
+  | "community-news-published"
+  | "community-news-unpublished"
+  | "community-news-archived"
+  | "community-news-deleted";

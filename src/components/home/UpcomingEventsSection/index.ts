@@ -1,1 +1,0 @@
-export { UpcomingEventsSection } from "./UpcomingEventsSection";

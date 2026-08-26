@@ -1,0 +1,48 @@
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 24px var(--space-16);
+}
+
+.imageWrap {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: var(--slate-100);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: var(--space-6);
+}
+
+.image {
+  object-fit: cover;
+}
+
+.imagePlaceholder {
+  aspect-ratio: 16 / 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--slate-400);
+  background: var(--slate-100);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-6);
+}
+
+.dateLine {
+  font-size: var(--fs-body-sm);
+  font-weight: var(--fw-demibold);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-4);
+}
+
+.body {
+  font-size: var(--fs-body);
+  color: var(--color-text-primary);
+  line-height: var(--lh-body);
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.backLinkWrap {
+  margin-top: var(--space-8);
+}

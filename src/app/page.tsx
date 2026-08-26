@@ -10,6 +10,7 @@ import { ContactCtaSection } from "@/components/home/ContactCtaSection/ContactCt
 import { listHeroGalleryImages } from "@/repositories/hero-gallery-service";
 import { getPublishedEvents } from "@/repositories/community-events-service";
 import { pickHomepageTeaserEvents } from "@/utils/map-community-events-to-teaser-cards";
+import { getPublishedNews } from "@/repositories/community-news-service";
 import { getFeaturedApprovedBusinesses } from "@/repositories/featured-businesses-service";
 import { getActiveListings } from "@/repositories/marketplace-service";
 import { getPublishedEssentialNumbers } from "@/repositories/essential-numbers-service";
@@ -24,9 +25,10 @@ import { toBusinessId } from "@/utils/business-id";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [galleryImages, allPublishedEvents, featuredRegistrations, marketplaceListings, publishedEssentialNumbers, publishedWhatsAppGroups] = await Promise.all([
+  const [galleryImages, allPublishedEvents, communityNews, featuredRegistrations, marketplaceListings, publishedEssentialNumbers, publishedWhatsAppGroups] = await Promise.all([
     listHeroGalleryImages(),
     getPublishedEvents(),
+    getPublishedNews(),
     getFeaturedApprovedBusinesses(),
     getActiveListings(),
     getPublishedEssentialNumbers(),
@@ -64,7 +66,7 @@ export default async function Home() {
         <EditableRegion id="home.hero" label="אזור ראשי">
           <ConnectedHero galleryImages={galleryImages} />
         </EditableRegion>
-        <ConnectedMovableSections upcomingEvents={upcomingEvents} featuredBusinesses={featuredBusinesses} />
+        <ConnectedMovableSections upcomingEvents={upcomingEvents} communityNews={communityNews} featuredBusinesses={featuredBusinesses} />
         <MarketplaceSection listings={marketplaceTeaser} />
         <EssentialNumbersHomeSection entries={essentialNumbersTeaser} />
         <WhatsAppGroupsHomeSection groups={whatsappGroupsTeaser} />
