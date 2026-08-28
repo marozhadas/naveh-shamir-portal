@@ -6,6 +6,7 @@ import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { PageHeader } from "@/components/shared/PageHeader/PageHeader";
 import { NewsCard } from "@/components/news/NewsCard/NewsCard";
 import { getPublishedNews } from "@/repositories/community-news-service";
+import { HOMEPAGE_NEWS_COUNT } from "@/types/community-news";
 import styles from "./news.module.css";
 
 const PAGE_TITLE = "חדשות השכונה | הפורטל של נווה שמיר";
@@ -22,7 +23,13 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function NewsPage() {
-  const articles = await getPublishedNews();
+  const allPublished = await getPublishedNews();
+  // The newest HOMEPAGE_NEWS_COUNT articles are already shown on the homepage teaser
+  // (CommunityPulseSection) — skip them here so nothing appears on both pages.
+  const articles = allPublished.slice(HOMEPAGE_NEWS_COUNT);
+  // Distinguishes "no news exists at all" from "everything published so far is on the homepage" —
+  // saying the former when it's really the latter would read as if the site had no news at all.
+  const allShownOnHomepage = articles.length === 0 && allPublished.length > 0;
 
   return (
     <>
@@ -36,8 +43,17 @@ export default async function NewsPage() {
           {articles.length === 0 ? (
             <div className={styles.empty} role="status">
               <Newspaper size={40} strokeWidth={1.5} aria-hidden="true" className={styles.emptyIcon} />
-              <h2 className={styles.emptyTitle}>אין כרגע חדשות להצגה</h2>
-              <p>כתבות חדשות יופיעו כאן בקרוב.</p>
+              {allShownOnHomepage ? (
+                <>
+                  <h2 className={styles.emptyTitle}>כל החדשות מוצגות כרגע בעמוד הבית</h2>
+                  <p>כתבות נוספות יופיעו כאן ברגע שיתפרסמו.</p>
+                </>
+              ) : (
+                <>
+                  <h2 className={styles.emptyTitle}>אין כרגע חדשות להצגה</h2>
+                  <p>כתבות חדשות יופיעו כאן בקרוב.</p>
+                </>
+              )}
             </div>
           ) : (
             <div className={styles.grid}>

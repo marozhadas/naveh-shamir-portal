@@ -5,7 +5,7 @@ import { defaultUpcomingEventsSettings } from "@/editor/config/editor-defaults";
 import { useResolvedSectionSettings } from "@/editor/hooks/use-resolved-section-settings";
 import { mapCommunityEventToTeaserCard } from "@/utils/map-community-events-to-teaser-cards";
 import type { CommunityEventRow } from "@/types/community-event";
-import type { CommunityNewsRow } from "@/types/community-news";
+import { HOMEPAGE_NEWS_COUNT, type CommunityNewsRow } from "@/types/community-news";
 import type { UpcomingEventsEditorSettings } from "@/editor/schemas/events.schema";
 
 type ConnectedUpcomingEventsProps = {
@@ -18,7 +18,7 @@ type ConnectedUpcomingEventsProps = {
    * "show all" link/label still come from the editor as normal.
    */
   events?: CommunityEventRow[];
-  /** Real, published community-news articles (fetched server-side in page.tsx), newest first. Only the first (latest) one is shown. */
+  /** Real, published community-news articles (fetched server-side in page.tsx), newest first. Only the first 2 (latest) are shown — the rest live on /news only. */
   news?: CommunityNewsRow[];
 };
 
@@ -32,12 +32,12 @@ function pickPlaceholderEvent(settings: UpcomingEventsEditorSettings) {
 export function ConnectedUpcomingEvents({ events, news }: ConnectedUpcomingEventsProps) {
   const settings = useResolvedSectionSettings("upcomingEvents", defaultUpcomingEventsSettings);
   const nextEvent = events !== undefined ? (events.length > 0 ? mapCommunityEventToTeaserCard(events[0]) : null) : pickPlaceholderEvent(settings);
-  const latestNews = news && news.length > 0 ? news[0] : null;
+  const newsItems = (news ?? []).slice(0, HOMEPAGE_NEWS_COUNT);
 
   return (
     <CommunityPulseSection
       nextEvent={nextEvent}
-      latestNews={latestNews}
+      newsItems={newsItems}
       appearance={settings.appearance}
       eventsHref={settings.content.showAllLinkHref}
       eventsButtonLabel={settings.content.showAllLinkLabel}

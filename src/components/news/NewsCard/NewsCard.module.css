@@ -63,3 +63,45 @@
   align-self: flex-start;
   margin-top: var(--space-2);
 }
+
+/* Homepage teaser (CommunityPulseSection): horizontal instead of stacked — a small fixed-size
+   thumbnail on the right (first in DOM, this project's RTL convention) and the text filling the
+   remaining width to its left. */
+.teaserCard {
+  flex-direction: row;
+}
+
+.teaserImageArea {
+  aspect-ratio: unset;
+  flex-shrink: 0;
+  width: 15vw;
+  height: 10vw;
+}
+
+.teaserBody {
+  padding: var(--space-3) var(--space-4);
+  justify-content: center;
+}
+
+.teaserBody .excerpt {
+  /* Clamp instead of flex:1 stretching the card to the excerpt's full length — the teaser's
+     height is set by the image (10vw), not by however long the excerpt happens to be. */
+  flex: initial;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (max-width: 640px) {
+  /* 15vw/10vw gets too small to be useful on a narrow phone — fall back to the stacked layout. */
+  .teaserCard {
+    flex-direction: column;
+  }
+
+  .teaserImageArea {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+}

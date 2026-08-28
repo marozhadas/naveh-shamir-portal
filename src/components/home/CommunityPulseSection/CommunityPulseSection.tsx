@@ -9,8 +9,8 @@ import styles from "./CommunityPulseSection.module.css";
 type CommunityPulseSectionProps = {
   /** Soonest published, not-yet-past event (already selected by the caller) — null when there is none. */
   nextEvent: EventCardContentSettings | null;
-  /** Most recently published article — null when there is none yet. */
-  latestNews: CommunityNewsRow | null;
+  /** Up to 2 most recently published articles, newest first — the rest live on /news only. */
+  newsItems: CommunityNewsRow[];
   appearance: UpcomingEventsEditorSettings["appearance"];
   eventsHref: string;
   eventsButtonLabel: string;
@@ -18,10 +18,11 @@ type CommunityPulseSectionProps = {
 
 /**
  * Replaces the old 3-event grid with a single connected card: the next upcoming event on the
- * left (a third of the width) and the latest neighborhood news teaser on the right (two thirds),
- * so the two feel like one "what's happening" unit instead of two separate sections.
+ * left (a third of the width) and the latest neighborhood news teasers on the right (two
+ * thirds, stacked, up to 2), so the two feel like one "what's happening" unit instead of two
+ * separate sections.
  */
-export function CommunityPulseSection({ nextEvent, latestNews, appearance, eventsHref, eventsButtonLabel }: CommunityPulseSectionProps) {
+export function CommunityPulseSection({ nextEvent, newsItems, appearance, eventsHref, eventsButtonLabel }: CommunityPulseSectionProps) {
   return (
     <section id="events" className={styles.section} aria-labelledby="community-pulse-heading">
       <h2 id="community-pulse-heading" className="sr-only">
@@ -30,8 +31,8 @@ export function CommunityPulseSection({ nextEvent, latestNews, appearance, event
       <div className={styles.card}>
         <div className={`${styles.column} ${styles.newsColumn}`}>
           <h3 className={styles.columnTitle}>חדשות השכונה</h3>
-          {latestNews ? (
-            <NewsCard article={latestNews} />
+          {newsItems.length > 0 ? (
+            newsItems.map((article) => <NewsCard key={article.id} article={article} variant="teaser" />)
           ) : (
             <div className={styles.emptyState} role="status">
               <Newspaper size={28} strokeWidth={1.5} aria-hidden="true" />
