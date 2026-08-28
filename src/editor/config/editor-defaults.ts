@@ -29,7 +29,15 @@ export const defaultHeaderSettings: HeaderEditorSettings = {
     personalAreaLabel: "אזור אישי",
     personalAreaHref: "/account",
     showPersonalAreaButton: true,
-    navItems: NAV_LINKS.map((link) => ({ id: link.id, label: link.label, href: link.href, visible: true })),
+    // "בית"/"לוח קהילה"/"צור קשר" moved to the footer only — hidden here (not removed) so an
+    // admin can still re-enable them in the header from the editor if needed later. The footer's
+    // own navItems (below) keeps every link, unaffected by this.
+    navItems: NAV_LINKS.map((link) => ({
+      id: link.id,
+      label: link.label,
+      href: link.href,
+      visible: !["home", "boards", "contact"].includes(link.id),
+    })),
   },
   appearance: {
     backgroundColorToken: "surface",
@@ -75,7 +83,8 @@ export const defaultQuickLinksSettings: QuickLinksEditorSettings = {
   layout: {
     // The live grid is fluid (auto-fit, minmax(130px,1fr)); these are the
     // fixed per-breakpoint counts closest to how it actually reflows today.
-    columnsDesktop: 6,
+    // 4 items now (community boards / whatsapp groups removed) — one row on desktop.
+    columnsDesktop: 4,
     columnsTablet: 3,
     columnsMobile: 2,
     gap: "8",

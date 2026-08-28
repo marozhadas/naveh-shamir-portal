@@ -58,7 +58,7 @@
      it no longer fits at full size — flex-wrap stays nowrap on purpose, see below. Reaches the
      full 22px only around ~1300px+ (this design's comfortable width); below that it shrinks
      linearly so nothing ever wraps or overflows down to the ~880px mobile-menu breakpoint. */
-  font-size: 1.3vw;
+  font-size: 1.1vw;
   font-weight: var(--fw-regular);
   flex-wrap: nowrap;
   white-space: nowrap;
