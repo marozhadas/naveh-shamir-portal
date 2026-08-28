@@ -3,6 +3,8 @@
 import { createPublicSupabaseClient } from "@/lib/supabase/public-client";
 import { uploadMarketplaceMedia } from "@/repositories/marketplace-media-service";
 import { slugify } from "@/utils/slugify";
+import { buildManagementUrl, generateManagementToken, hashManagementToken } from "@/utils/marketplace-management-token";
+import { getSiteOrigin } from "@/utils/site-origin";
 import { marketplaceListingSchema, EMPTY_LISTING_FORM_VALUES, type MarketplaceListingFormValues } from "./schema";
 import type { MarketplaceListingImage } from "@/types/marketplace";
 
@@ -11,6 +13,13 @@ export type MarketplaceListingActionState = {
   message?: string;
   fieldErrors?: Partial<Record<keyof MarketplaceListingFormValues, string[]>>;
   values: MarketplaceListingFormValues;
+  /**
+   * The raw management link, present ONLY in the response to the request that just created the
+   * listing — never persisted anywhere (the DB only ever holds its hash) and never present again
+   * on any later read of this listing. The poster must save it now; there is no "forgot my link"
+   * recovery path other than asking the admin to rotate the token.
+   */
+  managementUrl?: string;
 };
 
 const GENERIC_SERVER_ERROR_MESSAGE = "לא הצלחנו לשמור את המודעה כרגע. הפרטים שמילאת נשמרו, ואפשר לנסות שוב בעוד רגע.";
@@ -71,6 +80,13 @@ export async function submitMarketplaceListingAction(
   const supabase = createPublicSupabaseClient();
   const baseSlug = slugify(values.title);
 
+  // Generated once per submission — a secret management link the poster uses to mark the item
+  // sold/given/available again with no account or password. Only the hash is ever written to the
+  // DB (see hashManagementToken); the raw value lives only in this function's return value.
+  const rawToken = generateManagementToken();
+  const managementTokenHash = hashManagementToken(rawToken);
+  const managementUrl = buildManagementUrl(getSiteOrigin(), rawToken);
+
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const slug = attempt === 0 ? baseSlug : slugify(values.title, randomSuffix());
     const { error } = await supabase.from("marketplace_listings").insert({
@@ -90,10 +106,13 @@ export async function submitMarketplaceListingAction(
       status: "pending",
       rejection_reason: null,
       reviewed_at: null,
+      management_token_hash: managementTokenHash,
+      management_token_created_at: new Date().toISOString(),
+      management_token_last_used_at: null,
     });
 
     if (!error) {
-      return { status: "success", values: EMPTY_LISTING_FORM_VALUES };
+      return { status: "success", values: EMPTY_LISTING_FORM_VALUES, managementUrl };
     }
 
     if (error.code !== "23505") {

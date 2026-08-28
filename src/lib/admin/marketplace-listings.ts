@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin-client";
+import { generateManagementToken, hashManagementToken } from "@/utils/marketplace-management-token";
 import type { MarketplaceListingRow, MarketplaceListingStatus } from "@/types/marketplace";
 
 export async function listAllMarketplaceListings(): Promise<MarketplaceListingRow[]> {
@@ -66,4 +67,29 @@ export async function updateMarketplaceListingStatus(
     .update({ status, reviewed_at: new Date().toISOString(), updated_at: new Date().toISOString(), ...extra })
     .eq("id", id);
   if (error) throw new Error(error.message);
+}
+
+/**
+ * Issues a brand-new management token, invalidating whatever the poster had before (their old
+ * link stops working the instant this runs — its hash is overwritten, not kept alongside).
+ * The admin never learns the PREVIOUS raw token (it was never stored anywhere to begin with —
+ * only its hash), but this new one is returned once, here, since the admin is the one who has to
+ * relay it to the poster (e.g. if the original link was lost or exposed).
+ */
+export async function rotateMarketplaceManagementToken(id: string): Promise<{ rawToken: string; listing: MarketplaceListingRow }> {
+  const supabase = createAdminSupabaseClient();
+  const rawToken = generateManagementToken();
+  const { data, error } = await supabase
+    .from("marketplace_listings")
+    .update({
+      management_token_hash: hashManagementToken(rawToken),
+      management_token_created_at: new Date().toISOString(),
+      management_token_last_used_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return { rawToken, listing: data };
 }

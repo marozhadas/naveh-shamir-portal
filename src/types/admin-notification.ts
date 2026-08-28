@@ -116,4 +116,8 @@ export type AdminAuditAction =
   | "community-news-published"
   | "community-news-unpublished"
   | "community-news-archived"
-  | "community-news-deleted";
+  | "community-news-deleted"
+  | "marketplace-listing-marked-sold"
+  | "marketplace-listing-marked-given"
+  | "marketplace-listing-restored"
+  | "marketplace-listing-management-token-rotated";

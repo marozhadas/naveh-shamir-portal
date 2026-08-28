@@ -25,6 +25,15 @@ export type MarketplaceListingRow = {
   report_count: number;
   created_at: string;
   updated_at: string;
+  /**
+   * SHA-256 hash of the poster's secret management link token — never the raw token itself (see
+   * src/utils/marketplace-management-token.ts). Safe to read alongside the rest of the row (a
+   * hash isn't the secret), but the raw token it was derived from must never be persisted
+   * anywhere, logged, or sent to analytics.
+   */
+  management_token_hash: string | null;
+  management_token_created_at: string | null;
+  management_token_last_used_at: string | null;
 };
 
 export const MARKETPLACE_STATUS_LABEL: Record<MarketplaceListingStatus, string> = {

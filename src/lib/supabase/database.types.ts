@@ -185,13 +185,25 @@ export type Database = {
       };
       marketplace_listings: {
         Row: MarketplaceListingRow;
-        Insert: Omit<MarketplaceListingRow, "id" | "created_at" | "updated_at" | "report_count"> & {
+        Insert: Omit<
+          MarketplaceListingRow,
+          "id" | "created_at" | "updated_at" | "report_count" | "management_token_hash" | "management_token_created_at" | "management_token_last_used_at"
+        > & {
           id?: string;
           created_at?: string;
           updated_at?: string;
           report_count?: number;
+          management_token_hash?: string | null;
+          management_token_created_at?: string | null;
+          management_token_last_used_at?: string | null;
         };
         Update: Partial<MarketplaceListingRow>;
+        Relationships: [];
+      };
+      rate_limit_hits: {
+        Row: { id: string; rate_key: string; created_at: string };
+        Insert: { id?: string; rate_key: string; created_at?: string };
+        Update: { id?: string; rate_key?: string; created_at?: string };
         Relationships: [];
       };
       events: {

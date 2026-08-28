@@ -9,6 +9,7 @@ import { MARKETPLACE_CONDITION_LABEL } from "@/types/marketplace";
 import { submitMarketplaceListingAction, uploadMarketplaceImageAction, type MarketplaceListingActionState } from "./actions";
 import { EMPTY_LISTING_FORM_VALUES, FIELD_ORDER, type MarketplaceListingFormValues } from "./schema";
 import type { MarketplaceListingImage } from "@/types/marketplace";
+import { ManagementLinkBox } from "./ManagementLinkBox";
 import styles from "./post.module.css";
 
 const CATEGORIES = getVisibleMarketplaceCategories();
@@ -117,6 +118,7 @@ export function MarketplaceListingForm() {
       <div className={styles.successBox} role="status">
         <p className={styles.successTitle}>המודעה נשלחה בהצלחה!</p>
         <p className={styles.successDetail}>המודעה ממתינה לבדיקה ואישור של צוות הפורטל, ותופיע בלוח ברגע שתאושר.</p>
+        {state.managementUrl && <ManagementLinkBox managementUrl={state.managementUrl} />}
         <Button href="/marketplace" variant="secondary">
           חזרה ללוח
         </Button>

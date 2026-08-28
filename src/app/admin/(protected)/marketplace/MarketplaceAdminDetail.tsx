@@ -2,11 +2,12 @@
 
 import { useState, useTransition } from "react";
 import Image from "next/image";
+import { Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { getVisibleMarketplaceCategories } from "@/data/marketplace-categories";
 import { MARKETPLACE_CONDITION_LABEL } from "@/types/marketplace";
 import { formatListingDate } from "@/utils/format-listing-date";
-import { updateMarketplaceListingFieldsAction } from "./actions";
+import { rotateMarketplaceManagementTokenAction, updateMarketplaceListingFieldsAction } from "./actions";
 import type { MarketplaceListingRow } from "@/types/marketplace";
 import styles from "./marketplace-admin.module.css";
 
@@ -51,6 +52,29 @@ export function MarketplaceAdminDetail({ listing, onSaved }: MarketplaceAdminDet
   const [isPending, startTransition] = useTransition();
   const [values, setValues] = useState<EditableValues>(() => toEditableValues(listing));
   const [error, setError] = useState("");
+  const [isRotating, setIsRotating] = useState(false);
+  const [rotatedUrl, setRotatedUrl] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  function rotateToken() {
+    if (!window.confirm("ליצור קישור ניהול חדש? הקישור הקודם שהמפרסם קיבל יפסיק לעבוד מיד.")) return;
+    setIsRotating(true);
+    startTransition(async () => {
+      const result = await rotateMarketplaceManagementTokenAction(listing.id);
+      setIsRotating(false);
+      setRotatedUrl(result.managementUrl);
+    });
+  }
+
+  async function copyRotatedUrl() {
+    try {
+      await navigator.clipboard.writeText(rotatedUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard API can be unavailable — the link is still selectable in the box itself.
+    }
+  }
 
   function startEditing() {
     setValues(toEditableValues(listing));
@@ -230,7 +254,22 @@ export function MarketplaceAdminDetail({ listing, onSaved }: MarketplaceAdminDet
         <Button variant="secondary" size="compact" onClick={startEditing}>
           עריכת פרטים
         </Button>
+        <Button variant="secondary" size="compact" disabled={isRotating} onClick={rotateToken}>
+          {isRotating ? "יוצר קישור…" : "יצירת קישור ניהול חדש"}
+        </Button>
       </div>
+
+      {rotatedUrl && (
+        <div className={styles.rotatedTokenBox} role="status">
+          <p>קישור ניהול חדש נוצר. הקישור הקודם הפסיק לעבוד — יש להעביר את הקישור הזה למפרסם:</p>
+          <div className={styles.rotatedTokenRow}>
+            <input type="text" readOnly dir="ltr" value={rotatedUrl} onFocus={(e) => e.target.select()} />
+            <Button type="button" variant="secondary" size="compact" icon={copied ? <Check size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />} onClick={copyRotatedUrl}>
+              {copied ? "הועתק!" : "העתקה"}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
