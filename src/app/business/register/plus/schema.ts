@@ -76,7 +76,7 @@ export const openingHoursDaySchema = z
     }
   });
 
-const promotionSchema = z.object({
+export const promotionSchema = z.object({
   title: z.string().trim().min(1, "יש להזין כותרת למבצע").max(120, "הכותרת ארוכה מדי"),
   description: z.string().trim().max(300, "התיאור ארוך מדי").optional(),
   validUntil: z.string().trim().optional(),

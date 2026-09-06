@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin-client";
+import { generateManagementToken, hashManagementToken } from "@/utils/management-token";
 import type { BusinessRegistrationRow, BusinessRegistrationStatus } from "@/types/business-registration";
 
 export async function listAllRegistrations(): Promise<BusinessRegistrationRow[]> {
@@ -103,6 +104,30 @@ export async function updateRegistrationSlug(id: string, slug: string): Promise<
   const supabase = createAdminSupabaseClient();
   const { error } = await supabase.from("business_registrations").update({ slug }).eq("id", id);
   if (error) throw error;
+}
+
+/**
+ * Issues a brand-new self-edit management token for a business, invalidating whatever it had
+ * before (an old link stops working the instant this runs — its hash is overwritten, not kept
+ * alongside). Deliberately does NOT check eligibility itself (see business-management-access.ts) —
+ * the caller (rotateBusinessManagementLinkAction) is responsible for that, so this stays a plain,
+ * unconditional write, matching rotateMarketplaceManagementToken's shape.
+ */
+export async function rotateBusinessManagementToken(id: string): Promise<{ rawToken: string; registration: BusinessRegistrationRow }> {
+  const supabase = createAdminSupabaseClient();
+  const rawToken = generateManagementToken();
+  const { data, error } = await supabase
+    .from("business_registrations")
+    .update({
+      management_token_hash: hashManagementToken(rawToken),
+      management_token_created_at: new Date().toISOString(),
+      management_token_last_used_at: null,
+    })
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return { rawToken, registration: data };
 }
 
 /** FK constraints on subscriptions/events-log/notifications all cascade on delete; analytics rows keep their history with business_id set to null. */

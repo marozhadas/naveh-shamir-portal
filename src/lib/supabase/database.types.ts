@@ -76,6 +76,9 @@ export type Database = {
           | "terms_accepted"
           | "trial_consent"
           | "dashboard_access_consent"
+          | "management_token_hash"
+          | "management_token_created_at"
+          | "management_token_last_used_at"
         > & {
           id?: string;
           status?: BusinessRegistrationRow["status"];
@@ -102,6 +105,9 @@ export type Database = {
           terms_accepted?: boolean;
           trial_consent?: boolean;
           dashboard_access_consent?: boolean;
+          management_token_hash?: string | null;
+          management_token_created_at?: string | null;
+          management_token_last_used_at?: string | null;
         };
         Update: Partial<BusinessRegistrationRow>;
         Relationships: [];

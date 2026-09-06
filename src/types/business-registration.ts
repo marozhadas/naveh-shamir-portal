@@ -64,6 +64,16 @@ export type BusinessRegistrationRow = {
   trial_consent: boolean;
   /** Premium-only consent to receive a secure personal-area access link by email. Always false for free/Plus. */
   dashboard_access_consent: boolean;
+  /**
+   * Hash of the secret self-edit management-link token (see business-management-token.ts) —
+   * mirrors marketplace_listings.management_token_hash. Only ever set by an admin, via the
+   * "generate management link" action (never at registration or approval time), and only ever for
+   * an approved, active-Premium registration that gave dashboard_access_consent. The raw token
+   * itself is never persisted — only this hash.
+   */
+  management_token_hash: string | null;
+  management_token_created_at: string | null;
+  management_token_last_used_at: string | null;
 };
 
 /** Fields the public registration form is allowed to submit — status/featured/verified are never client-supplied (RLS also enforces this server-side). */

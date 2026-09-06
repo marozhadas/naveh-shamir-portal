@@ -347,3 +347,22 @@
   gap: var(--space-3);
   flex-wrap: wrap;
 }
+
+.tokenRow {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+}
+
+.tokenRow input {
+  flex: 1 1 240px;
+  min-width: 0;
+  font-family: var(--font-family-base);
+  font-size: var(--fs-caption);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  color: var(--color-text-secondary);
+  background: #fff;
+}

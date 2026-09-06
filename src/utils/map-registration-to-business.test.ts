@@ -44,6 +44,9 @@ function makeRow(overrides: Partial<BusinessRegistrationRow> = {}): BusinessRegi
     terms_accepted: false,
     trial_consent: false,
     dashboard_access_consent: false,
+    management_token_hash: null,
+    management_token_created_at: null,
+    management_token_last_used_at: null,
     ...overrides,
   };
 }

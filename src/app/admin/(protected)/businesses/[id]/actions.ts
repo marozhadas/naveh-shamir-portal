@@ -6,6 +6,7 @@ import { isSupabaseAdminConfigured } from "@/lib/supabase/admin-client";
 import {
   deleteRegistration,
   getRegistrationById,
+  rotateBusinessManagementToken,
   updateRegistrationActivePlan,
   updateRegistrationFields,
   updateRegistrationSlug,
@@ -20,6 +21,9 @@ import { changeBusinessPlanSchema, type ChangeBusinessPlanInput } from "./change
 import { changeBusinessSlugSchema, type ChangeBusinessSlugInput } from "./change-slug-schema";
 import { isValidBusinessSlug } from "@/utils/business-slug";
 import { recordSlugRedirect } from "@/repositories/business-slug-redirect-repository";
+import { checkBusinessManagementEligibility, BUSINESS_MANAGEMENT_INELIGIBILITY_MESSAGE } from "@/utils/business-management-access";
+import { buildBusinessManagementUrl } from "@/utils/business-management-token";
+import { getSiteOrigin } from "@/utils/site-origin";
 import type { BusinessPlanId } from "@/types/business-plan";
 
 async function requireAdmin(): Promise<string> {
@@ -367,6 +371,39 @@ export async function changeBusinessSlugAction(input: ChangeBusinessSlugInput): 
     console.error("[changeBusinessSlugAction] post-update steps failed:", error);
     return { status: "success", previousSlug, newSlug };
   }
+}
+
+export type RotateBusinessManagementLinkResult = { status: "success"; managementUrl: string } | { status: "not-found" | "not-eligible"; message: string };
+
+/**
+ * Issues a fresh self-edit management link and immediately invalidates the business's old one (if
+ * any) — for a first-ever link, a lost link, or one that may have been exposed. The admin sees this
+ * new raw token exactly once, in the action's own return value, so they can relay it to the owner;
+ * it is never written anywhere (the DB only ever stores its hash) and this action can never
+ * retrieve a PREVIOUSLY issued raw token — there is no way to recover one that already exists, by
+ * design. Refuses outright for a business that isn't currently an approved, active-Premium
+ * registration with dashboard_access_consent — the same live check the manage page itself applies.
+ */
+export async function rotateBusinessManagementLinkAction(businessId: string): Promise<RotateBusinessManagementLinkResult> {
+  const adminId = await requireAdmin();
+  const registration = await getRegistrationById(businessId);
+  if (!registration) return { status: "not-found", message: "העסק לא נמצא." };
+
+  const eligibility = checkBusinessManagementEligibility(registration);
+  if (!eligibility.eligible) {
+    return { status: "not-eligible", message: BUSINESS_MANAGEMENT_INELIGIBILITY_MESSAGE[eligibility.reason] };
+  }
+
+  const { rawToken } = await rotateBusinessManagementToken(businessId);
+  await recordAuditLog({
+    adminId,
+    action: "business-management-token-rotated",
+    entityType: "business-registration",
+    entityId: businessId,
+    metadata: { businessName: registration.business_name },
+  });
+
+  return { status: "success", managementUrl: buildBusinessManagementUrl(getSiteOrigin(), rawToken) };
 }
 
 export async function deleteBusinessAction(registrationId: string): Promise<void> {

@@ -11,8 +11,10 @@ import { ApproveRejectPanel } from "./ApproveRejectPanel";
 import { DeleteBusinessButton } from "./DeleteBusinessButton";
 import { BusinessPlanControl } from "./BusinessPlanControl";
 import { BusinessSlugControl } from "./BusinessSlugControl";
+import { BusinessManagementLinkControl } from "./BusinessManagementLinkControl";
 import { retryNotificationEmailAction } from "./actions";
 import { toBusinessPlanId } from "@/utils/map-registration-to-business";
+import { checkBusinessManagementEligibility, BUSINESS_MANAGEMENT_INELIGIBILITY_MESSAGE } from "@/utils/business-management-access";
 import styles from "./detail.module.css";
 
 const PLAN_TIER_LABEL: Record<string, string> = { free: "חינמי", plus: "Plus", premium: "Premium" };
@@ -130,6 +132,17 @@ export default async function AdminBusinessDetailPage({ params }: BusinessDetail
         currentSlug={registration.slug}
         isLive={subscriptionSummary?.access.canOpenProfile ?? false}
       />
+
+      {registration.plan_tier === "premium" && (
+        <BusinessManagementLinkControl
+          businessId={registration.id}
+          hasExistingToken={Boolean(registration.management_token_hash)}
+          ineligibilityReason={(() => {
+            const eligibility = checkBusinessManagementEligibility(registration);
+            return eligibility.eligible ? null : BUSINESS_MANAGEMENT_INELIGIBILITY_MESSAGE[eligibility.reason];
+          })()}
+        />
+      )}
 
       <section className={styles.section} aria-labelledby="description-heading">
         <h2 id="description-heading" className={styles.sectionTitle}>
