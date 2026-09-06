@@ -86,6 +86,7 @@ export type AdminAuditAction =
   | "business-slug-changed"
   | "business-management-token-rotated"
   | "business-management-link-edit"
+  | "business-dashboard-access-consent-updated"
   | "notification-preferences-updated"
   | "notification-email-retry"
   | "event-created"

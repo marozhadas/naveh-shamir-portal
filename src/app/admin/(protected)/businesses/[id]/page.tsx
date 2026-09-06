@@ -133,10 +133,11 @@ export default async function AdminBusinessDetailPage({ params }: BusinessDetail
         isLive={subscriptionSummary?.access.canOpenProfile ?? false}
       />
 
-      {registration.plan_tier === "premium" && (
+      {(registration.plan_tier === "premium" || registration.active_plan_id === "premium") && (
         <BusinessManagementLinkControl
           businessId={registration.id}
           hasExistingToken={Boolean(registration.management_token_hash)}
+          dashboardAccessConsent={registration.dashboard_access_consent}
           ineligibilityReason={(() => {
             const eligibility = checkBusinessManagementEligibility(registration);
             return eligibility.eligible ? null : BUSINESS_MANAGEMENT_INELIGIBILITY_MESSAGE[eligibility.reason];

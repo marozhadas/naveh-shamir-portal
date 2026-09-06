@@ -95,6 +95,21 @@ export async function updateRegistrationActivePlan(id: string, activePlanId: "ba
 }
 
 /**
+ * The one dedicated write path for dashboard_access_consent — deliberately separate from
+ * updateRegistrationFields (never touches consent fields). Exists because this consent is
+ * normally only ever given once, by the business owner themself, while submitting the Premium
+ * registration wizard — a business that reached Premium some other way (e.g. an admin manually
+ * raised its active plan) has no way to have ever set it. This lets an admin record it manually
+ * after confirming consent with the owner through another channel (phone/email); every call is
+ * audited by setBusinessDashboardAccessConsentAction, which is the only caller.
+ */
+export async function updateRegistrationDashboardAccessConsent(id: string, granted: boolean): Promise<void> {
+  const supabase = createAdminSupabaseClient();
+  const { error } = await supabase.from("business_registrations").update({ dashboard_access_consent: granted }).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+/**
  * The one dedicated write path for slug — deliberately separate from updateRegistrationFields,
  * same reasoning as updateRegistrationActivePlan: only ever called from changeBusinessSlugAction,
  * which validates the new slug, records the redirect + audit log. Lets a Postgres unique-violation

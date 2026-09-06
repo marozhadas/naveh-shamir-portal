@@ -8,6 +8,7 @@ import {
   getRegistrationById,
   rotateBusinessManagementToken,
   updateRegistrationActivePlan,
+  updateRegistrationDashboardAccessConsent,
   updateRegistrationFields,
   updateRegistrationSlug,
   updateRegistrationStatus,
@@ -371,6 +372,34 @@ export async function changeBusinessSlugAction(input: ChangeBusinessSlugInput): 
     console.error("[changeBusinessSlugAction] post-update steps failed:", error);
     return { status: "success", previousSlug, newSlug };
   }
+}
+
+export type SetDashboardAccessConsentResult = { status: "success"; granted: boolean } | { status: "not-found"; message: string };
+
+/**
+ * Lets an admin manually record (or revoke) dashboard_access_consent for a business that never
+ * went through the Premium registration wizard's own consent checkbox — e.g. one an admin raised
+ * to Premium after the fact. The admin is attesting they confirmed consent with the owner through
+ * another channel (phone/email); that attestation is exactly what the audit log entry records.
+ * Revoking takes effect immediately without touching any existing token — checkBusinessManagementEligibility
+ * re-checks consent live on every use of the link, so a revoked business simply becomes ineligible.
+ */
+export async function setBusinessDashboardAccessConsentAction(businessId: string, granted: boolean): Promise<SetDashboardAccessConsentResult> {
+  const adminId = await requireAdmin();
+  const registration = await getRegistrationById(businessId);
+  if (!registration) return { status: "not-found", message: "העסק לא נמצא." };
+
+  await updateRegistrationDashboardAccessConsent(businessId, granted);
+  await recordAuditLog({
+    adminId,
+    action: "business-dashboard-access-consent-updated",
+    entityType: "business-registration",
+    entityId: businessId,
+    metadata: { businessName: registration.business_name, granted },
+  });
+
+  revalidateBusinessViews(businessId);
+  return { status: "success", granted };
 }
 
 export type RotateBusinessManagementLinkResult = { status: "success"; managementUrl: string } | { status: "not-found" | "not-eligible"; message: string };
