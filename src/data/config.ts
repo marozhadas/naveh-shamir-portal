@@ -4,7 +4,7 @@ export const SITE_CONFIG = {
   designCredit: "עיצוב ופיתוח: הדס מרוז",
   designCreditUrl: "https://www.hadasdesign.co.il/",
   /** The live production domain — used to build absolute URLs for metadata/JSON-LD/canonical/Open Graph (e.g. a business profile's clean slug URL). */
-  siteUrl: "https://naveh-shamir-portal.vercel.app",
+  siteUrl: "https://neveshamir.co.il",
 };
 
 /** The portal's own contact details (/contact page) — not to be confused with EMERGENCY_NUMBERS or the neighborhood WhatsApp group above. */
