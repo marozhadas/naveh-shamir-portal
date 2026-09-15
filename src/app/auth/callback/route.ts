@@ -1,19 +1,28 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server-client";
 import { createAdminSupabaseClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin-client";
+import { resolvePostLoginPath } from "@/repositories/owner-auth-service";
 
 /**
- * Where a business owner lands after clicking their magic-link email. Exchanges the one-time code
- * for a real session (setting httpOnly cookies via @supabase/ssr), then performs the ownership
- * claim: any business_registrations row whose `email` matches this now-verified session's email
- * AND has no owner yet gets claimed. This is the only place a registration's owner_id is ever set
- * from something resembling user input — and even here, the "input" is a Supabase-verified email
- * address from a real session, never a client-supplied id, query param, or unverified form field.
+ * Where a business owner lands after any code-exchange sign-in: the magic-link email, "continue
+ * with Google" (startGoogleOAuthAction), or a password-reset email link — Supabase's code-exchange
+ * shape is identical for all three, so none of them need their own callback logic. Exchanges the
+ * one-time code for a real session (setting httpOnly cookies via @supabase/ssr), then performs the
+ * ownership claim: any business_registrations row whose `email` matches this now-verified
+ * session's email AND has no owner yet gets claimed. This is the only place a registration's
+ * owner_id is ever set from something resembling user input — and even here, the "input" is a
+ * Supabase-verified email address from a real session, never a client-supplied id, query param, or
+ * unverified form field.
+ *
+ * `next`, when the caller passes one explicitly (e.g. the password-reset flow always passes
+ * `/business/owner/reset-password`), wins outright. Otherwise the destination is ownership-aware
+ * (spec section 10): the dashboard if this user already owns a business, /business/plans if not —
+ * rather than the fixed `/business/trial` this always used to fall back to.
  */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/business/trial";
+  const explicitNext = searchParams.get("next");
 
   if (!code) {
     return NextResponse.redirect(`${origin}/business/owner/login?error=missing-code`);
@@ -36,6 +45,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  const next = explicitNext ?? (await resolvePostLoginPath(data.user.id));
   return NextResponse.redirect(`${origin}${next}`);
 }
 

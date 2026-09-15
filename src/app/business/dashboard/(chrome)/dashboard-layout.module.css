@@ -4,3 +4,11 @@
   padding: var(--space-8) 24px var(--space-16);
   min-height: 50vh;
 }
+
+.logoutRow {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: var(--space-3) 24px 0;
+  display: flex;
+  justify-content: flex-end;
+}
