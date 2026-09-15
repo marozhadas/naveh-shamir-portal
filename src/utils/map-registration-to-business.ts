@@ -79,6 +79,7 @@ export function mapRegistrationToBusiness(row: BusinessRegistrationRow): Busines
     ownerId: row.owner_id ?? undefined,
     selectedPlanId: toBusinessPlanId(row.plan_tier),
     activePlanId: toBusinessPlanId(row.active_plan_id),
+    lastSelfEditAt: row.last_self_edit_at ?? undefined,
     fullDescription: row.description,
     image: row.cover_image ? { src: row.cover_image.url, alt: row.cover_image.alt } : undefined,
     gallery: row.gallery?.map((image, index) => ({ id: `${row.id}-gallery-${index}`, src: image.url, alt: image.alt, order: image.order })),

@@ -79,6 +79,7 @@ export type Database = {
           | "management_token_hash"
           | "management_token_created_at"
           | "management_token_last_used_at"
+          | "last_self_edit_at"
         > & {
           id?: string;
           status?: BusinessRegistrationRow["status"];
@@ -108,6 +109,7 @@ export type Database = {
           management_token_hash?: string | null;
           management_token_created_at?: string | null;
           management_token_last_used_at?: string | null;
+          last_self_edit_at?: string | null;
         };
         Update: Partial<BusinessRegistrationRow>;
         Relationships: [];

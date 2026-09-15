@@ -108,6 +108,8 @@ export type Business = {
   selectedPlanId?: BusinessPlanId;
   /** What's actually live on the site right now — the only field getBusinessListingAccess() gates display on. */
   activePlanId?: BusinessPlanId;
+  /** Last successful owner self-edit save (never set by admin edits). See getBusinessSelfEditAccess. */
+  lastSelfEditAt?: string;
   fullDescription?: string;
   image?: { src: string; alt: string };
   gallery?: BusinessGalleryImage[];

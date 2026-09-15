@@ -6,6 +6,7 @@ import { mapRegistrationToBusiness } from "@/utils/map-registration-to-business"
 import { isSupabaseBusinessId, toRegistrationId } from "@/utils/business-id";
 import type { Business } from "@/types/business";
 import type { BusinessPublicationStatus } from "@/types/business-status";
+import type { BusinessRegistrationRow } from "@/types/business-registration";
 import type { BusinessRepository } from "./business-repository";
 
 type EditableBusinessFields = Pick<
@@ -107,13 +108,49 @@ export class MockBusinessRepository implements BusinessRepository {
   /**
    * Not part of the BusinessRepository interface (spec's suggested shape doesn't include a
    * write path) — added because the dashboard's profile-edit form needs somewhere real to save
-   * to. Ownership is re-checked here too, not just by the caller. Mock businesses only for now —
-   * editing a real Supabase-backed profile isn't part of this phase.
+   * to. Ownership is re-checked here too, not just by the caller (`.eq("owner_id", ownerId)` for
+   * real businesses, an explicit `ownerId` match for mock ones).
+   *
+   * Always stamps `last_self_edit_at` to "now" on a successful write — this is the ONE call site
+   * for that column outside the admin write path (updateRegistrationFields), which never touches
+   * it, so an admin's own edits never consume a business's monthly self-edit allowance. The caller
+   * (updateProfileAction) is responsible for checking getBusinessSelfEditAccess BEFORE calling
+   * this — by the time this runs, eligibility has already been confirmed.
+   *
+   * Real (Supabase-backed) businesses write to `public_phone`/`public_whatsapp` — the fields the
+   * public profile page actually displays (map-registration-to-business.ts) — not the internal
+   * `phone`/`whatsapp_phone` contact columns, which represent a separate internal contact person.
    */
   async updateBusiness(businessId: string, ownerId: string, patch: Partial<EditableBusinessFields>): Promise<Business | null> {
+    if (isSupabaseBusinessId(businessId)) {
+      if (!isSupabaseAdminConfigured()) return null;
+      const admin = createAdminSupabaseClient();
+      const registrationId = toRegistrationId(businessId);
+
+      const dbPatch: Partial<BusinessRegistrationRow> = { last_self_edit_at: new Date().toISOString() };
+      if (patch.name !== undefined) dbPatch.business_name = patch.name;
+      if (patch.shortDescription !== undefined) dbPatch.short_description = patch.shortDescription || null;
+      if (patch.fullDescription !== undefined) dbPatch.description = patch.fullDescription;
+      if (patch.phone !== undefined) dbPatch.public_phone = patch.phone ? patch.phone.replace(/^tel:/, "") : null;
+      if (patch.whatsappUrl !== undefined) dbPatch.public_whatsapp = patch.whatsappUrl ? patch.whatsappUrl.replace(/^https:\/\/wa\.me\//, "") : null;
+      if (patch.websiteUrl !== undefined) dbPatch.website_url = patch.websiteUrl || null;
+      if (patch.address !== undefined) dbPatch.address = patch.address || null;
+      if (patch.serviceArea !== undefined) dbPatch.service_area = patch.serviceArea || null;
+
+      const { data, error } = await admin
+        .from("business_registrations")
+        .update(dbPatch)
+        .eq("id", registrationId)
+        .eq("owner_id", ownerId)
+        .select("*")
+        .maybeSingle();
+      if (error || !data) return null;
+      return mapRegistrationToBusiness(data);
+    }
+
     const index = this.store.findIndex((entry) => entry.id === businessId && entry.ownerId === ownerId);
     if (index === -1) return null;
-    const updated: Business = { ...this.store[index], ...patch, updatedAt: new Date().toISOString() };
+    const updated: Business = { ...this.store[index], ...patch, updatedAt: new Date().toISOString(), lastSelfEditAt: new Date().toISOString() };
     this.store[index] = updated;
     return updated;
   }

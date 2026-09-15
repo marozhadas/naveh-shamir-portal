@@ -74,6 +74,8 @@ export type BusinessRegistrationRow = {
   management_token_hash: string | null;
   management_token_created_at: string | null;
   management_token_last_used_at: string | null;
+  /** Set by updateProfileAction after a successful owner self-edit save — never by admin edits (updateRegistrationFields). Drives the Plus once-per-calendar-month self-edit limit; see getBusinessSelfEditAccess. */
+  last_self_edit_at: string | null;
 };
 
 /** Fields the public registration form is allowed to submit — status/featured/verified are never client-supplied (RLS also enforces this server-side). */

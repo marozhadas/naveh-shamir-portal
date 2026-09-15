@@ -2,9 +2,11 @@ import { authAdapter } from "@/adapters/mock-auth-adapter";
 import { businessRepository } from "@/repositories/mock-business-repository";
 import { subscriptionRepository } from "@/repositories/mock-subscription-repository";
 import { getSubscriptionAccess } from "@/domain/get-subscription-access";
+import { getBusinessSelfEditAccess } from "@/domain/get-business-self-edit-access";
 import type { Business } from "@/types/business";
 import type { AuthenticatedUser } from "@/types/auth";
 import type { BusinessSubscription, SubscriptionAccess } from "@/types/subscription";
+import type { BusinessSelfEditAccess } from "@/domain/get-business-self-edit-access";
 
 export type DashboardView =
   | { kind: "signed-out" }
@@ -15,6 +17,7 @@ export type DashboardView =
       business: Business;
       subscription: BusinessSubscription | null;
       access: SubscriptionAccess | null;
+      selfEditAccess: BusinessSelfEditAccess;
     };
 
 /**
@@ -33,7 +36,14 @@ export async function resolveDashboardViewer(): Promise<DashboardView> {
   if (!business) return { kind: "no-business", viewer };
 
   const subscription = await subscriptionRepository.getByBusinessId(businessId);
-  const access = subscription ? getSubscriptionAccess(subscription, new Date()) : null;
+  const now = new Date();
+  const access = subscription ? getSubscriptionAccess(subscription, now) : null;
+  const selfEditAccess = getBusinessSelfEditAccess({
+    activePlanId: business.activePlanId ?? "basic",
+    subscriptionAccess: access,
+    lastSelfEditAt: business.lastSelfEditAt ?? null,
+    now,
+  });
 
-  return { kind: "ready", viewer, business, subscription, access };
+  return { kind: "ready", viewer, business, subscription, access, selfEditAccess };
 }
