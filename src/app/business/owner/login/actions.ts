@@ -5,7 +5,7 @@ import { createPublicSupabaseClient } from "@/lib/supabase/public-client";
 import { createSupabaseServerClient } from "@/lib/supabase/server-client";
 import { getSiteOrigin } from "@/utils/site-origin";
 import { looksLikeEmail, normalizeUsername } from "@/utils/username";
-import { resolveUsernameToEmail, resolvePostLoginPath } from "@/repositories/owner-auth-service";
+import { resolveUsernameToEmail, resolvePostLoginPath, claimUnownedRegistrationsForEmail } from "@/repositories/owner-auth-service";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/utils/get-client-ip";
 
@@ -72,6 +72,17 @@ export async function loginWithPasswordAction(_prevState: LoginWithPasswordState
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error || !data.user) return { status: "error", message: GENERIC_LOGIN_ERROR };
+
+  // Same fallback ownership claim /auth/callback runs for magic-link/Google — password sign-in
+  // doesn't go through that route at all, so without this it would be the one method that never
+  // claims a business registered anonymously before the account existed (spec section 9).
+  if (data.user.email) {
+    try {
+      await claimUnownedRegistrationsForEmail(data.user.id, data.user.email);
+    } catch (err) {
+      console.error("[loginWithPasswordAction] ownership claim failed", err);
+    }
+  }
 
   redirect(await resolvePostLoginPath(data.user.id));
 }

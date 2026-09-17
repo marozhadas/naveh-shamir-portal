@@ -3,6 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { after } from "next/server";
 import { createPublicSupabaseClient } from "@/lib/supabase/public-client";
+import { getSupabaseSessionUser } from "@/lib/supabase/server-client";
 import { slugify } from "@/utils/slugify";
 import { isSupabaseAdminConfigured } from "@/lib/supabase/admin-client";
 import { getOpenNotificationForEntity } from "@/lib/admin/notifications";
@@ -56,6 +57,10 @@ function randomSuffix(): string {
  * `planTier` is never read from the client — it's a fixed argument each route's own action passes
  * (see business/register/plus/actions.ts, business/register/premium/actions.ts), so a visitor can
  * never submit an arbitrary tier through the form itself.
+ *
+ * If the submitter is already signed in, `owner_id` is set directly from their real session (never
+ * client input) — the primary ownership mechanism, same reasoning as submitExtendedBusinessRegistration
+ * in the Plus/Premium action. Anonymous registration stays fully supported (`sessionUser` is null).
  */
 export async function submitBusinessRegistration(
   formData: FormData,
@@ -74,6 +79,7 @@ export async function submitBusinessRegistration(
   }
 
   const values = result.data;
+  const sessionUser = await getSupabaseSessionUser();
   const supabase = createPublicSupabaseClient();
   const baseSlug = slugify(values.businessName);
 
@@ -88,6 +94,7 @@ export async function submitBusinessRegistration(
     const createdAt = new Date().toISOString();
     const { error } = await supabase.from("business_registrations").insert({
       id: registrationId,
+      owner_id: sessionUser?.id ?? null,
       slug,
       business_name: values.businessName,
       category_id: values.categoryId,

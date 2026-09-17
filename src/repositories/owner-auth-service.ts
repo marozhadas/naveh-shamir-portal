@@ -52,3 +52,39 @@ export async function resolvePostLoginPath(userId: string): Promise<"/business/d
   const { count } = await admin.from("business_registrations").select("*", { count: "exact", head: true }).eq("owner_id", userId);
   return count && count > 0 ? "/business/dashboard" : "/business/plans";
 }
+
+/**
+ * Claims any business_registrations row whose `email` matches this now-verified session's email
+ * AND has no owner yet. The PRIMARY ownership mechanism is now owner_id being set directly at
+ * registration time when the submitter is already signed in (see business/register/actions.ts and
+ * business/register/plus/actions.ts) — this is the fallback for the remaining case, someone who
+ * registered anonymously and only creates/signs into an account afterward. Called from every
+ * sign-in path — /auth/callback (magic link, Google, password-reset) and loginWithPasswordAction —
+ * so it behaves identically regardless of which method established the session. A claim failure
+ * must never block the sign-in itself.
+ */
+export async function claimUnownedRegistrationsForEmail(userId: string, email: string): Promise<void> {
+  if (!isSupabaseAdminConfigured()) return;
+  const admin = createAdminSupabaseClient();
+  const { data: matches, error: selectError } = await admin.from("business_registrations").select("id").eq("email", email).is("owner_id", null);
+  if (selectError) throw new Error(selectError.message);
+  if (!matches || matches.length === 0) return;
+
+  const { error: updateError } = await admin
+    .from("business_registrations")
+    .update({ owner_id: userId })
+    .in(
+      "id",
+      matches.map((m) => m.id),
+    );
+  if (updateError) throw new Error(updateError.message);
+
+  await admin.from("business_events_log").insert(
+    matches.map((m) => ({
+      business_registration_id: m.id,
+      event_type: "ownership_claimed" as const,
+      actor_id: userId,
+      metadata: {},
+    })),
+  );
+}

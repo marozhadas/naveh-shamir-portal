@@ -1,6 +1,7 @@
 "use server";
 
 import { createPublicSupabaseClient } from "@/lib/supabase/public-client";
+import { getSupabaseSessionUser } from "@/lib/supabase/server-client";
 import { slugify } from "@/utils/slugify";
 import { uploadBusinessMedia } from "@/repositories/business-media-service";
 import { plusBusinessRegistrationSchema } from "./schema";
@@ -54,6 +55,15 @@ function randomSuffix(): string {
  * or open self-edit access — spec: those only happen after an admin approves the registration AND
  * a separate, explicit activation happens (not yet built). Until then this only ever writes
  * trial_status="not-started" regardless of plan.
+ *
+ * If the submitter is already signed in (Google, username/password, or magic link — any method),
+ * their session is read server-side (never trusted from client input) and `owner_id` is set
+ * directly on the new row. This is the PRIMARY ownership mechanism — not a fallback: without it, a
+ * business registered while already authenticated would sit with no owner until the person
+ * happened to sign in again through a method that re-triggers /auth/callback's email-match claim
+ * (which password-sign-in never does), and would be invisible in their own dashboard in the
+ * meantime. Anonymous registration remains fully supported — `sessionUser` is simply null then,
+ * and the row is created exactly as before, to be claimed by email match on a later sign-in.
  */
 async function submitExtendedBusinessRegistration(
   input: PlusBusinessRegistrationInput,
@@ -80,6 +90,7 @@ async function submitExtendedBusinessRegistration(
   }
 
   const values = result.data;
+  const sessionUser = await getSupabaseSessionUser();
   const supabase = createPublicSupabaseClient();
   const baseSlug = slugify(values.businessName);
 
@@ -87,6 +98,7 @@ async function submitExtendedBusinessRegistration(
     const slug = attempt === 0 ? baseSlug : slugify(values.businessName, randomSuffix());
     const { error } = await supabase.from("business_registrations").insert({
       id: values.registrationId,
+      owner_id: sessionUser?.id ?? null,
       slug,
       business_name: values.businessName,
       category_id: values.categoryIds[0],
