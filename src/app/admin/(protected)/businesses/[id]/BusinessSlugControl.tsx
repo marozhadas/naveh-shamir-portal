@@ -71,7 +71,7 @@ export function BusinessSlugControl({ businessId, businessName, currentSlug, isL
 
       {!isCurrentSlugValid && (
         <p className={styles.emailError} role="alert">
-          חסרה כתובת URL תקינה. לפני שהעסק יעבור לחבילת Plus/Premium ויתפרסם, יש להזין כתובת באנגלית כאן.
+          לפני הפעלת המנוי יש להגדיר כתובת URL באנגלית לעסק — כפתור &quot;הפעלת 30 ימי ניסיון&quot; באזור האישי של בעל/ת העסק חסום עד אז.
         </p>
       )}
 

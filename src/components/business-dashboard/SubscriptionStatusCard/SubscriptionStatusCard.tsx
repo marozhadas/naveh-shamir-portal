@@ -3,6 +3,7 @@ import { TrialProgressBar } from "@/components/business-dashboard/TrialProgressB
 import { startCheckoutAction, cancelSubscriptionAction, reactivateSubscriptionAction } from "@/app/business/dashboard/subscription-actions";
 import { MOCK_PAYMENT_DISCLAIMER } from "@/adapters/mock-payment-provider-adapter";
 import { BUSINESS_MONTHLY_PLAN } from "@/types/subscription-plan";
+import { isValidBusinessSlug } from "@/utils/business-slug";
 import type { BusinessSubscription, SubscriptionAccess } from "@/types/subscription";
 import styles from "./SubscriptionStatusCard.module.css";
 
@@ -34,15 +35,33 @@ export function SubscriptionStatusCard({
   businessSlug = null,
 }: SubscriptionStatusCardProps) {
   if (!subscription || !access) {
+    // A real business needs a clean English slug before the trial can actually start (see
+    // checkRealTrialEligibility's "invalid-slug" check) — the auto-generated slug from a Hebrew
+    // business name never qualifies. Blocking the button here (instead of letting the owner click
+    // through to a dead end on /business/trial) surfaces this immediately, with a pointer to what
+    // to do about it, rather than a generic "can't start" message after the fact.
+    const needsSlug = isRealSubscription && !(businessSlug && isValidBusinessSlug(businessSlug));
+
     return (
       <div className={`${styles.card} ${styles.neutral}`}>
         <p className={styles.title}>העסק שלך מופיע כרגע ברישום בסיסי</p>
         <p className={styles.description}>
           הפעילו עמוד עסק מלא כדי להציג שירותים, תמונות, שעות פעילות ותגית עסק מאומת.
         </p>
-        <Button href={isRealSubscription ? "/business/trial" : "/business/register"} variant="accent">
-          הפעלת 30 ימי ניסיון
-        </Button>
+        {needsSlug ? (
+          <>
+            <Button variant="accent" disabled>
+              הפעלת 30 ימי ניסיון
+            </Button>
+            <p className={styles.description}>
+              לפני הפעלת המנוי יש להגדיר כתובת URL באנגלית לעסק. הצוות שלנו ייצור איתך קשר בקרוב — אפשר גם לפנות אלינו ישירות דרך עמוד יצירת הקשר.
+            </p>
+          </>
+        ) : (
+          <Button href={isRealSubscription ? "/business/trial" : "/business/register"} variant="accent">
+            הפעלת 30 ימי ניסיון
+          </Button>
+        )}
       </div>
     );
   }
