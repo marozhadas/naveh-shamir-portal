@@ -25,6 +25,8 @@ export type BusinessListingAccess = {
   canShowGallery: boolean;
   canShowServices: boolean;
   canShowOpeningHours: boolean;
+  /** Basic never shows the reviews section at all — writing a review, and the "מה אומרים על העסק?" carousel, are both Plus/Premium-only. */
+  canShowReviews: boolean;
   /** Plus explicitly does not get this — self-editing (magic-link login, /business/dashboard/profile) is Premium-only. */
   canSelfEdit: boolean;
   /** Eligibility only — the homepage must still separately check business.featured before actually showing it (admin picks who, not every Premium business automatically). */

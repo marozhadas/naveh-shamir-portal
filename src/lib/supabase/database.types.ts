@@ -16,6 +16,7 @@ import type { WhatsAppGroupRow } from "@/types/whatsapp-group";
 import type { BusinessSlugRedirectRow } from "@/types/business-slug-redirect";
 import type { CommunityNewsRow } from "@/types/community-news";
 import type { ProfileRow } from "@/types/profile";
+import type { BusinessReviewRow } from "@/types/business-review";
 
 export type BusinessEventLogRow = {
   id: string;
@@ -219,6 +220,18 @@ export type Database = {
         Row: ProfileRow;
         Insert: Omit<ProfileRow, "created_at" | "updated_at" | "role"> & { created_at?: string; updated_at?: string; role?: ProfileRow["role"] };
         Update: Partial<ProfileRow>;
+        Relationships: [];
+      };
+      business_reviews: {
+        Row: BusinessReviewRow;
+        Insert: Omit<BusinessReviewRow, "id" | "status" | "rejection_reason" | "created_at" | "reviewed_at"> & {
+          id?: string;
+          status?: BusinessReviewRow["status"];
+          rejection_reason?: string | null;
+          created_at?: string;
+          reviewed_at?: string | null;
+        };
+        Update: Partial<BusinessReviewRow>;
         Relationships: [];
       };
       events: {

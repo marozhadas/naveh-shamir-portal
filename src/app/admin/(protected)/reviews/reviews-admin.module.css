@@ -1,0 +1,163 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.title {
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.filtersRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.tabs {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.tab {
+  font-size: var(--fs-body-sm);
+  font-weight: var(--fw-demibold);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-pill);
+  padding: 6px 14px;
+  text-decoration: none;
+}
+
+.tabActive {
+  background: var(--navy-900, #10213e);
+  color: #fff;
+  border-color: transparent;
+}
+
+.businessFilterForm {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.businessSelect {
+  font-family: var(--font-family-base);
+  font-size: var(--fs-body-sm);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  color: var(--color-text-primary);
+  background: #fff;
+}
+
+.empty {
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  text-align: center;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.wrap {
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+  overflow: hidden;
+}
+
+.status_pending {
+  border-inline-start: 4px solid var(--yellow-500);
+}
+
+.status_approved {
+  border-inline-start: 4px solid var(--green-600);
+}
+
+.status_rejected {
+  border-inline-start: 4px solid var(--slate-400);
+  opacity: 0.85;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.cardInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.businessName {
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-body);
+  color: var(--color-text-primary);
+}
+
+.meta {
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+}
+
+.statusBadge {
+  flex-shrink: 0;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-demibold);
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--slate-100);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.content {
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-primary);
+  line-height: var(--lh-body);
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.cardActions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}

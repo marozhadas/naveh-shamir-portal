@@ -11,6 +11,8 @@ import { getListingAccessByBusinessId } from "@/domain/get-business-listing-acce
 import { getBusinessDescription, getBusinessHeroImage } from "@/utils/business-profile";
 import { createLocalBusinessStructuredData } from "@/utils/create-local-business-json-ld";
 import { trackAnalyticsEvent } from "@/repositories/analytics-service";
+import { getApprovedReviewsForBusiness } from "@/repositories/business-review-service";
+import { isSupabaseBusinessId, toRegistrationId } from "@/utils/business-id";
 import { SITE_CONFIG } from "@/data/config";
 import { resolveBusinessView } from "./resolve-business-view";
 
@@ -90,6 +92,9 @@ export default async function BusinessPage({ params }: BusinessPageProps) {
   const relatedAccessByBusinessId = await getListingAccessByBusinessId(relatedCandidates, subscriptionRepository, new Date());
   const relatedBusinesses = relatedCandidates.filter((business) => relatedAccessByBusinessId[business.id]?.canOpenProfile).slice(0, 4);
 
+  const reviewsBusinessId = isSupabaseBusinessId(view.business.id) ? toRegistrationId(view.business.id) : null;
+  const reviews = view.access.canShowReviews && reviewsBusinessId ? await getApprovedReviewsForBusiness(reviewsBusinessId) : [];
+
   return (
     <>
       {view.kind === "published" && (
@@ -106,6 +111,8 @@ export default async function BusinessPage({ params }: BusinessPageProps) {
         relatedAccessByBusinessId={relatedAccessByBusinessId}
         viewer={view.viewer}
         isPreview={view.kind === "preview"}
+        reviewsBusinessId={reviewsBusinessId}
+        reviews={reviews}
       />
     </>
   );

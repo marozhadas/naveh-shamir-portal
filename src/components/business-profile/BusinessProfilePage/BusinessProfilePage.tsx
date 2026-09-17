@@ -9,6 +9,7 @@ import { BusinessGallery } from "@/components/business-profile/BusinessGallery/B
 import { BusinessAbout } from "@/components/business-profile/BusinessAbout/BusinessAbout";
 import { BusinessServices } from "@/components/business-profile/BusinessServices/BusinessServices";
 import { BusinessTestimonialsCarousel } from "@/components/business-profile/BusinessTestimonialsCarousel/BusinessTestimonialsCarousel";
+import { BusinessReviewsSection } from "@/components/business-profile/BusinessReviewsSection/BusinessReviewsSection";
 import { BusinessOpeningHoursList } from "@/components/business-profile/BusinessOpeningHoursList/BusinessOpeningHoursList";
 import { BusinessLocationCard } from "@/components/business-profile/BusinessLocationCard/BusinessLocationCard";
 import { BusinessPromotionBanner } from "@/components/business-profile/BusinessPromotionBanner/BusinessPromotionBanner";
@@ -20,6 +21,7 @@ import { getBusinessDescription } from "@/utils/business-profile";
 import type { Business } from "@/types/business";
 import type { AuthenticatedUser } from "@/types/auth";
 import type { BusinessListingAccess } from "@/types/business-listing-access";
+import type { BusinessReviewRow } from "@/types/business-review";
 import styles from "./BusinessProfilePage.module.css";
 
 type BusinessProfilePageProps = {
@@ -29,6 +31,9 @@ type BusinessProfilePageProps = {
   relatedAccessByBusinessId: Record<string, BusinessListingAccess>;
   viewer: AuthenticatedUser | null;
   isPreview: boolean;
+  /** The business's raw registration id (never the "reg-" prefixed app id) and its approved reviews — both empty/unused unless access.canShowReviews. */
+  reviewsBusinessId: string | null;
+  reviews: BusinessReviewRow[];
 };
 
 /**
@@ -41,7 +46,16 @@ type BusinessProfilePageProps = {
  * still shown to them in preview, since nothing is deleted when premium access lapses. Only the
  * verified badge is gated by `access.canShowVerifiedBadge`, never by `business.verified`.
  */
-export function BusinessProfilePage({ business, access, relatedBusinesses, relatedAccessByBusinessId, viewer, isPreview }: BusinessProfilePageProps) {
+export function BusinessProfilePage({
+  business,
+  access,
+  relatedBusinesses,
+  relatedAccessByBusinessId,
+  viewer,
+  isPreview,
+  reviewsBusinessId,
+  reviews,
+}: BusinessProfilePageProps) {
   const description = getBusinessDescription(business);
 
   return (
@@ -66,6 +80,7 @@ export function BusinessProfilePage({ business, access, relatedBusinesses, relat
           <BusinessAbout description={description} highlights={business.highlights} />
           {business.services && business.services.length > 0 && <BusinessServices services={business.services} />}
           {business.testimonials && business.testimonials.length > 0 && <BusinessTestimonialsCarousel testimonials={business.testimonials} />}
+          {access.canShowReviews && reviewsBusinessId && <BusinessReviewsSection businessId={reviewsBusinessId} reviews={reviews} />}
           <div className={styles.twoColumn}>
             {business.openingHours && business.openingHours.length > 0 && (
               <BusinessOpeningHoursList openingHours={business.openingHours} />

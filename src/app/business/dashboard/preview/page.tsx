@@ -3,6 +3,8 @@ import { BusinessProfilePage } from "@/components/business-profile/BusinessProfi
 import { businessRepository } from "@/repositories/mock-business-repository";
 import { subscriptionRepository } from "@/repositories/mock-subscription-repository";
 import { getBusinessListingAccess, getListingAccessByBusinessId } from "@/domain/get-business-listing-access";
+import { getApprovedReviewsForBusiness } from "@/repositories/business-review-service";
+import { isSupabaseBusinessId, toRegistrationId } from "@/utils/business-id";
 import { resolveDashboardViewer } from "../resolve-dashboard-viewer";
 
 export const metadata: Metadata = { title: "תצוגה מקדימה | דשבורד | נווה שמיר", robots: { index: false, follow: false } };
@@ -21,6 +23,9 @@ export default async function BusinessPreviewPage() {
   const relatedAccessByBusinessId = await getListingAccessByBusinessId(relatedCandidates, subscriptionRepository, new Date());
   const relatedBusinesses = relatedCandidates.filter((business) => relatedAccessByBusinessId[business.id]?.canOpenProfile).slice(0, 4);
 
+  const reviewsBusinessId = isSupabaseBusinessId(view.business.id) ? toRegistrationId(view.business.id) : null;
+  const reviews = access.canShowReviews && reviewsBusinessId ? await getApprovedReviewsForBusiness(reviewsBusinessId) : [];
+
   return (
     <BusinessProfilePage
       business={view.business}
@@ -29,6 +34,8 @@ export default async function BusinessPreviewPage() {
       relatedAccessByBusinessId={relatedAccessByBusinessId}
       viewer={view.viewer}
       isPreview
+      reviewsBusinessId={reviewsBusinessId}
+      reviews={reviews}
     />
   );
 }
