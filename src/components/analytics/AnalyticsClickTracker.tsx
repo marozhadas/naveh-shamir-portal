@@ -7,6 +7,9 @@ import type { AnalyticsEventName } from "@/types/analytics";
 const TRACKED_EVENT_NAMES: AnalyticsEventName[] = [
   "business_phone_click",
   "business_whatsapp_click",
+  "business_website_click",
+  "business_instagram_click",
+  "business_facebook_click",
   "essential-number-phone-click",
   "essential-number-whatsapp-click",
   "essential-number-website-click",

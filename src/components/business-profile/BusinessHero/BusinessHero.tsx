@@ -93,7 +93,16 @@ export function BusinessHero({ business, access }: BusinessHeroProps) {
             </Button>
           )}
           {contact.websiteUrl && (
-            <Button href={contact.websiteUrl} variant="secondary" target="_blank" rel="noopener noreferrer" icon={<Globe size={16} aria-hidden="true" />}>
+            <Button
+              href={contact.websiteUrl}
+              variant="secondary"
+              target="_blank"
+              rel="noopener noreferrer"
+              icon={<Globe size={16} aria-hidden="true" />}
+              data-analytics-event="business_website_click"
+              data-analytics-business-id={business.id}
+              data-analytics-category={business.category}
+            >
               לאתר העסק
             </Button>
           )}

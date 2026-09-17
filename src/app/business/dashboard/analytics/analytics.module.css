@@ -1,0 +1,134 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 880px;
+}
+
+.title {
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.notice {
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.disclaimer {
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+  background: var(--slate-50, #f8fafc);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  margin: 0;
+}
+
+.filterRow {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.filterLink {
+  font-size: var(--fs-body-sm);
+  font-weight: var(--fw-demibold);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-pill);
+  padding: 6px 16px;
+  text-decoration: none;
+}
+
+.filterLinkActive {
+  background: var(--navy-900, #10213e);
+  color: #fff;
+  border-color: transparent;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+}
+
+.summaryCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-bg-surface);
+}
+
+.summaryValue {
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-black);
+  color: var(--color-text-primary);
+}
+
+.summaryLabel {
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sectionTitle {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.trendChart {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  height: 160px;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-bg-surface);
+  overflow-x: auto;
+}
+
+.trendBar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  min-width: 24px;
+  flex: 1;
+}
+
+.trendBarTrack {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.trendBarFill {
+  width: 100%;
+  min-height: 2px;
+  background: var(--green-600);
+  border-radius: 3px 3px 0 0;
+}
+
+.trendBarLabel {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
