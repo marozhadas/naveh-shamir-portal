@@ -88,6 +88,7 @@ export const promotionSchema = z.object({
 export const plusBusinessRegistrationObjectSchema = z.object({
   registrationId: z.string().uuid(),
   planId: z.enum(["plus", "premium"]),
+  billingInterval: z.enum(["monthly", "yearly"]).optional(),
 
   businessName: z.string().trim().min(1, "יש להזין שם עסק").max(120, "שם העסק ארוך מדי — עד 120 תווים"),
   categoryIds: z
@@ -151,7 +152,7 @@ function crossFieldRefine(values: z.infer<typeof plusBusinessRegistrationObjectS
     ctx.addIssue({ code: "custom", path: ["serviceArea"], message: "יש להזין אזור שירות" });
   }
   if (values.planId === "plus" && values.trialConsent !== true) {
-    ctx.addIssue({ code: "custom", path: ["trialConsent"], message: "יש לאשר את הפעלת חודש הניסיון" });
+    ctx.addIssue({ code: "custom", path: ["trialConsent"], message: "יש לאשר את הפעלת 30 ימי הניסיון" });
   }
   if (values.planId === "premium" && values.dashboardAccessConsent !== true) {
     ctx.addIssue({
@@ -216,7 +217,7 @@ export function plusStepFiveSchema(planId: "plus" | "premium") {
   const base = plusBusinessRegistrationObjectSchema.pick({ publicationConsent: true, termsAccepted: true, trialConsent: true, dashboardAccessConsent: true });
   return base.superRefine((values, ctx) => {
     if (planId === "plus" && values.trialConsent !== true) {
-      ctx.addIssue({ code: "custom", path: ["trialConsent"], message: "יש לאשר את הפעלת חודש הניסיון" });
+      ctx.addIssue({ code: "custom", path: ["trialConsent"], message: "יש לאשר את הפעלת 30 ימי הניסיון" });
     }
     if (planId === "premium" && values.dashboardAccessConsent !== true) {
       ctx.addIssue({ code: "custom", path: ["dashboardAccessConsent"], message: "יש לאשר קבלת גישה מאובטחת לאזור האישי במייל" });

@@ -129,6 +129,7 @@ async function submitExtendedBusinessRegistration(
       },
       promotion: values.promotion,
       plan_tier: values.planId,
+      selected_billing_interval: values.billingInterval ?? "monthly",
       // Every fresh registration starts inactive — activated later by a trial (startRealBusinessTrial)
       // or an admin (changeBusinessPlanAction), never at registration time itself. This is the fix
       // for the "Plus registered as Basic" bug: the wizard already correctly wrote plan_tier="plus"

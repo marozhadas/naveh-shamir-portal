@@ -19,6 +19,12 @@ export function mapSubscriptionRowToBusinessSubscription(row: BusinessSubscripti
     currentPeriodEndsAt: row.current_period_ends_at ?? undefined,
     canceledAt: row.canceled_at ?? undefined,
     cancelAtPeriodEnd: row.cancel_at_period_end,
+    billingInterval: row.billing_interval ?? undefined,
+    priceAmountIls: row.price_amount_ils ?? undefined,
+    priceVersion: row.price_version ?? undefined,
+    isLaunchPrice: row.is_launch_price ?? undefined,
+    paymentFailedAt: row.payment_failed_at ?? undefined,
+    gracePeriodEndsAt: row.grace_period_ends_at ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

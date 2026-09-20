@@ -24,6 +24,7 @@ export const SUBSCRIPTION_STATUS_LABEL: Record<string, string> = {
   trialing: "בתקופת ניסיון",
   active: "מנוי פעיל",
   "past-due": "תשלום נכשל",
+  "grace-period": "תקופת חסד",
   canceled: "מנוי בוטל",
   expired: "ניסיון הסתיים",
   paused: "מנוי מושהה",

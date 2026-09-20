@@ -40,7 +40,7 @@ export default async function RegisterSuccessPage({ searchParams }: SuccessPageP
           <p className={styles.disclaimer}>
             {isPremium
               ? "הגישה לאזור האישי תישלח רק לאחר אישור העסק והפעלת חבילת Premium."
-              : "חודש הניסיון עדיין לא התחיל. הוא יופעל רק לאחר אישור העסק והפעלה מפורשת."}
+              : "30 ימי הניסיון עדיין לא התחילו. הוא יופעל רק לאחר אישור העסק והפעלה מפורשת."}
           </p>
           <div className={styles.actions}>
             <Button href="/" variant="secondary">

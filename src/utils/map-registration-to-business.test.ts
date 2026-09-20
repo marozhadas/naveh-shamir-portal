@@ -48,6 +48,7 @@ function makeRow(overrides: Partial<BusinessRegistrationRow> = {}): BusinessRegi
     management_token_created_at: null,
     management_token_last_used_at: null,
     last_self_edit_at: null,
+    selected_billing_interval: "monthly",
     ...overrides,
   };
 }

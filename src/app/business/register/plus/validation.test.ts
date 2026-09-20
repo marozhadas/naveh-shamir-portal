@@ -259,7 +259,7 @@ describe("validateStepFive", () => {
 
   it("blocks plus when trial consent is missing", () => {
     const errors = validateStepFive(validStepFive({ trialConsent: false }), "plus");
-    expect(errors.trialConsent).toBe("יש לאשר את הפעלת חודש הניסיון");
+    expect(errors.trialConsent).toBe("יש לאשר את הפעלת 30 ימי הניסיון");
   });
 
   it("blocks premium when dashboard access consent is missing", () => {

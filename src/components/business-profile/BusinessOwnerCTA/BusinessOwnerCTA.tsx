@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/Button";
-import { BUSINESS_MONTHLY_PLAN } from "@/types/subscription-plan";
+import { TRIAL_DAYS } from "@/data/subscription-pricing";
 import styles from "./BusinessOwnerCTA.module.css";
 
 export function BusinessOwnerCTA() {
@@ -13,12 +13,11 @@ export function BusinessOwnerCTA() {
           קבלו עמוד עסק מקצועי בפורטל, הציגו את השירותים שלכם והגיעו ליותר תושבים בשכונה.
         </p>
         <p className={styles.fineprint}>
-          30 ימים ללא עלות. לאחר מכן מנוי חודשי.{" "}
-          {BUSINESS_MONTHLY_PLAN.priceAmount === null && "פרטי המחיר יוצגו לפני ההצטרפות."}
+          {TRIAL_DAYS} ימי ניסיון חינם ב־Plus וב־Premium. מחירי Plus ו־Premium הם מחירי השקה. הפרטים המלאים בעמוד החבילות.
         </p>
       </div>
       <Button href="/business/plans" variant="accent">
-        מתחילים חודש חינם
+        לצפייה בחבילות
       </Button>
     </section>
   );

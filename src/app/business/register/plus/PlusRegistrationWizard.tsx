@@ -18,6 +18,7 @@ import {
   type WizardErrors,
 } from "./validation";
 import type { PlusBusinessRegistrationInput } from "@/types/business-plus-registration";
+import { BILLING_INTERVALS, BILLING_INTERVAL_LABEL, LAUNCH_PRICE_LABEL, TRIAL_DAYS, formatPriceWithInterval, getCurrentPrice, type BillingInterval } from "@/data/subscription-pricing";
 import styles from "./plus-wizard.module.css";
 
 const CATEGORIES = getVisibleBusinessCategories();
@@ -68,6 +69,7 @@ type WizardValues = {
   termsAccepted: boolean;
   trialConsent: boolean;
   dashboardAccessConsent: boolean;
+  billingInterval: BillingInterval;
   honeypot: string;
 };
 
@@ -95,7 +97,7 @@ const FIELD_LABEL: Record<string, string> = {
   tiktokUrl: "TikTok",
   publicationConsent: "אישור פרסום הפרטים",
   termsAccepted: "אישור תנאי השימוש",
-  trialConsent: "אישור חודש הניסיון",
+  trialConsent: "אישור 30 ימי הניסיון",
   dashboardAccessConsent: "אישור גישה לאזור האישי",
 };
 
@@ -155,6 +157,7 @@ function createEmptyValues(): WizardValues {
     termsAccepted: false,
     trialConsent: false,
     dashboardAccessConsent: false,
+    billingInterval: "monthly",
     honeypot: "",
   };
 }
@@ -185,10 +188,9 @@ function focusAndReveal(elementId: string) {
 
 type PlusRegistrationWizardProps = {
   planId: "plus" | "premium";
-  priceLabel: string;
 };
 
-export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationWizardProps) {
+export function PlusRegistrationWizard({ planId }: PlusRegistrationWizardProps) {
   const router = useRouter();
   const draftKey = DRAFT_KEY_BY_PLAN[planId];
   const registrationIdRef = useRef<string>(crypto.randomUUID());
@@ -495,6 +497,7 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
     const input: PlusBusinessRegistrationInput = {
       registrationId: registrationIdRef.current,
       planId,
+      billingInterval: values.billingInterval,
       businessName: values.businessName.trim(),
       categoryIds: values.categoryIds,
       businessType: values.businessType,
@@ -1367,7 +1370,6 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
           <ReviewStep
             values={values}
             planId={planId}
-            priceLabel={priceLabel}
             errors={errors}
             onEdit={goToStep}
             onChangeConsent={update}
@@ -1406,13 +1408,12 @@ export function PlusRegistrationWizard({ planId, priceLabel }: PlusRegistrationW
 type ReviewStepProps = {
   values: WizardValues;
   planId: "plus" | "premium";
-  priceLabel: string;
   errors: WizardErrors;
   onEdit: (step: number) => void;
   onChangeConsent: <K extends keyof WizardValues>(key: K, value: WizardValues[K]) => void;
 };
 
-function ReviewStep({ values, planId, priceLabel, errors, onEdit, onChangeConsent }: ReviewStepProps) {
+function ReviewStep({ values, planId, errors, onEdit, onChangeConsent }: ReviewStepProps) {
   const categoryLabels = useMemo(
     () => CATEGORIES.filter((c) => values.categoryIds.includes(c.id)).map((c) => c.label).join(", "),
     [values.categoryIds],
@@ -1502,14 +1503,28 @@ function ReviewStep({ values, planId, priceLabel, errors, onEdit, onChangeConsen
 
       <div className={styles.reviewSection}>
         <p className={styles.reviewLabel}>מסלול {planId === "plus" ? "Plus" : "Premium"}</p>
-        {planId === "plus" ? (
-          <>
-            <p className={styles.reviewValue}>חודש ראשון חינם</p>
-            <p className={styles.reviewValue}>לאחר תקופת הניסיון: {priceLabel} לחודש</p>
-          </>
-        ) : (
-          <p className={styles.reviewValue}>{priceLabel} לחודש</p>
-        )}
+        <fieldset className={styles.intervalFieldset}>
+          <legend className={styles.reviewLabel}>בחרו מסלול חיוב ({TRIAL_DAYS} ימי ניסיון חינם בשני המסלולים)</legend>
+          {BILLING_INTERVALS.map((interval) => {
+            const price = getCurrentPrice(planId, interval);
+            return (
+              <label key={interval} className={styles.intervalOption}>
+                <input
+                  type="radio"
+                  name="billingInterval"
+                  value={interval}
+                  checked={values.billingInterval === interval}
+                  onChange={() => onChangeConsent("billingInterval", interval)}
+                />
+                <span>
+                  {BILLING_INTERVAL_LABEL[interval]} — {formatPriceWithInterval(price.amountIls, interval)}
+                </span>
+                {price.isLaunchPrice && <span className={styles.launchBadge}>{LAUNCH_PRICE_LABEL}</span>}
+              </label>
+            );
+          })}
+        </fieldset>
+        <p className={styles.reviewLabel}>הניסיון מתחיל רק לאחר אישור העסק והפעלה מפורשת. בשלב זה לא נדרש אמצעי תשלום ולא מתבצע חיוב.</p>
       </div>
 
       {planId === "premium" && (
@@ -1566,7 +1581,7 @@ function ReviewStep({ values, planId, priceLabel, errors, onEdit, onChangeConsen
               aria-invalid={Boolean(errors.trialConsent)}
               aria-describedby={errors.trialConsent ? "trialConsent-error" : undefined}
             />
-            אני מאשר/ת להפעיל את חודש הניסיון לאחר אישור העסק.
+            אני מאשר/ת להפעיל את 30 ימי הניסיון לאחר אישור העסק.
           </label>
           {errors.trialConsent && (
             <p id="trialConsent-error" className={styles.fieldErrorMessage} role="alert">

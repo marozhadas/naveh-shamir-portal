@@ -9,7 +9,7 @@ const TABS = [
   { href: "/business/dashboard/profile", label: "עריכת העסק" },
   { href: "/business/dashboard/preview", label: "תצוגה מקדימה" },
   { href: "/business/dashboard/analytics", label: "אנליטיקה" },
-  { href: "/business/dashboard/subscription", label: "מנוי" },
+  { href: "/business/dashboard/subscription", label: "המנוי שלי" },
 ];
 
 export function DashboardNav() {

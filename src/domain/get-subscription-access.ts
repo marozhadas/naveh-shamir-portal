@@ -82,6 +82,22 @@ export function getSubscriptionAccess(subscription: BusinessSubscription, now: D
     };
   }
 
+  if (subscription.status === "grace-period") {
+    // Grace only ever exists after a real billing failure (payment_failed_at/grace_period_ends_at set
+    // by a future billing event). While it has not ended the page stays live; once it ends, access
+    // drops exactly like an expired subscription — nothing is deleted.
+    const graceActive = Boolean(subscription.gracePeriodEndsAt && new Date(subscription.gracePeriodEndsAt).getTime() > now.getTime());
+    return {
+      canEdit: graceActive,
+      canPreview: true,
+      canPublish: graceActive,
+      canAppearInArchive: graceActive,
+      canManageSubscription: true,
+      daysRemainingInTrial: null,
+      reason: graceActive ? "grace-period" : "trial-expired",
+    };
+  }
+
   if (subscription.status === "paused") {
     return {
       canEdit: true,

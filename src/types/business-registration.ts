@@ -76,6 +76,8 @@ export type BusinessRegistrationRow = {
   management_token_last_used_at: string | null;
   /** Set by updateProfileAction after a successful owner self-edit save — never by admin edits (updateRegistrationFields). Drives the Plus once-per-calendar-month self-edit limit; see getBusinessSelfEditAccess. */
   last_self_edit_at: string | null;
+  /** The billing track the owner picked at registration. The price is only snapshotted onto the subscription when the trial starts (see startRealBusinessTrial). */
+  selected_billing_interval: "monthly" | "yearly";
 };
 
 /** Fields the public registration form is allowed to submit — status/featured/verified are never client-supplied (RLS also enforces this server-side). */

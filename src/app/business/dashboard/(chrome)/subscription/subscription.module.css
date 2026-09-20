@@ -70,3 +70,25 @@
   color: var(--color-text-primary);
   font-weight: var(--fw-demibold);
 }
+
+.statusHeading {
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-bold);
+  color: var(--color-text-primary);
+  margin: 0 0 4px;
+}
+
+.statusDescription {
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.launchBadge {
+  margin-inline-start: var(--space-2);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-demibold);
+  background: var(--color-accent, #f2c300);
+  border-radius: 999px;
+  padding: 2px 10px;
+}

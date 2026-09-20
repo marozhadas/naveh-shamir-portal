@@ -44,6 +44,8 @@ export type BusinessSocialLinksInput = {
 export type PlusBusinessRegistrationInput = {
   registrationId: string;
   planId: "plus" | "premium";
+  /** The billing track the owner picked (30-day trial applies to both). Optional so older clients/drafts default to monthly. */
+  billingInterval?: "monthly" | "yearly";
 
   businessName: string;
   categoryIds: string[];

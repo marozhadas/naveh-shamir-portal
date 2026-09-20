@@ -8,13 +8,15 @@ import { ViewerSwitcher } from "@/components/demo/ViewerSwitcher/ViewerSwitcher"
 import { TrialStartForm } from "./TrialStartForm";
 import { authAdapter, isRealBusinessOwnerSession } from "@/adapters/mock-auth-adapter";
 import { subscriptionRepository } from "@/repositories/mock-subscription-repository";
-import { BUSINESS_MONTHLY_PLAN } from "@/types/subscription-plan";
+import { businessRepository } from "@/repositories/mock-business-repository";
+import { getBusinessPlan } from "@/data/business-plans";
+import { LAUNCH_PRICE_LABEL, TRIAL_DAYS, formatPriceWithInterval, getCurrentPrice, isBillingInterval } from "@/data/subscription-pricing";
 import type { TrialEligibility } from "@/types/trial";
 import styles from "./trial.module.css";
 
 export const metadata: Metadata = {
   title: "הפעלת 30 ימי ניסיון | עסקים בנווה שמיר",
-  description: "פתחו עמוד עסק מלא בפורטל נווה שמיר עם 30 ימי ניסיון חינם, ולאחר מכן מנוי חודשי.",
+  description: "פתחו עמוד עסק מלא בפורטל נווה שמיר עם 30 ימי ניסיון חינם. לא נדרש אמצעי תשלום ולא מתבצע חיוב.",
   robots: { index: false, follow: false },
 };
 
@@ -41,10 +43,12 @@ export default async function BusinessTrialPage() {
     eligibility = await subscriptionRepository.checkTrialEligibility(businessId, viewer);
   }
 
-  const priceLine =
-    BUSINESS_MONTHLY_PLAN.priceAmount === null
-      ? "המחיר יעודכן לפני ההשקה."
-      : `${BUSINESS_MONTHLY_PLAN.priceAmount} ${BUSINESS_MONTHLY_PLAN.currency} לחודש לאחר תום הניסיון.`;
+  const business = viewer && businessId ? await businessRepository.getDraftById(businessId, viewer.id) : null;
+  const planTier = business?.selectedPlanId === "premium" ? "premium" : "plus";
+  const plan = getBusinessPlan(planTier);
+  const interval = isBillingInterval(business?.selectedBillingInterval) ? business.selectedBillingInterval : "monthly";
+  const offer = getCurrentPrice(planTier, interval);
+  const priceLine = `המסלול שבחרתם: ${plan.name}, ${formatPriceWithInterval(offer.amountIls, interval)}${offer.isLaunchPrice ? ` (${LAUNCH_PRICE_LABEL})` : ""}. עדיין לא מתבצע חיוב, וסליקה טרם חוברה.`;
 
   return (
     <>
@@ -54,12 +58,12 @@ export default async function BusinessTrialPage() {
         <div className={styles.container}>
           <h1 className={styles.title}>מפעילים את עמוד העסק המלא</h1>
           <p className={styles.subtitle}>
-            30 ימי ניסיון להתנסות מלאה בעמוד עסק בפורטל נווה שמיר — כל היכולות פתוחות, ללא כרטיס אשראי מראש.
+            {TRIAL_DAYS} ימי ניסיון להתנסות מלאה בעמוד עסק בפורטל נווה שמיר, ללא כרטיס אשראי.
           </p>
 
           <p className={styles.featuresHeading}>מה כלול</p>
           <ul className={styles.features}>
-            {BUSINESS_MONTHLY_PLAN.features.map((feature) => (
+            {plan.features.map((feature) => (
               <li key={feature}>
                 <CircleCheck size={16} aria-hidden="true" className={styles.featureIcon} />
                 {feature}

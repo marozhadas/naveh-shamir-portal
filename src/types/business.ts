@@ -108,6 +108,8 @@ export type Business = {
   selectedPlanId?: BusinessPlanId;
   /** What's actually live on the site right now — the only field getBusinessListingAccess() gates display on. */
   activePlanId?: BusinessPlanId;
+  /** The billing track chosen at registration (monthly/yearly). The price itself is only assigned to the subscription when the trial starts. */
+  selectedBillingInterval?: "monthly" | "yearly";
   /** Last successful owner self-edit save (never set by admin edits). See getBusinessSelfEditAccess. */
   lastSelfEditAt?: string;
   fullDescription?: string;

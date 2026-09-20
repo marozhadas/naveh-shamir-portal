@@ -142,6 +142,11 @@ export function getBusinessListingAccess(
     return stillWithinPaidPeriod ? grantOrBasic("subscription-active") : basicAccess(true, "subscription-expired");
   }
 
+  if (subscription.status === "grace-period") {
+    const graceActive = Boolean(subscription.gracePeriodEndsAt && new Date(subscription.gracePeriodEndsAt).getTime() > now.getTime());
+    return graceActive ? grantOrBasic("subscription-grace-period") : basicAccess(true, "subscription-expired");
+  }
+
   if (subscription.status === "past-due") {
     return basicAccess(true, "subscription-past-due");
   }

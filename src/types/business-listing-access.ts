@@ -6,6 +6,7 @@ export type BusinessListingAccessReason =
   | "subscription-active"
   | "subscription-expired"
   | "subscription-past-due"
+  | "subscription-grace-period"
   | "business-not-approved"
   | "business-suspended"
   /** activePlanId is plus/premium but there's no subscription in a recognized "live" state — an admin granted this tier directly (see changeBusinessPlanAction). */

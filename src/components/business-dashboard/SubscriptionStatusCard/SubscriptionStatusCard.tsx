@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/Button";
 import { TrialProgressBar } from "@/components/business-dashboard/TrialProgressBar/TrialProgressBar";
 import { startCheckoutAction, cancelSubscriptionAction, reactivateSubscriptionAction } from "@/app/business/dashboard/subscription-actions";
 import { MOCK_PAYMENT_DISCLAIMER } from "@/adapters/mock-payment-provider-adapter";
-import { BUSINESS_MONTHLY_PLAN } from "@/types/subscription-plan";
 import { isValidBusinessSlug } from "@/utils/business-slug";
 import type { BusinessSubscription, SubscriptionAccess } from "@/types/subscription";
 import styles from "./SubscriptionStatusCard.module.css";
@@ -21,6 +20,8 @@ type SubscriptionStatusCardProps = {
   isRealSubscription?: boolean;
   /** The business's public slug, when it has one — used for the "view public page" link during an active trial. */
   businessSlug?: string | null;
+  /** Set when the trial cannot be offered yet for a reason the owner should see instead of a button. */
+  blockedReason?: "awaiting-approval" | null;
 };
 
 function formatDate(iso: string): string {
@@ -33,8 +34,18 @@ export function SubscriptionStatusCard({
   variant = "full",
   isRealSubscription = false,
   businessSlug = null,
+  blockedReason = null,
 }: SubscriptionStatusCardProps) {
   if (!subscription || !access) {
+    if (blockedReason === "awaiting-approval") {
+      return (
+        <div className={`${styles.card} ${styles.neutral}`}>
+          <p className={styles.title}>העסק ממתין לאישור צוות הפורטל</p>
+          <p className={styles.description}>לאחר האישור תוכלו להפעיל את 30 ימי הניסיון. תקופת הניסיון לא מתחילה לפני כן.</p>
+        </div>
+      );
+    }
+
     // A real business needs a clean English slug before the trial can actually start (see
     // checkRealTrialEligibility's "invalid-slug" check) — the auto-generated slug from a Hebrew
     // business name never qualifies. Blocking the button here (instead of letting the owner click
@@ -69,7 +80,7 @@ export function SubscriptionStatusCard({
   if (access.reason === "trial-active" && access.daysRemainingInTrial !== null) {
     return (
       <div className={`${styles.card} ${styles.positive}`}>
-        <p className={styles.title}>החודש הראשון שלכם פעיל</p>
+        <p className={styles.title}>30 ימי הניסיון שלכם פעילים</p>
         <TrialProgressBar daysRemaining={access.daysRemainingInTrial} />
         {variant === "full" && isRealSubscription && (
           <div className={styles.ctaRow}>
@@ -98,7 +109,8 @@ export function SubscriptionStatusCard({
   }
 
   if (subscription.status === "active") {
-    const nextBilling = subscription.currentPeriodEndsAt ? formatDate(subscription.currentPeriodEndsAt) : null;
+    // Only demo subscriptions show a billing date — no real payment provider is connected, so a real business never sees one as a commitment.
+    const nextBilling = !isRealSubscription && subscription.currentPeriodEndsAt ? formatDate(subscription.currentPeriodEndsAt) : null;
     return (
       <div className={`${styles.card} ${styles.positive}`}>
         <p className={styles.title}>המנוי פעיל</p>
@@ -110,6 +122,18 @@ export function SubscriptionStatusCard({
             </Button>
           </form>
         )}
+      </div>
+    );
+  }
+
+  if (access.reason === "grace-period") {
+    return (
+      <div className={`${styles.card} ${styles.warning}`}>
+        <p className={styles.title}>תקופת חסד — התגלתה בעיה בחיוב</p>
+        <p className={styles.description}>
+          {subscription.gracePeriodEndsAt ? `העמוד ממשיך להיות מוצג עד ${formatDate(subscription.gracePeriodEndsAt)}. ` : ""}
+          כדי להמשיך לפרסם יש לפתור את בעיית החיוב לפני סיום תקופת החסד. התוכן שלכם שמור.
+        </p>
       </div>
     );
   }
@@ -155,11 +179,14 @@ export function SubscriptionStatusCard({
           כל התוכן שלכם שמור, ולא נמחק. העמוד הציבורי אינו מוצג כרגע עד להפעלת מנוי.
         </p>
         {variant === "full" && isRealSubscription && (
-          <div className={styles.ctaRow}>
-            <Button href="/business/dashboard/subscription" variant="accent">
-              אפשרויות מנוי (בקרוב)
-            </Button>
-          </div>
+          <>
+            <p className={styles.description}>תשלום מקוון עדיין אינו זמין. להמשך פרסום העמוד אפשר לפנות לצוות הפורטל.</p>
+            <div className={styles.ctaRow}>
+              <Button href="/contact" variant="accent">
+                פנייה לצוות הפורטל
+              </Button>
+            </div>
+          </>
         )}
         {variant === "full" && !isRealSubscription && (
           <>
@@ -168,10 +195,7 @@ export function SubscriptionStatusCard({
                 הפעלת מנוי והחזרת העסק לאוויר
               </Button>
             </form>
-            <p className={styles.finePrint}>
-              {BUSINESS_MONTHLY_PLAN.priceAmount === null ? "המחיר יעודכן לפני ההצטרפות." : `${BUSINESS_MONTHLY_PLAN.priceAmount} ${BUSINESS_MONTHLY_PLAN.currency} לחודש.`}{" "}
-              {MOCK_PAYMENT_DISCLAIMER}
-            </p>
+            <p className={styles.finePrint}>{MOCK_PAYMENT_DISCLAIMER}</p>
           </>
         )}
       </div>

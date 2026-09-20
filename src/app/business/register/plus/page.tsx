@@ -4,12 +4,14 @@ import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
 import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { BUSINESS_PLANS } from "@/data/business-plans";
+import { PlanPriceBlock } from "@/components/pricing/PlanPriceBlock";
 import { PlusRegistrationWizard } from "./PlusRegistrationWizard";
 import styles from "./plus-wizard.module.css";
 
 export const metadata: Metadata = { title: "הרשמה לחבילת Plus | נווה שמיר", robots: { index: false, follow: false } };
 
 const plan = BUSINESS_PLANS.find((item) => item.tier === "plus")!;
+const pricing = plan.pricing!;
 
 export default function RegisterPlusPage() {
   return (
@@ -32,31 +34,30 @@ export default function RegisterPlusPage() {
           </nav>
 
           <div className={styles.hero}>
-            <span className={styles.badge}>חודש ראשון חינם</span>
+            <span className={styles.badge}>30 ימי ניסיון חינם</span>
             <h1 className={styles.title}>בואו נבנה לעסק שלכם עמוד מלא</h1>
             <p className={styles.description}>
               מלאו את פרטי העסק, הוסיפו תמונות ושירותים, ואנחנו נכין את העמוד שלכם לאישור ולפרסום.
             </p>
-            <p className={styles.priceLine}>לאחר החודש הראשון: {plan.priceLabel} לחודש</p>
-            <p className={styles.disclaimer}>בשלב זה לא נדרש אמצעי תשלום בזמן מילוי הטופס.</p>
+            <p className={styles.priceLine}>30 ימי ניסיון חינם, במסלול החודשי ובמסלול השנתי. מחירי Plus הם מחירי השקה.</p>
+            <p className={styles.disclaimer}>בשלב זה לא נדרש אמצעי תשלום ולא מתבצע חיוב. הניסיון מתחיל רק לאחר אישור העסק והפעלה מפורשת.</p>
           </div>
 
           <div className={styles.layout}>
-            <PlusRegistrationWizard planId="plus" priceLabel={plan.priceLabel} />
+            <PlusRegistrationWizard planId="plus" />
 
             <aside className={styles.summaryCard} aria-label="סיכום חבילת Plus">
               <p className={styles.summaryPlanName}>Plus</p>
-              <p className={styles.summaryPrice}>{plan.priceLabel} לחודש</p>
-              <p className={styles.summaryBillingNote}>חודש ראשון חינם</p>
+              <PlanPriceBlock monthly={pricing.monthly} yearly={pricing.yearly} />
+              <p className={styles.summaryBillingNote}>30 ימי ניסיון חינם בשני המסלולים</p>
               <ul className={styles.summaryFeatureList}>
                 <li>עמוד עסק מלא</li>
                 <li>גלריית תמונות</li>
                 <li>רשימת שירותים</li>
                 <li>שעות פעילות</li>
                 <li>כרטיס עסק לחיץ</li>
-                <li>כפתורי טלפון ו-WhatsApp</li>
-                <li>קישורים לאתר ולרשתות חברתיות</li>
-                <li>אפשרות להציג מבצע</li>
+                <li>דרכי יצירת קשר</li>
+                <li>עריכה פעם אחת בכל חודש קלנדרי (שעון ישראל)</li>
               </ul>
               <Link href="/business/plans" className={styles.summaryBackLink}>
                 חזרה להשוואת החבילות

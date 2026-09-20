@@ -1,4 +1,4 @@
-export type SubscriptionStatus = "trialing" | "active" | "past-due" | "canceled" | "expired" | "paused";
+export type SubscriptionStatus = "trialing" | "active" | "past-due" | "grace-period" | "canceled" | "expired" | "paused";
 
 /**
  * Mirrors the public.business_subscriptions table (see create_business_subscriptions migration).
@@ -21,6 +21,14 @@ export type BusinessSubscriptionRow = {
   current_period_ends_at: string | null;
   cancel_at_period_end: boolean;
   canceled_at: string | null;
+  /** Price/terms assigned when the subscription was created — null on legacy rows created before snapshots existed. */
+  billing_interval: "monthly" | "yearly" | null;
+  price_amount_ils: number | null;
+  price_version: string | null;
+  is_launch_price: boolean | null;
+  /** Set only by a real billing-failure event (none exists yet — no payment provider is connected). */
+  payment_failed_at: string | null;
+  grace_period_ends_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -37,6 +45,12 @@ export type BusinessSubscription = {
   currentPeriodEndsAt?: string;
   canceledAt?: string;
   cancelAtPeriodEnd: boolean;
+  billingInterval?: "monthly" | "yearly";
+  priceAmountIls?: number;
+  priceVersion?: string;
+  isLaunchPrice?: boolean;
+  paymentFailedAt?: string;
+  gracePeriodEndsAt?: string;
   paymentProvider?: "mock" | "stripe" | "other";
   providerCustomerId?: string;
   providerSubscriptionId?: string;
@@ -61,6 +75,7 @@ export type SubscriptionAccess = {
     | "subscription-active"
     | "trial-expired"
     | "payment-past-due"
+    | "grace-period"
     | "subscription-canceled"
     | "subscription-paused";
 };
