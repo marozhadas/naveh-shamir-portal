@@ -18,7 +18,8 @@ export type ContactMessageSubjectType =
   | "marketplace"
   | "essential-number"
   | "collaboration"
-  | "other";
+  | "other"
+  | "feedback";
 
 export const CONTACT_MESSAGE_SUBJECT_TYPE_OPTIONS: ContactMessageSubjectType[] = [
   "general",
@@ -30,6 +31,7 @@ export const CONTACT_MESSAGE_SUBJECT_TYPE_OPTIONS: ContactMessageSubjectType[] =
   "essential-number",
   "collaboration",
   "other",
+  "feedback",
 ];
 
 export const CONTACT_MESSAGE_SUBJECT_TYPE_LABEL: Record<ContactMessageSubjectType, string> = {
@@ -42,6 +44,7 @@ export const CONTACT_MESSAGE_SUBJECT_TYPE_LABEL: Record<ContactMessageSubjectTyp
   "essential-number": "פנייה בנושא מספר חיוני",
   collaboration: "שיתוף פעולה",
   other: "אחר",
+  feedback: "משוב מהאתר",
 };
 
 /** Mirrors the public.contact_messages table (see the create_contact_messages_table migration). */
@@ -55,6 +58,8 @@ export type ContactMessageRow = {
   message: string;
   consent_accepted: boolean;
   status: ContactMessageStatus;
+  /** Set only for feedback-widget submissions: the page the visitor was on. */
+  page_path: string | null;
   created_at: string;
   updated_at: string;
 };

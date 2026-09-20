@@ -45,7 +45,7 @@ export default async function AdminContactMessageDetailPage({ params }: { params
           <div className={styles.detailField}>
             <span className={styles.detailFieldLabel}>כתובת מייל</span>
             <span className={styles.detailFieldValue} dir="ltr">
-              {entry.email}
+              {entry.email || "לא צוין"}
             </span>
           </div>
           <div className={styles.detailField}>
@@ -59,6 +59,15 @@ export default async function AdminContactMessageDetailPage({ params }: { params
             <span className={styles.detailFieldValue}>{formatDate(entry.created_at)}</span>
           </div>
         </div>
+
+        {entry.page_path && (
+          <div className={styles.detailField}>
+            <span className={styles.detailFieldLabel}>העמוד שממנו נשלח המשוב</span>
+            <span className={styles.detailFieldValue} dir="ltr">
+              {entry.page_path}
+            </span>
+          </div>
+        )}
 
         <div className={styles.detailField}>
           <span className={styles.detailFieldLabel}>תוכן ההודעה</span>

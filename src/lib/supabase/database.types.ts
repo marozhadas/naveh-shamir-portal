@@ -257,8 +257,9 @@ export type Database = {
       };
       contact_messages: {
         Row: ContactMessageRow;
-        Insert: Omit<ContactMessageRow, "id" | "created_at" | "updated_at" | "status"> & {
+        Insert: Omit<ContactMessageRow, "id" | "created_at" | "updated_at" | "status" | "page_path"> & {
           id?: string;
+          page_path?: string | null;
           created_at?: string;
           updated_at?: string;
           status?: ContactMessageRow["status"];

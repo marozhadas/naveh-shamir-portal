@@ -42,7 +42,7 @@ export function ContactMessageAdminRow({ entry, onUpdated, onDeleted }: ContactM
       <div className={styles.rowInfo}>
         <span className={styles.rowTitle}>{entry.subject}</span>
         <span className={styles.rowMeta}>
-          {entry.full_name} · {entry.email}
+          {entry.full_name}{entry.email ? ` · ${entry.email}` : ""}
           {entry.whatsapp ? ` · ${entry.whatsapp}` : ""} · {CONTACT_MESSAGE_SUBJECT_TYPE_LABEL[entry.subject_type]} · {formatDate(entry.created_at)}
         </span>
         <p className={styles.rowPreview}>{entry.message}</p>

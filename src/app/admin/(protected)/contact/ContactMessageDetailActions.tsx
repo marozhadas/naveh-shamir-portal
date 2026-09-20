@@ -41,7 +41,7 @@ export function ContactMessageDetailActions({ entry }: ContactMessageDetailActio
   }
 
   const whatsappUrl = entry.whatsapp ? `https://wa.me/${normalizePhoneForWhatsAppLink(entry.whatsapp)}` : null;
-  const mailtoUrl = `mailto:${entry.email}?subject=${encodeURIComponent(EMAIL_SUBJECT)}`;
+  const mailtoUrl = entry.email ? `mailto:${entry.email}?subject=${encodeURIComponent(EMAIL_SUBJECT)}` : null;
 
   return (
     <div className={styles.detailActions}>
@@ -50,9 +50,11 @@ export function ContactMessageDetailActions({ entry }: ContactMessageDetailActio
           פתיחת WhatsApp
         </Button>
       )}
-      <Button href={mailtoUrl} variant="secondary" icon={<Mail size={16} aria-hidden="true" />}>
-        שליחת מייל
-      </Button>
+      {mailtoUrl && (
+        <Button href={mailtoUrl} variant="secondary" icon={<Mail size={16} aria-hidden="true" />}>
+          שליחת מייל
+        </Button>
+      )}
       {entry.status !== "in-progress" && (
         <Button variant="secondary" disabled={isPending} onClick={() => changeStatus("in-progress")}>
           סימון כבטיפול
