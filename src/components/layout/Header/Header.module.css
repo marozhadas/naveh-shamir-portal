@@ -37,8 +37,11 @@
   transition: height var(--duration-base) var(--ease-standard);
 }
 
+/* No pre-VW value exists for this state (it was introduced in the same commit as the VW
+   conversion) — 52px keeps the same shrink ratio (52/71 ≈ 0.732) used consistently at every
+   point in this component's history whenever the two states were sized together. */
 .header.scrolled .logo {
-  height: clamp(32.4px, 4.5vw, 46.8px);
+  height: 52px;
 }
 
 .desktopNav {
