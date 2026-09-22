@@ -92,16 +92,20 @@
   }
 
   .panel {
-    grid-template-columns: repeat(var(--quicklinks-columns-tablet, 3), 1fr);
     border-radius: var(--quicklinks-panel-radius, 20px);
   }
 }
 
-@media (max-width: 480px) {
+/* Matches the rest of the site's single mobile breakpoint (880px — see Header.module.css's
+   mobile-menu switch and MobileBusinessActions), not an intermediate "tablet" range. Below this,
+   .panel always uses --quicklinks-columns-mobile (2) — previously this cut in only at 480px, so
+   real phone widths between 481-880px fell through to the 3-column tablet rule above and rendered
+   3 icons then 1 alone instead of an even 2x2 grid. */
+@media (max-width: 880px) {
   .section {
     /* Overrides the editor-configured --quicklinks-padding-inline (currently 16px) at phone
        widths specifically — at this width the panel is nearly full viewport width, so the outer
-       gutter reads as noticeably tighter than it does on desktop/tablet. */
+       gutter reads as noticeably tighter than it does on desktop. */
     padding-inline: 20px;
   }
 
