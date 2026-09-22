@@ -14,7 +14,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: clamp(10px, 2vw, var(--header-logo-nav-gap, 20px));
+  gap: var(--header-logo-nav-gap, 20px);
   transition: padding var(--duration-base) var(--ease-standard);
 }
 
@@ -32,7 +32,7 @@
 }
 
 .logo {
-  height: clamp(39.6px, 6.3vw, 63.9px);
+  height: 71px;
   width: auto;
   transition: height var(--duration-base) var(--ease-standard);
 }
@@ -44,7 +44,7 @@
 .desktopNav {
   display: var(--header-desktop-nav-display, flex);
   align-items: center;
-  gap: clamp(8px, calc(5vw - 37px), var(--header-nav-gap, 28px));
+  gap: var(--header-nav-gap, 28px);
   flex: 1;
   min-width: 0;
 }
@@ -52,13 +52,8 @@
 .navList {
   display: flex;
   align-items: center;
-  gap: clamp(8px, calc(5vw - 37px), var(--header-nav-gap, 28px));
-  /* Fluid instead of a fixed 22px: the nav must shrink continuously together with the viewport
-     (down to the mobile-menu breakpoint) rather than wrapping "צור קשר" onto a second row when
-     it no longer fits at full size — flex-wrap stays nowrap on purpose, see below. Reaches the
-     full 22px only around ~1300px+ (this design's comfortable width); below that it shrinks
-     linearly so nothing ever wraps or overflows down to the ~880px mobile-menu breakpoint. */
-  font-size: 1.1vw;
+  gap: var(--header-nav-gap, 28px);
+  font-size: 22px;
   font-weight: var(--fw-regular);
   flex-wrap: nowrap;
   white-space: nowrap;
