@@ -123,7 +123,7 @@ function createEmptyHours(): HoursState {
   }, {} as HoursState);
 }
 
-function createEmptyValues(): WizardValues {
+function createEmptyValues(initialBillingInterval: BillingInterval): WizardValues {
   return {
     businessName: "",
     categoryIds: [],
@@ -157,7 +157,7 @@ function createEmptyValues(): WizardValues {
     termsAccepted: false,
     trialConsent: false,
     dashboardAccessConsent: false,
-    billingInterval: "monthly",
+    billingInterval: initialBillingInterval,
     honeypot: "",
   };
 }
@@ -188,14 +188,16 @@ function focusAndReveal(elementId: string) {
 
 type PlusRegistrationWizardProps = {
   planId: "plus" | "premium";
+  /** The billing track chosen on /business/plans before landing here (via ?interval=), when valid. Only used as the initial value — the owner can still change it in step 5. */
+  initialBillingInterval?: BillingInterval;
 };
 
-export function PlusRegistrationWizard({ planId }: PlusRegistrationWizardProps) {
+export function PlusRegistrationWizard({ planId, initialBillingInterval = "monthly" }: PlusRegistrationWizardProps) {
   const router = useRouter();
   const draftKey = DRAFT_KEY_BY_PLAN[planId];
   const registrationIdRef = useRef<string>(crypto.randomUUID());
   const [step, setStep] = useState(1);
-  const [values, setValues] = useState<WizardValues>(createEmptyValues);
+  const [values, setValues] = useState<WizardValues>(() => createEmptyValues(initialBillingInterval));
   const [errors, setErrors] = useState<WizardErrors>({});
   const [attemptedSteps, setAttemptedSteps] = useState<Set<number>>(new Set());
   const [draftRestored, setDraftRestored] = useState(false);

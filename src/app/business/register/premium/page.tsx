@@ -5,6 +5,7 @@ import { Footer } from "@/components/layout/Footer";
 import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { BUSINESS_PLANS } from "@/data/business-plans";
 import { PlanPriceBlock } from "@/components/pricing/PlanPriceBlock";
+import { isBillingInterval } from "@/data/subscription-pricing";
 import { PlusRegistrationWizard } from "../plus/PlusRegistrationWizard";
 import styles from "../plus/plus-wizard.module.css";
 
@@ -13,7 +14,13 @@ export const metadata: Metadata = { title: "הרשמה לחבילת Premium | נ
 const plan = BUSINESS_PLANS.find((item) => item.tier === "premium")!;
 const pricing = plan.pricing!;
 
-export default function RegisterPremiumPage() {
+type RegisterPremiumPageProps = {
+  searchParams: Promise<{ interval?: string }>;
+};
+
+export default async function RegisterPremiumPage({ searchParams }: RegisterPremiumPageProps) {
+  const { interval } = await searchParams;
+  const initialBillingInterval = isBillingInterval(interval) ? interval : "monthly";
   return (
     <>
       <ConnectedHeader />
@@ -47,7 +54,7 @@ export default function RegisterPremiumPage() {
           </div>
 
           <div className={styles.layout}>
-            <PlusRegistrationWizard planId="premium" />
+            <PlusRegistrationWizard planId="premium" initialBillingInterval={initialBillingInterval} />
 
             <aside className={styles.summaryCard} aria-label="סיכום חבילת Premium">
               <p className={styles.summaryPlanName}>Premium</p>
