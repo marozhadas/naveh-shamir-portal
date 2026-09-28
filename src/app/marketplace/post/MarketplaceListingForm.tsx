@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { getVisibleMarketplaceCategories } from "@/data/marketplace-categories";
 import { MARKETPLACE_CONDITION_LABEL } from "@/types/marketplace";
 import { submitMarketplaceListingAction, uploadMarketplaceImageAction, type MarketplaceListingActionState } from "./actions";
+import { compressImageForUpload } from "@/utils/compress-image-for-upload";
 import { EMPTY_LISTING_FORM_VALUES, FIELD_ORDER, type MarketplaceListingFormValues } from "./schema";
 import type { MarketplaceListingImage } from "@/types/marketplace";
 import { ManagementLinkBox } from "./ManagementLinkBox";
@@ -100,13 +101,22 @@ export function MarketplaceListingForm() {
     }
     setImageError("");
     setIsUploading(true);
-    const result = await uploadMarketplaceImageAction(draftIdRef.current, file);
-    setIsUploading(false);
-    if (!result.success) {
-      setImageError(result.message);
-      return;
+    try {
+      const preparedFile = await compressImageForUpload(file);
+      const result = await uploadMarketplaceImageAction(draftIdRef.current, preparedFile);
+      if (!result.success) {
+        setImageError(result.message);
+        return;
+      }
+      setImages((current) => [...current, { src: result.url, alt: values.title || "תמונת מודעה" }]);
+    } catch (error) {
+      // Never leave the button silently stuck — a thrown network/transport error (e.g. a photo
+      // too large for the request) must still surface as a clear message and release isUploading.
+      console.error("[MarketplaceListingForm] image upload failed:", error);
+      setImageError("העלאת התמונה נכשלה. נסו שוב, או נסו תמונה אחרת.");
+    } finally {
+      setIsUploading(false);
     }
-    setImages((current) => [...current, { src: result.url, alt: values.title || "תמונת מודעה" }]);
   }
 
   function removeImage(index: number) {

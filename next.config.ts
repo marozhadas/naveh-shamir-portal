@@ -1,6 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    serverActions: {
+      // Next's own default is 1MB, well under a modern phone camera JPEG (routinely 3-10MB) —
+      // uploadMarketplaceImageAction/uploadBusinessMediaAction (each capped separately at 5MB of
+      // real content) never even got a chance to run their own size check; the request was
+      // rejected at this transport layer first. 6MB leaves headroom above that 5MB content cap
+      // for multipart boundary/header overhead (see the Server Actions docs on bodySizeLimit).
+      bodySizeLimit: "6mb",
+    },
+  },
   images: {
     // next/image 400s any external src whose host isn't allow-listed here — every Supabase
     // Storage bucket (hero-gallery, business-media, marketplace-media, ...) serves from this
