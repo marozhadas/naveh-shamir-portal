@@ -68,6 +68,12 @@
   }
 
   .wrap > *:first-child {
+    /* The base rule's `flex: 1 1 260px` sets a flex-basis meant for a ROW layout's WIDTH — once
+       .wrap switches to flex-direction:column here, that same basis applies to the main axis,
+       which is now HEIGHT, forcing the pill-shaped search bar roughly 260px tall (a squashed
+       oval, since its border-radius is the full pill radius). Resetting flex-basis back to auto
+       lets its height come from its own content again. */
+    flex: 1 1 auto;
     min-width: 0;
   }
 
