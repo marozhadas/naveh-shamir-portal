@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getBusinessAnalyticsForOwner } from "@/repositories/analytics-service";
 import { isBusinessAnalyticsWindow, BUSINESS_ANALYTICS_WINDOWS, BUSINESS_ANALYTICS_WINDOW_LABEL } from "@/utils/business-analytics-window";
 import { isSupabaseBusinessId, toRegistrationId } from "@/utils/business-id";
-import { resolveDashboardViewer } from "../resolve-dashboard-viewer";
+import { resolveDashboardViewer } from "../../resolve-dashboard-viewer";
 import { TrendChart } from "./TrendChart";
 import styles from "./analytics.module.css";
 import type { BusinessAnalyticsWindow } from "@/utils/business-analytics-window";
