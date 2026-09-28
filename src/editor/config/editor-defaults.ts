@@ -102,7 +102,7 @@ export const defaultQuickLinksSettings: QuickLinksEditorSettings = {
 
 export const defaultFeaturedBusinessesSettings: FeaturedBusinessesEditorSettings = {
   content: {
-    sectionTitle: "הכירו את העסקים שלנו",
+    sectionTitle: "הכירו את העסקים של השכונה",
     showAllLinkVisible: true,
     showAllLinkLabel: "לכל העסקים",
     showAllLinkHref: "/businesses",

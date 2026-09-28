@@ -1,0 +1,1 @@
+export { TiktokIcon } from "./TiktokIcon";

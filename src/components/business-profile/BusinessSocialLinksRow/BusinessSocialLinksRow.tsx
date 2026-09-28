@@ -1,16 +1,29 @@
-import { ExternalLink } from "lucide-react";
+import type { ComponentType } from "react";
+import { FacebookIcon } from "@/components/ui/FacebookIcon";
+import { InstagramIcon } from "@/components/ui/InstagramIcon";
+import { TiktokIcon } from "@/components/ui/TiktokIcon";
+import { YoutubeIcon } from "@/components/ui/YoutubeIcon";
+import { LinkedinIcon } from "@/components/ui/LinkedinIcon";
 import type { BusinessSocialLinks } from "@/types/business";
 import { isSafeHref } from "@/utils/validate-href";
 import styles from "./BusinessSocialLinksRow.module.css";
 
-// lucide-react (this project's only icon set) doesn't ship brand/platform logos, so every link
-// uses the same generic external-link icon and is disambiguated by its visible label instead.
 const PLATFORM_LABEL: Record<keyof BusinessSocialLinks, string> = {
   instagram: "אינסטגרם",
   facebook: "פייסבוק",
   tiktok: "טיקטוק",
   youtube: "יוטיוב",
   linkedin: "לינקדאין",
+};
+
+type PlatformIconProps = { size?: number; "aria-hidden"?: boolean | "true" | "false" };
+
+const PLATFORM_ICON: Record<keyof BusinessSocialLinks, ComponentType<PlatformIconProps>> = {
+  instagram: InstagramIcon,
+  facebook: FacebookIcon,
+  tiktok: TiktokIcon,
+  youtube: YoutubeIcon,
+  linkedin: LinkedinIcon,
 };
 
 type BusinessSocialLinksRowProps = {
@@ -32,12 +45,15 @@ export function BusinessSocialLinksRow({ socialLinks }: BusinessSocialLinksRowPr
   return (
     <section className={styles.section} aria-label="קישורים חברתיים">
       <div className={styles.row}>
-        {entries.map(({ platform, url }) => (
-          <a key={platform} href={url} target="_blank" rel="noopener noreferrer" className={styles.link}>
-            <ExternalLink size={15} aria-hidden="true" />
-            {PLATFORM_LABEL[platform]}
-          </a>
-        ))}
+        {entries.map(({ platform, url }) => {
+          const Icon = PLATFORM_ICON[platform];
+          return (
+            <a key={platform} href={url} target="_blank" rel="noopener noreferrer" className={styles.link}>
+              <Icon size={15} aria-hidden="true" />
+              {PLATFORM_LABEL[platform]}
+            </a>
+          );
+        })}
       </div>
     </section>
   );
