@@ -3,6 +3,13 @@
   flex-direction: column;
   gap: var(--space-3);
   height: 100%;
+  /* This is the grid item inside WhatsAppGroupsHomeSection's `repeat(4, 1fr)` grid. Without this,
+     a 1fr column track can never shrink below this card's own min-content width — and since this
+     card is a column flex container, that min-content width is driven by the "מעבר לקבוצת
+     WhatsApp" button's un-wrapped label (its own min-width:0/ellipsis only lets it shrink once the
+     card itself is already narrow — it doesn't stop the card from reporting a wide natural size in
+     the first place). That silently pushed the whole grid past the viewport at ~900-1300px widths. */
+  min-width: 0;
 }
 
 .content {
