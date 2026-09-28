@@ -126,8 +126,8 @@ export function MarketplaceListingForm() {
   if (state.status === "success") {
     return (
       <div className={styles.successBox} role="status">
-        <p className={styles.successTitle}>המודעה נשלחה בהצלחה!</p>
-        <p className={styles.successDetail}>המודעה ממתינה לבדיקה ואישור של צוות הפורטל, ותופיע בלוח ברגע שתאושר.</p>
+        <p className={styles.successTitle}>המודעה פורסמה בהצלחה!</p>
+        <p className={styles.successDetail}>המודעה מופיעה כעת בלוח מסירה ומכירה. צוות הפורטל עדיין יכול להסיר מודעה שאינה תקינה.</p>
         {state.managementUrl && <ManagementLinkBox managementUrl={state.managementUrl} />}
         <Button href="/marketplace" variant="secondary">
           חזרה ללוח
@@ -288,7 +288,7 @@ export function MarketplaceListingForm() {
         </div>
       </div>
 
-      <p className={styles.hint}>יש להזין לפחות דרך התקשרות אחת (טלפון או וואטסאפ). המודעה תפורסם רק לאחר אישור צוות הפורטל.</p>
+      <p className={styles.hint}>יש להזין לפחות דרך התקשרות אחת (טלפון או וואטסאפ). המודעה תתפרסם בלוח באופן מיידי לאחר השליחה.</p>
 
       <Button type="submit" variant="accent" disabled={isPending || isUploading}>
         {isPending ? "שולח…" : "שליחת מודעה"}

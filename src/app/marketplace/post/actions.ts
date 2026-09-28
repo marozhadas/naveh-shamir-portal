@@ -49,7 +49,13 @@ function randomSuffix(): string {
   return Math.random().toString(36).slice(2, 6);
 }
 
-/** Every insert is forced to status="pending" — RLS enforces this regardless of what's sent (see create_marketplace_listings migration), so it never becomes visible until an admin approves it. */
+/**
+ * Every insert is forced to status="active" — RLS enforces this regardless of what's sent (see
+ * the marketplace_listings_publish_immediately migration) — a sale/giveaway listing publishes
+ * immediately on submit, with no admin approval step. The admin can still hide a listing (status
+ * "removed") or move it through the normal lifecycle (reserved/delivered/sold) after the fact;
+ * see /admin/marketplace.
+ */
 export async function submitMarketplaceListingAction(
   _prevState: MarketplaceListingActionState,
   formData: FormData,
@@ -103,7 +109,7 @@ export async function submitMarketplaceListingAction(
       contact_name: values.contactName,
       phone: values.phone || null,
       whatsapp_phone: values.whatsappPhone || null,
-      status: "pending",
+      status: "active",
       rejection_reason: null,
       reviewed_at: null,
       management_token_hash: managementTokenHash,

@@ -19,7 +19,7 @@ export default function PostMarketplaceListingPage() {
         <PageHeader
           breadcrumbs={[{ label: "בית", href: "/" }, { label: "מסירה ומכירה", href: "/marketplace" }, { label: "פרסום מודעה" }]}
           title="פרסום מודעה"
-          description="מלאו את פרטי הפריט — המודעה תפורסם בלוח לאחר בדיקה קצרה של צוות הפורטל."
+          description="מלאו את פרטי הפריט — המודעה תתפרסם בלוח באופן מיידי."
         />
         <div className={styles.container}>
           <MarketplaceListingForm />
