@@ -5,6 +5,7 @@ import { AnalyticsClickTracker } from "@/components/analytics/AnalyticsClickTrac
 import { FeedbackWidget } from "@/components/feedback/FeedbackWidget";
 import { isAdminAuthenticated } from "@/lib/admin-session";
 import { getPublishedPageContent } from "@/repositories/site-content-service";
+import { getHeaderViewerDisplay } from "@/lib/header-viewer";
 import "./globals.css";
 
 const SITE_TITLE = "נווה שמיר — הפורטל של השכונה";
@@ -27,14 +28,18 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [isAdmin, publishedContent] = await Promise.all([isAdminAuthenticated(), getPublishedPageContent("home")]);
+  const [isAdmin, publishedContent, headerViewer] = await Promise.all([
+    isAdminAuthenticated(),
+    getPublishedPageContent("home"),
+    getHeaderViewerDisplay(),
+  ]);
 
   return (
     <html lang="he" dir="rtl" className={ploni.variable}>
       <body>
         <AnalyticsClickTracker />
         <FeedbackWidget />
-        <EditorHost isAdmin={isAdmin} publishedContent={publishedContent}>
+        <EditorHost isAdmin={isAdmin} publishedContent={publishedContent} headerViewer={headerViewer}>
           {children}
         </EditorHost>
       </body>

@@ -5,7 +5,9 @@ import dynamic from "next/dynamic";
 import { EditorErrorBoundary } from "./EditorErrorBoundary";
 import { PublishedContentProvider } from "./PublishedContentProvider";
 import { isEditorEnabled } from "./config/editor-capabilities";
+import { HeaderViewerContext } from "@/context/HeaderViewerContext";
 import type { PageEditorState } from "@/editor/schemas/page-editor.schema";
+import type { HeaderViewer } from "@/lib/header-viewer";
 
 const EditorRuntime = dynamic(() => import("./EditorRuntime"), { ssr: false });
 
@@ -15,6 +17,8 @@ type EditorHostProps = {
   isAdmin: boolean;
   /** Server-fetched once in the root layout (getPublishedPageContent) — the same content every visitor gets, editor open or not. `null` means nothing has ever been published yet. */
   publishedContent: PageEditorState | null;
+  /** Server-fetched once in the root layout (getHeaderViewerDisplay) — real Supabase Auth session only. `null` means signed out. */
+  headerViewer: HeaderViewer | null;
 };
 
 /**
@@ -36,7 +40,7 @@ type EditorHostProps = {
  * ?editor=true sees an explicit failure banner instead of a silent no-op or a blank page, and
  * everyone else's content still renders normally underneath it.
  */
-export function EditorHost({ children, isAdmin, publishedContent }: EditorHostProps) {
+export function EditorHost({ children, isAdmin, publishedContent, headerViewer }: EditorHostProps) {
   const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
@@ -45,14 +49,20 @@ export function EditorHost({ children, isAdmin, publishedContent }: EditorHostPr
   }, [isAdmin]);
 
   if (!enabled) {
-    return <PublishedContentProvider content={publishedContent}>{children}</PublishedContentProvider>;
+    return (
+      <HeaderViewerContext.Provider value={headerViewer}>
+        <PublishedContentProvider content={publishedContent}>{children}</PublishedContentProvider>
+      </HeaderViewerContext.Provider>
+    );
   }
 
   return (
-    <PublishedContentProvider content={publishedContent}>
-      <EditorErrorBoundary fallback={children}>
-        <EditorRuntime initialContent={publishedContent}>{children}</EditorRuntime>
-      </EditorErrorBoundary>
-    </PublishedContentProvider>
+    <HeaderViewerContext.Provider value={headerViewer}>
+      <PublishedContentProvider content={publishedContent}>
+        <EditorErrorBoundary fallback={children}>
+          <EditorRuntime initialContent={publishedContent}>{children}</EditorRuntime>
+        </EditorErrorBoundary>
+      </PublishedContentProvider>
+    </HeaderViewerContext.Provider>
   );
 }

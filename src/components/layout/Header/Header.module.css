@@ -81,6 +81,71 @@
   font-weight: var(--fw-regular);
 }
 
+/* The signed-in replacement for .personalAreaButton above — a compact, two-line account link,
+   not another pill button, so it stays visually light next to the CTA. */
+.personalAreaLink {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.25;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--header-text-color, var(--color-text-primary));
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+
+.personalAreaLink:hover {
+  background: var(--slate-50);
+}
+
+.personalAreaLink:focus-visible {
+  outline: 2px solid var(--color-border-strong);
+  outline-offset: 2px;
+}
+
+.greetingLine {
+  font-size: 14px;
+  font-weight: var(--fw-demibold);
+  color: var(--color-text-primary);
+}
+
+.actionLine {
+  font-size: 12px;
+  font-weight: var(--fw-regular);
+  color: var(--color-text-secondary);
+}
+
+.mobilePersonalAreaLink {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+
+.mobilePersonalAreaLink:hover {
+  background: var(--slate-50);
+}
+
+.mobilePersonalAreaLink:focus-visible {
+  outline: 2px solid var(--color-border-strong);
+  outline-offset: 2px;
+}
+
+.mobilePersonalAreaLink .greetingLine {
+  font-size: var(--fs-body-sm);
+}
+
+.mobilePersonalAreaLink .actionLine {
+  font-size: var(--fs-caption);
+}
+
 .navList a {
   color: var(--header-link-color, var(--color-text-primary));
   transition: color var(--duration-fast) var(--ease-standard);

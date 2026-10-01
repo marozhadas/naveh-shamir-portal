@@ -12,6 +12,7 @@ import {
   shadowTokenToCssVar,
   spacingTokenToCssVar,
 } from "@/styles/token-to-css-variable";
+import { useHeaderViewer } from "@/context/HeaderViewerContext";
 import type { HeaderEditorSettings } from "@/editor/schemas/header.schema";
 import styles from "./Header.module.css";
 
@@ -19,10 +20,13 @@ type HeaderProps = {
   settings: HeaderEditorSettings;
 };
 
+const PERSONAL_AREA_HREF = "/business/dashboard";
+
 export function Header({ settings }: HeaderProps) {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const panelId = useId();
+  const viewer = useHeaderViewer();
   const visibleNavItems = settings.content.navItems.filter((item) => item.visible);
 
   useEffect(() => {
@@ -90,18 +94,27 @@ export function Header({ settings }: HeaderProps) {
         </nav>
 
         <div className={styles.actions}>
-          {settings.content.showPersonalAreaButton && (
+          {viewer ? (
             <div className={styles.desktopOnly}>
-              <Button
-                variant="secondary"
-                disabled
-                icon={<UserRound size={18} aria-hidden="true" />}
-                title="בקרוב"
-                className={styles.personalAreaButton}
-              >
-                {settings.content.personalAreaLabel}
-              </Button>
+              <Link href={PERSONAL_AREA_HREF} className={styles.personalAreaLink}>
+                <span className={styles.greetingLine}>היי, {viewer.firstName} 👋</span>
+                <span className={styles.actionLine}>לאזור האישי</span>
+              </Link>
             </div>
+          ) : (
+            settings.content.showPersonalAreaButton && (
+              <div className={styles.desktopOnly}>
+                <Button
+                  variant="secondary"
+                  disabled
+                  icon={<UserRound size={18} aria-hidden="true" />}
+                  title="בקרוב"
+                  className={styles.personalAreaButton}
+                >
+                  {settings.content.personalAreaLabel}
+                </Button>
+              </div>
+            )
           )}
           <div className={styles.desktopOnly}>
             <Button href={settings.content.ctaHref} variant={settings.appearance.ctaVariant} className={styles.ctaButton}>
@@ -144,17 +157,24 @@ export function Header({ settings }: HeaderProps) {
           >
             {settings.content.ctaLabel}
           </Button>
-          {settings.content.showPersonalAreaButton && (
-            <Button
-              variant="secondary"
-              disabled
-              fullWidth
-              icon={<UserRound size={18} aria-hidden="true" />}
-              title="בקרוב"
-              className={styles.personalAreaButton}
-            >
-              {settings.content.personalAreaLabel}
-            </Button>
+          {viewer ? (
+            <Link href={PERSONAL_AREA_HREF} className={styles.mobilePersonalAreaLink} onClick={() => setOpen(false)}>
+              <span className={styles.greetingLine}>היי, {viewer.firstName} 👋</span>
+              <span className={styles.actionLine}>כניסה לאזור האישי</span>
+            </Link>
+          ) : (
+            settings.content.showPersonalAreaButton && (
+              <Button
+                variant="secondary"
+                disabled
+                fullWidth
+                icon={<UserRound size={18} aria-hidden="true" />}
+                title="בקרוב"
+                className={styles.personalAreaButton}
+              >
+                {settings.content.personalAreaLabel}
+              </Button>
+            )
           )}
         </div>
       </div>
