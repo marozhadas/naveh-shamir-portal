@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Image from "next/image";
+import { ListingGallery } from "@/components/marketplace/ListingGallery/ListingGallery";
 import { Phone, Package } from "lucide-react";
 import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
@@ -79,13 +79,7 @@ export default async function MarketplaceListingPage({ params }: ListingPageProp
           <div className={styles.layout}>
             <div className={styles.gallery}>
               {listing.images.length > 0 ? (
-                <div className={styles.imageGrid}>
-                  {listing.images.map((image) => (
-                    <div key={image.src} className={styles.imageWrap}>
-                      <Image src={image.src} alt={image.alt} fill sizes="(max-width: 768px) 100vw, 480px" className={styles.image} />
-                    </div>
-                  ))}
-                </div>
+                <ListingGallery images={listing.images} />
               ) : (
                 <div className={styles.imagePlaceholder} aria-hidden="true">
                   {listing.is_free ? <Package size={48} strokeWidth={1.5} /> : <Package size={48} strokeWidth={1.5} />}
