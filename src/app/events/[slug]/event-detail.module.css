@@ -10,16 +10,17 @@
   gap: var(--space-8);
 }
 
+/* The poster is shown whole, at its own proportions — never cropped to a fixed box. */
 .imageWrap {
-  position: relative;
-  aspect-ratio: 4 / 3;
   background: var(--slate-100);
   border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
 .image {
-  object-fit: cover;
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .imagePlaceholder {

@@ -105,7 +105,7 @@ export default async function EventDetailPage({ params }: EventPageProps) {
             <div>
               {event.image_url ? (
                 <div className={styles.imageWrap}>
-                  <Image src={event.image_url} alt={event.image_alt ?? event.title} fill sizes="(max-width: 768px) 100vw, 480px" className={styles.image} />
+                  <Image src={event.image_url} alt={event.image_alt ?? event.title} width={0} height={0} sizes="(max-width: 768px) 100vw, 480px" className={styles.image} />
                 </div>
               ) : (
                 <div className={styles.imagePlaceholder} aria-hidden="true">
