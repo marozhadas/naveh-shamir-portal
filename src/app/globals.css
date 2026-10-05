@@ -94,6 +94,16 @@ button {
   top: var(--space-4);
 }
 
+/* Mobile: tight, uniform heading leading across the whole site (1.1em). Headings otherwise inherit the 1.6 body leading — which makes wrapped titles look double-spaced — or carry per-component values (1.15–1.3). !important is deliberate: it is the only way a single global rule can beat those class-level values without editing every component stylesheet. */
+@media (max-width: 880px) {
+  h1,
+  h2,
+  h3,
+  h4 {
+    line-height: 1.1em !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

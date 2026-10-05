@@ -1,0 +1,223 @@
+.slider {
+  position: relative;
+  border-radius: var(--radius-lg, 20px);
+  overflow: hidden;
+  background: var(--slate-100);
+}
+
+.viewport {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  min-height: 320px;
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.8s ease-in-out, visibility 0s linear 0.8s;
+}
+
+.slideActive {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.slideLink {
+  position: absolute;
+  inset: 0;
+  display: block;
+  color: inherit;
+}
+
+.slideLink:focus-visible {
+  outline: 3px solid var(--color-border-strong);
+  outline-offset: -3px;
+}
+
+.image {
+  object-fit: cover;
+}
+
+.imagePlaceholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--slate-400);
+  background: linear-gradient(135deg, var(--slate-100), var(--slate-200));
+}
+
+.shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 45%, rgba(15, 30, 50, 0.55) 100%);
+}
+
+/* The text card sits at the bottom, inset so the arrows/dots stay clear of it. */
+.caption {
+  position: absolute;
+  inset-inline: var(--space-6);
+  inset-block-end: 44px;
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--color-text-primary);
+}
+
+.date {
+  font-size: 13px;
+  color: var(--slate-600);
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(18px, 2.2vw, 24px);
+  font-weight: var(--fw-bold);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.excerpt {
+  margin: 0;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
+  color: var(--slate-600);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.more {
+  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  font-size: var(--fs-body-sm);
+  font-weight: var(--fw-bold);
+  color: var(--color-accent-hover);
+}
+
+.control {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+  background: rgba(30, 56, 87, 0.7);
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+
+.control:hover {
+  background: rgba(30, 56, 87, 0.92);
+}
+
+.control:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+.pause {
+  inset-block-start: var(--space-3);
+  inset-inline-start: var(--space-3);
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.arrow {
+  inset-block-start: 40%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+
+.arrowPrev {
+  inset-inline-start: var(--space-3);
+}
+
+.arrowNext {
+  inset-inline-end: var(--space-3);
+}
+
+.dots {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: var(--space-2);
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+}
+
+/* 24px hit area around a 10px visual dot. */
+.dot {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.dot::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.dotActive::before {
+  background: #fff;
+}
+
+.dot:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+  border-radius: 50%;
+}
+
+@media (max-width: 880px) {
+  .viewport {
+    aspect-ratio: 4 / 5;
+    min-height: 0;
+  }
+
+  .caption {
+    inset-inline: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .title {
+    -webkit-line-clamp: 3;
+  }
+
+  .arrow {
+    inset-block-start: 30%;
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide {
+    transition: none;
+  }
+}

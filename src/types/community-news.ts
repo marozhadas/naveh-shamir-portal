@@ -1,12 +1,7 @@
 export type CommunityNewsStatus = "draft" | "published" | "archived";
 
-/**
- * How many of the newest published articles the homepage teaser shows (CommunityPulseSection) —
- * the /news archive skips exactly this many from the front so the same article never appears on
- * both pages. Lives here (not in the server-only community-news-service.ts) because
- * ConnectedUpcomingEvents.tsx, a client component, needs it too.
- */
-export const HOMEPAGE_NEWS_COUNT = 2;
+/** How many of the newest published articles the homepage news slider shows (CommunityPulseSection) — /news always lists every published article. */
+export const HOMEPAGE_NEWS_COUNT = 5;
 
 export const COMMUNITY_NEWS_STATUS_LABEL: Record<CommunityNewsStatus, string> = {
   draft: "טיוטה",

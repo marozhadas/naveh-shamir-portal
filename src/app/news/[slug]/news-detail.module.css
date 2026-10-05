@@ -1,11 +1,14 @@
+/* Same 1280px column + 24px gutter as PageHeader, so the image, date and body start on the exact
+   same edge as the title and excerpt; each block keeps a readable 800px max width. */
 .container {
-  max-width: 800px;
+  max-width: 1280px;
   margin: 0 auto;
   padding: 0 24px var(--space-16);
 }
 
 .imageWrap {
   position: relative;
+  max-width: 800px;
   aspect-ratio: 16 / 9;
   background: var(--slate-100);
   border-radius: var(--radius-lg);
@@ -18,6 +21,7 @@
 }
 
 .imagePlaceholder {
+  max-width: 800px;
   aspect-ratio: 16 / 9;
   display: flex;
   align-items: center;
@@ -29,6 +33,7 @@
 }
 
 .dateLine {
+  max-width: 800px;
   font-size: var(--fs-body-sm);
   font-weight: var(--fw-demibold);
   color: var(--color-text-secondary);
@@ -36,6 +41,7 @@
 }
 
 .body {
+  max-width: 800px;
   font-size: var(--fs-body);
   color: var(--color-text-primary);
   line-height: var(--lh-body);

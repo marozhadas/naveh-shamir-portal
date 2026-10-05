@@ -1,28 +1,26 @@
 import { ArrowLeft, CalendarX, Newspaper } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { NewsCard } from "@/components/news/NewsCard/NewsCard";
-import { EventCard } from "@/components/home/UpcomingEventsSection/EventCard";
-import type { EventCardContentSettings, UpcomingEventsEditorSettings } from "@/editor/schemas/events.schema";
+import type { EventCardContentSettings } from "@/editor/schemas/events.schema";
 import type { CommunityNewsRow } from "@/types/community-news";
+import { CompactEventCard } from "./CompactEventCard";
+import { NewsSlider } from "./NewsSlider";
 import styles from "./CommunityPulseSection.module.css";
 
 type CommunityPulseSectionProps = {
-  /** Soonest published, not-yet-past event (already selected by the caller) — null when there is none. */
-  nextEvent: EventCardContentSettings | null;
-  /** Up to 2 most recently published articles, newest first — the rest live on /news only. */
+  /** Soonest published, not-yet-past events (already selected by the caller, up to 3) — empty when there are none. */
+  events: EventCardContentSettings[];
+  /** Latest published articles, newest first (up to HOMEPAGE_NEWS_COUNT) — the full archive lives on /news. */
   newsItems: CommunityNewsRow[];
-  appearance: UpcomingEventsEditorSettings["appearance"];
   eventsHref: string;
   eventsButtonLabel: string;
 };
 
 /**
- * Replaces the old 3-event grid with a single connected card: the next upcoming event on the
- * left (a third of the width) and the latest neighborhood news teasers on the right (two
- * thirds, stacked, up to 2), so the two feel like one "what's happening" unit instead of two
- * separate sections.
+ * One connected card: the news slider (big image, caption card with the title + a link to the
+ * full article) on the right and a short list of upcoming events (up to 3) on the left, so the two
+ * read as a single "what's happening" unit.
  */
-export function CommunityPulseSection({ nextEvent, newsItems, appearance, eventsHref, eventsButtonLabel }: CommunityPulseSectionProps) {
+export function CommunityPulseSection({ events, newsItems, eventsHref, eventsButtonLabel }: CommunityPulseSectionProps) {
   return (
     <section id="events" className={styles.section} aria-labelledby="community-pulse-heading">
       <h2 id="community-pulse-heading" className="sr-only">
@@ -32,7 +30,7 @@ export function CommunityPulseSection({ nextEvent, newsItems, appearance, events
         <div className={`${styles.column} ${styles.newsColumn}`}>
           <h3 className={styles.columnTitle}>חדשות השכונה</h3>
           {newsItems.length > 0 ? (
-            newsItems.map((article) => <NewsCard key={article.id} article={article} variant="teaser" />)
+            <NewsSlider items={newsItems} />
           ) : (
             <div className={styles.emptyState} role="status">
               <Newspaper size={28} strokeWidth={1.5} aria-hidden="true" />
@@ -42,9 +40,13 @@ export function CommunityPulseSection({ nextEvent, newsItems, appearance, events
         </div>
 
         <div className={`${styles.column} ${styles.eventsColumn}`}>
-          <h3 className={styles.columnTitle}>האירוע הקרוב בשכונה</h3>
-          {nextEvent ? (
-            <EventCard event={nextEvent} appearance={appearance} />
+          <h3 className={styles.columnTitle}>האירועים הקרובים בשכונה</h3>
+          {events.length > 0 ? (
+            <div className={styles.eventsList}>
+              {events.map((event) => (
+                <CompactEventCard key={event.id} event={event} />
+              ))}
+            </div>
           ) : (
             <div className={styles.emptyState} role="status">
               <CalendarX size={28} strokeWidth={1.5} aria-hidden="true" />
