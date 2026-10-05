@@ -6,6 +6,7 @@ import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { PageHeader } from "@/components/shared/PageHeader/PageHeader";
 import { NewsCard } from "@/components/news/NewsCard/NewsCard";
 import { getPublishedNews } from "@/repositories/community-news-service";
+import { getPublishedPageContent } from "@/repositories/site-content-service";
 import { HOMEPAGE_NEWS_COUNT } from "@/types/community-news";
 import styles from "./news.module.css";
 
@@ -23,10 +24,13 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function NewsPage() {
-  const allPublished = await getPublishedNews();
-  // The newest HOMEPAGE_NEWS_COUNT articles are already shown on the homepage teaser
-  // (CommunityPulseSection) — skip them here so nothing appears on both pages.
-  const articles = allPublished.slice(HOMEPAGE_NEWS_COUNT);
+  const [allPublished, homeContent] = await Promise.all([getPublishedNews(), getPublishedPageContent("home")]);
+  // The newest HOMEPAGE_NEWS_COUNT articles are normally shown on the homepage teaser
+  // (CommunityPulseSection, the "upcomingEvents" movable section) — skip them here so nothing
+  // appears on both pages. But when that homepage section is hidden, nothing is shown there, so
+  // skipping them would make the newest articles appear nowhere at all — show everything instead.
+  const homepageTeaserHidden = homeContent?.hiddenSections.includes("upcomingEvents") ?? false;
+  const articles = homepageTeaserHidden ? allPublished : allPublished.slice(HOMEPAGE_NEWS_COUNT);
   // Distinguishes "no news exists at all" from "everything published so far is on the homepage" —
   // saying the former when it's really the latter would read as if the site had no news at all.
   const allShownOnHomepage = articles.length === 0 && allPublished.length > 0;
