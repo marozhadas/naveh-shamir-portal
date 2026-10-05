@@ -131,14 +131,6 @@
   outline-offset: 2px;
 }
 
-.pause {
-  inset-block-start: var(--space-3);
-  inset-inline-start: var(--space-3);
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-}
-
 .arrow {
   inset-block-start: 40%;
   transform: translateY(-50%);

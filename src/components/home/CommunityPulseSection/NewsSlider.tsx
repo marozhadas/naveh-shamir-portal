@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
-import { ArrowLeft, ChevronLeft, ChevronRight, Newspaper, Pause, Play } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Newspaper } from "lucide-react";
 import { formatNewsDateFull } from "@/utils/format-news-date";
 import type { CommunityNewsRow } from "@/types/community-news";
 import styles from "./NewsSlider.module.css";
@@ -16,13 +16,12 @@ type NewsSliderProps = {
 /**
  * Homepage news carousel: one big image per article with its title/excerpt on a card at the
  * bottom, and the whole slide links to the full article. Slides crossfade (opacity) rather than
- * scroll. Autoplay stops on hover/focus, via the pause button, and is off entirely for visitors
+ * scroll. Autoplay stops on hover/focus and is off entirely for visitors
  * who prefer reduced motion. Inactive slides are aria-hidden + unfocusable.
  */
 export function NewsSlider({ items }: NewsSliderProps) {
   const count = items.length;
   const [index, setIndex] = useState(0);
-  const [userPaused, setUserPaused] = useState(false);
   const [hovering, setHovering] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
 
@@ -35,7 +34,7 @@ export function NewsSlider({ items }: NewsSliderProps) {
     return () => query.removeEventListener("change", onChange);
   }, []);
 
-  const playing = count > 1 && !userPaused && !hovering && !reducedMotion;
+  const playing = count > 1 && !hovering && !reducedMotion;
 
   useEffect(() => {
     if (!playing) return;
@@ -108,14 +107,6 @@ export function NewsSlider({ items }: NewsSliderProps) {
 
       {count > 1 && (
         <>
-          <button
-            type="button"
-            className={`${styles.control} ${styles.pause}`}
-            onClick={() => setUserPaused((value) => !value)}
-            aria-label={userPaused ? "הפעלת החלפה אוטומטית" : "עצירת החלפה אוטומטית"}
-          >
-            {userPaused ? <Play size={16} aria-hidden="true" /> : <Pause size={16} aria-hidden="true" />}
-          </button>
           {/* RTL: "previous" sits on the right edge, "next" on the left. */}
           <button type="button" className={`${styles.control} ${styles.arrow} ${styles.arrowPrev}`} onClick={() => go(active - 1)} aria-label="הכתבה הקודמת">
             <ChevronRight size={24} aria-hidden="true" />
