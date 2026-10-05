@@ -13,8 +13,8 @@ const SWIPE_THRESHOLD_PX = 40;
 
 /**
  * Listing photo gallery: one large image with prev/next arrows (and swipe on touch) and a row of
- * small square thumbnails underneath. The large image is shown whole (object-fit: contain) so a
- * seller's photo is never cropped; thumbnails are cropped squares purely for scanning.
+ * small square thumbnails underneath. Both are center-cropped (object-fit: cover) so the frame is
+ * always filled edge to edge — no empty bands beside portrait photos.
  */
 export function ListingGallery({ images }: ListingGalleryProps) {
   const [index, setIndex] = useState(0);
