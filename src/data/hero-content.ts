@@ -38,7 +38,7 @@ export const DEFAULT_HERO_SETTINGS: HeroEditorSettings = {
   },
   responsive: {
     titleSizeMobileToken: 40,
-    paddingBlockMobile: { start: "64", end: "96" },
+    paddingBlockMobile: { start: "16", end: "96" },
     contentAlignmentMobile: "center",
     showIllustrationMobile: true,
   },
