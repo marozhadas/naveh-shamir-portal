@@ -34,3 +34,11 @@
     text-align: center;
   }
 }
+
+/* Mobile: tighter vertical rhythm between homepage sections (~40px gap instead of 64–112px). */
+@media (max-width: 880px) {
+  .section {
+    padding-top: var(--space-4);
+    padding-bottom: var(--space-8);
+  }
+}

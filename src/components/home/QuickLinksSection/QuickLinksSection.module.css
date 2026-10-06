@@ -113,3 +113,10 @@
     grid-template-columns: repeat(var(--quicklinks-columns-mobile, 2), 1fr);
   }
 }
+
+/* Mobile: tighter vertical rhythm between homepage sections (~40px gap instead of 64–112px). */
+@media (max-width: 880px) {
+  .section {
+    padding-bottom: var(--space-4);
+  }
+}
