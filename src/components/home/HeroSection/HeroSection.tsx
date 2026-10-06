@@ -22,10 +22,10 @@ const MAX_CONTENT_WIDTH_PX: Record<HeroEditorSettings["layout"]["maxContentWidth
   lg: "920px",
 };
 
-/** Shown whenever no gallery images have been uploaded yet — keeps the Hero looking exactly like it did before the gallery feature existed. */
+/** The original hero photo — always the first slide, followed by whatever gallery images were uploaded via the editor. */
 const DEFAULT_BACKGROUND: HeroGalleryImage = { id: "default", url: "/images/hero-background.jpg", alt: "", order: 0 };
 
-const ROTATE_INTERVAL_MS = 6000;
+const ROTATE_INTERVAL_MS = 3000;
 
 function useRotatingIndex(count: number): number {
   const [index, setIndex] = useState(0);
@@ -46,7 +46,7 @@ function useRotatingIndex(count: number): number {
 
 type HeroSectionProps = {
   settings: HeroEditorSettings;
-  /** Live, shared background images uploaded via the floating editor (spec: must show for every visitor, not just the editing admin). Empty/omitted falls back to the static default photo. */
+  /** Live, shared background images uploaded via the floating editor (spec: must show for every visitor, not just the editing admin). They rotate after the static default photo. */
   galleryImages?: HeroGalleryImage[];
 };
 
@@ -55,7 +55,7 @@ export function HeroSection({ settings, galleryImages }: HeroSectionProps) {
   const [feedback, setFeedback] = useState("");
   const router = useRouter();
 
-  const images = galleryImages && galleryImages.length > 0 ? galleryImages : [DEFAULT_BACKGROUND];
+  const images = [DEFAULT_BACKGROUND, ...(galleryImages ?? [])];
   const activeIndex = useRotatingIndex(images.length);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
