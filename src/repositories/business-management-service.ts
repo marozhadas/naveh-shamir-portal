@@ -36,6 +36,41 @@ export async function touchBusinessManagementTokenLastUsed(businessId: string): 
   if (error) console.error("[touchBusinessManagementTokenLastUsed] failed:", error.message);
 }
 
+/**
+ * The one mapping from the shared edit-form shape (businessManagementEditSchema) to
+ * business_registrations columns — used by BOTH the secret-link editor and the dashboard owner
+ * editor, so what a business can edit and how it is stored can never drift between the two.
+ * Never touches status/plan/consent/slug/featured/verified.
+ */
+function buildContentPatch(values: BusinessManagementEditValues) {
+  return {
+    business_name: values.businessName,
+    category_id: values.categoryIds[0],
+    category_ids: values.categoryIds,
+    business_type: values.businessType,
+    description: values.fullDescription,
+    short_description: values.shortDescription,
+    public_phone: values.publicPhone,
+    public_whatsapp: values.publicWhatsapp || null,
+    public_email: values.publicEmail || null,
+    website_url: values.websiteUrl || null,
+    address: values.address || null,
+    service_area: values.serviceArea || null,
+    address_type: values.addressType,
+    cover_image: values.coverImage,
+    gallery: values.gallery,
+    services: values.services,
+    testimonials: values.testimonials.length > 0 ? values.testimonials : null,
+    opening_hours: values.openingHours,
+    social_links: {
+      instagramUrl: values.instagramUrl || undefined,
+      facebookUrl: values.facebookUrl || undefined,
+      tiktokUrl: values.tiktokUrl || undefined,
+    },
+    promotion: values.promotion,
+  };
+}
+
 export type UpdateManagedBusinessFieldsResult =
   | { success: true; registration: BusinessRegistrationRow }
   | { success: false; reason: "not-found" | "not-eligible" };
@@ -56,30 +91,7 @@ export async function updateManagedBusinessFields(rawToken: string, values: Busi
   const { data, error } = await admin
     .from("business_registrations")
     .update({
-      business_name: values.businessName,
-      category_id: values.categoryIds[0],
-      category_ids: values.categoryIds,
-      business_type: values.businessType,
-      description: values.fullDescription,
-      short_description: values.shortDescription,
-      public_phone: values.publicPhone,
-      public_whatsapp: values.publicWhatsapp || null,
-      public_email: values.publicEmail || null,
-      website_url: values.websiteUrl || null,
-      address: values.address || null,
-      service_area: values.serviceArea || null,
-      address_type: values.addressType,
-      cover_image: values.coverImage,
-      gallery: values.gallery,
-      services: values.services,
-      testimonials: values.testimonials.length > 0 ? values.testimonials : null,
-      opening_hours: values.openingHours,
-      social_links: {
-        instagramUrl: values.instagramUrl || undefined,
-        facebookUrl: values.facebookUrl || undefined,
-        tiktokUrl: values.tiktokUrl || undefined,
-      },
-      promotion: values.promotion,
+      ...buildContentPatch(values),
       management_token_last_used_at: new Date().toISOString(),
     })
     .eq("id", registration.id)
@@ -92,4 +104,43 @@ export async function updateManagedBusinessFields(rawToken: string, values: Busi
   }
 
   return { success: true, registration: data };
+}
+
+/** Owner-scoped read of the raw registration row — the explicit owner_id filter is the authorization (the service-role client bypasses RLS). */
+export async function getOwnedRegistrationRow(registrationId: string, ownerId: string): Promise<BusinessRegistrationRow | null> {
+  if (!isSupabaseAdminConfigured()) return null;
+  const admin = createAdminSupabaseClient();
+  const { data, error } = await admin.from("business_registrations").select("*").eq("id", registrationId).eq("owner_id", ownerId).maybeSingle();
+  if (error) {
+    console.error("[getOwnedRegistrationRow] failed:", error.message);
+    return null;
+  }
+  return data;
+}
+
+/**
+ * The dashboard owner editor's write path. Only ever called AFTER the action re-checked
+ * getBusinessSelfEditAccess; stamps last_self_edit_at (the Plus once-per-calendar-month allowance)
+ * in the SAME UPDATE as the content, so the allowance is consumed if and only if the content was
+ * actually saved. The owner_id filter makes a foreign or guessed registration id a no-op.
+ */
+export async function updateOwnedBusinessContent(
+  registrationId: string,
+  ownerId: string,
+  values: BusinessManagementEditValues,
+): Promise<BusinessRegistrationRow | null> {
+  if (!isSupabaseAdminConfigured()) return null;
+  const admin = createAdminSupabaseClient();
+  const { data, error } = await admin
+    .from("business_registrations")
+    .update({ ...buildContentPatch(values), last_self_edit_at: new Date().toISOString() })
+    .eq("id", registrationId)
+    .eq("owner_id", ownerId)
+    .select("*")
+    .maybeSingle();
+  if (error) {
+    console.error("[updateOwnedBusinessContent] failed:", error.message);
+    return null;
+  }
+  return data;
 }

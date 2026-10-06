@@ -2,6 +2,10 @@
   max-width: 640px;
 }
 
+.wideWrap {
+  max-width: 820px;
+}
+
 .title {
   font-size: var(--fs-h2);
   font-weight: var(--fw-bold);

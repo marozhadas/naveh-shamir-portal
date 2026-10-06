@@ -46,6 +46,8 @@ export const testimonialSchema = z.object({
   authorName: z.string().trim().min(1, "יש להזין שם ממליץ/ה").max(80, "השם ארוך מדי"),
   text: z.string().trim().min(1, "יש להזין את תוכן ההמלצה").max(500, "ההמלצה ארוכה מדי — עד 500 תווים"),
   roleOrContext: z.string().trim().max(80, "השדה ארוך מדי").optional(),
+  /** Optional avatar/photo of the recommender — a Storage URL uploaded through the owner editor (checked to live in the business's own media folder on save). */
+  imageUrl: z.string().trim().max(500).optional(),
 });
 
 export const intervalSchema = z

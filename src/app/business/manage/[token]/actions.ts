@@ -74,7 +74,7 @@ const UPLOAD_ERROR_MESSAGE: Record<string, string> = {
 };
 
 /** Resolves the business by token first (never trusts a client-supplied id) so an expired/guessed token can't be used to write into Storage under an arbitrary registration folder. */
-export async function uploadManagedBusinessMediaAction(rawToken: string, kind: "cover" | "gallery", formData: FormData): Promise<UploadManagedBusinessMediaState> {
+export async function uploadManagedBusinessMediaAction(rawToken: string, kind: "cover" | "gallery" | "testimonial", formData: FormData): Promise<UploadManagedBusinessMediaState> {
   const registration = await getManagedBusinessByToken(rawToken);
   if (!registration) return { success: false, message: INVALID_LINK_MESSAGE };
 

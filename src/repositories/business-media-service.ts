@@ -27,7 +27,7 @@ export type UploadBusinessMediaResult =
  */
 export async function uploadBusinessMedia(
   registrationId: string,
-  kind: "cover" | "gallery",
+  kind: "cover" | "gallery" | "testimonial",
   file: File,
 ): Promise<UploadBusinessMediaResult> {
   if (!isSupabaseAdminConfigured()) return { success: false, reason: "not-configured" };

@@ -49,6 +49,21 @@
   margin: 0;
 }
 
+.authorRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
 .role {
   font-weight: var(--fw-regular);
 }

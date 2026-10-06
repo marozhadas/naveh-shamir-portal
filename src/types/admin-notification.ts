@@ -86,6 +86,7 @@ export type AdminAuditAction =
   | "business-slug-changed"
   | "business-management-token-rotated"
   | "business-management-link-edit"
+  | "business-owner-dashboard-edit"
   | "business-dashboard-access-consent-updated"
   | "review-approved"
   | "review-rejected"

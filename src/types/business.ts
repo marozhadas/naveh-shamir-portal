@@ -42,6 +42,8 @@ export type BusinessTestimonial = {
   authorName: string;
   text: string;
   roleOrContext?: string;
+  /** Optional photo of the recommender (owner-uploaded). */
+  imageUrl?: string;
   order: number;
 };
 

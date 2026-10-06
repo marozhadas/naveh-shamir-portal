@@ -112,6 +112,7 @@ export function mapRegistrationToBusiness(row: BusinessRegistrationRow): Busines
       authorName: testimonial.authorName,
       text: testimonial.text,
       roleOrContext: testimonial.roleOrContext,
+      imageUrl: testimonial.imageUrl,
       order: index,
     })),
     socialLinks: row.social_links

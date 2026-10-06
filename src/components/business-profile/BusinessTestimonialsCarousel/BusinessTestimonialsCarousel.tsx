@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { ChevronLeft, ChevronRight, Quote } from "lucide-react";
 import type { BusinessTestimonial } from "@/types/business";
 import styles from "./BusinessTestimonialsCarousel.module.css";
@@ -69,10 +70,13 @@ export function BusinessTestimonialsCarousel({ testimonials }: BusinessTestimoni
         <div className={styles.slideArea} aria-live="polite" aria-atomic="true">
           <Quote className={styles.quoteIcon} size={28} aria-hidden="true" />
           <p className={styles.text}>{active.text}</p>
-          <p className={styles.author}>
-            {active.authorName}
-            {active.roleOrContext && <span className={styles.role}> · {active.roleOrContext}</span>}
-          </p>
+          <div className={styles.authorRow}>
+            {active.imageUrl && <Image src={active.imageUrl} alt="" width={44} height={44} className={styles.avatar} />}
+            <p className={styles.author}>
+              {active.authorName}
+              {active.roleOrContext && <span className={styles.role}> · {active.roleOrContext}</span>}
+            </p>
+          </div>
         </div>
 
         {sorted.length > 1 && (

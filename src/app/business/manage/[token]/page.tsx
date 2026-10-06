@@ -7,7 +7,8 @@ import { checkBusinessManagementEligibility, BUSINESS_MANAGEMENT_INELIGIBILITY_M
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/utils/get-client-ip";
 import { mapRegistrationToManagementValues } from "./map-registration-to-management-values";
-import { ManagementEditForm } from "./ManagementEditForm";
+import { BusinessContentEditor } from "@/components/business-dashboard/BusinessContentEditor/BusinessContentEditor";
+import { deleteManagedBusinessMediaAction, updateManagedBusinessFieldsAction, uploadManagedBusinessMediaAction } from "./actions";
 import styles from "./manage.module.css";
 
 type ManagePageProps = { params: Promise<{ token: string }> };
@@ -90,7 +91,14 @@ export default async function BusinessManagePage({ params }: ManagePageProps) {
           <h1 className={styles.title}>עריכת עמוד העסק</h1>
           <p className={styles.subtitle}>כאן אפשר לעדכן את פרטי העסק, התמונות, השעות והשירותים בלי להתחבר לאתר — {registration.business_name}.</p>
         </div>
-        <ManagementEditForm token={token} initialValues={mapRegistrationToManagementValues(registration)} businessSlug={registration.slug} />
+        <BusinessContentEditor
+          initialValues={mapRegistrationToManagementValues(registration)}
+          saveAction={updateManagedBusinessFieldsAction.bind(null, token)}
+          uploadAction={uploadManagedBusinessMediaAction.bind(null, token)}
+          removeMediaAction={deleteManagedBusinessMediaAction.bind(null, token)}
+          previewHref={`/businesses/${registration.slug}`}
+          previewLabel="צפייה בעמוד העסק"
+        />
       </div>
     </PageChrome>
   );

@@ -20,6 +20,7 @@ export type BusinessTestimonialInput = {
   authorName: string;
   text: string;
   roleOrContext?: string;
+  imageUrl?: string;
 };
 
 export type BusinessPromotionInput = {
