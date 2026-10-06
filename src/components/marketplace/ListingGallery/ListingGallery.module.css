@@ -105,3 +105,115 @@
 .thumbImage {
   object-fit: cover;
 }
+
+/* Invisible click target covering the large image; arrows/counter sit above it. */
+.zoom {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.zoom:focus-visible {
+  outline: 3px solid var(--color-border-strong);
+  outline-offset: -3px;
+}
+
+.arrow,
+.counter {
+  z-index: 2;
+}
+
+.lightbox {
+  width: 100vw;
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: rgba(10, 18, 30, 0.92);
+  color: #fff;
+  overflow: hidden;
+}
+
+.lightbox::backdrop {
+  background: rgba(10, 18, 30, 0.92);
+}
+
+.stage {
+  position: absolute;
+  inset: 56px 64px;
+}
+
+.stageImage {
+  object-fit: contain;
+}
+
+.lightboxControl {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+
+.lightboxControl:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.lightboxControl:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+.close {
+  inset-block-start: var(--space-3);
+  inset-inline-end: var(--space-3);
+}
+
+.lightboxPrev,
+.lightboxNext {
+  inset-block-start: 50%;
+  transform: translateY(-50%);
+}
+
+.lightboxPrev {
+  inset-inline-end: var(--space-3);
+}
+
+.lightboxNext {
+  inset-inline-start: var(--space-3);
+}
+
+.lightboxCounter {
+  position: absolute;
+  inset-block-start: var(--space-4);
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .stage {
+    inset: 56px 0;
+  }
+
+  .lightboxPrev,
+  .lightboxNext {
+    inset-block-start: auto;
+    inset-block-end: var(--space-3);
+    transform: none;
+  }
+}
