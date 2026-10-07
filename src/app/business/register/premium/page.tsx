@@ -6,6 +6,9 @@ import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { BUSINESS_PLANS } from "@/data/business-plans";
 import { PlanPriceBlock } from "@/components/pricing/PlanPriceBlock";
 import { isBillingInterval } from "@/data/subscription-pricing";
+import { getSupabaseSessionUser } from "@/lib/supabase/server-client";
+import { registrationReturnPath } from "@/utils/safe-return-path";
+import { OwnerAuthGate } from "@/components/auth/OwnerAuthGate/OwnerAuthGate";
 import { PlusRegistrationWizard } from "../plus/PlusRegistrationWizard";
 import styles from "../plus/plus-wizard.module.css";
 
@@ -21,6 +24,10 @@ type RegisterPremiumPageProps = {
 export default async function RegisterPremiumPage({ searchParams }: RegisterPremiumPageProps) {
   const { interval } = await searchParams;
   const initialBillingInterval = isBillingInterval(interval) ? interval : "monthly";
+  // Guard: Premium registration requires a real signed-in account (Basic stays open). The wizard is
+  // only mounted once there is a session, so nothing a visitor typed can be lost to a login redirect;
+  // the plan and billing interval live in this URL and ride through login as the return path.
+  const sessionUser = await getSupabaseSessionUser();
   return (
     <>
       <ConnectedHeader />
@@ -54,7 +61,15 @@ export default async function RegisterPremiumPage({ searchParams }: RegisterPrem
           </div>
 
           <div className={styles.layout}>
-            <PlusRegistrationWizard planId="premium" initialBillingInterval={initialBillingInterval} />
+            {sessionUser ? (
+              <PlusRegistrationWizard planId="premium" initialBillingInterval={initialBillingInterval} billingIntervalFromUrl={isBillingInterval(interval)} />
+            ) : (
+              <OwnerAuthGate
+                planName="Premium"
+                billingIntervalLabel={initialBillingInterval === "yearly" ? "מסלול שנתי" : "מסלול חודשי"}
+                returnTo={registrationReturnPath("premium", initialBillingInterval)}
+              />
+            )}
 
             <aside className={styles.summaryCard} aria-label="סיכום חבילת Premium">
               <p className={styles.summaryPlanName}>Premium</p>

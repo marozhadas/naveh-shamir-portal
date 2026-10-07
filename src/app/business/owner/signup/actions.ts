@@ -6,6 +6,8 @@ import { createProfile, isUsernameTaken, resolvePostLoginPath } from "@/reposito
 import { normalizeUsername, isValidUsername } from "@/utils/username";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/utils/get-client-ip";
+import { getSiteOrigin } from "@/utils/site-origin";
+import { safeReturnPath } from "@/utils/safe-return-path";
 
 export type SignupState = { status: "idle" | "error" | "check-email"; message?: string };
 
@@ -51,7 +53,14 @@ export async function signupWithPasswordAction(_prevState: SignupState, formData
   }
 
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  // With "Confirm email" on, the confirmation link goes through /auth/callback — carry the return
+  // path (e.g. back to the Plus/Premium wizard) through it as well.
+  const returnTo = safeReturnPath(typeof formData.get("next") === "string" ? (formData.get("next") as string) : null);
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: returnTo ? { emailRedirectTo: `${getSiteOrigin()}/auth/callback?next=${encodeURIComponent(returnTo)}` } : undefined,
+  });
   if (error || !data.user) {
     console.error("[signupWithPasswordAction] signUp failed:", error?.message);
     return { status: "error", message: GENERIC_SIGNUP_ERROR };
@@ -71,5 +80,5 @@ export async function signupWithPasswordAction(_prevState: SignupState, formData
     return { status: "check-email", message: "שלחנו מייל לאישור החשבון — יש ללחוץ על הקישור שם כדי להמשיך." };
   }
 
-  redirect(await resolvePostLoginPath(data.user.id));
+  redirect(returnTo ?? (await resolvePostLoginPath(data.user.id)));
 }

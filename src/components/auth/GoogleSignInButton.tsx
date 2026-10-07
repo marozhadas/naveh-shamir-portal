@@ -6,9 +6,15 @@ import styles from "@/app/business/owner/login/login.module.css";
  * startGoogleOAuthAction on the server and redirects the whole page to Google; there's nothing
  * for a client component to manage here.
  */
-export function GoogleSignInButton() {
+type GoogleSignInButtonProps = {
+  /** Validated same-site path to return to after sign-in (e.g. the Plus/Premium wizard with its billing interval). */
+  next?: string;
+};
+
+export function GoogleSignInButton({ next }: GoogleSignInButtonProps = {}) {
   return (
     <form action={startGoogleOAuthAction}>
+      {next && <input type="hidden" name="next" value={next} />}
       <button type="submit" className={styles.googleButton}>
         <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
           <path

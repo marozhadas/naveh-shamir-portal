@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server-client";
 import { isSupabaseAdminConfigured } from "@/lib/supabase/admin-client";
 import { claimUnownedRegistrationsForEmail, resolvePostLoginPath } from "@/repositories/owner-auth-service";
+import { safeReturnPath } from "@/utils/safe-return-path";
 
 /**
  * Where a business owner lands after any code-exchange sign-in: the magic-link email, "continue
@@ -24,7 +25,8 @@ import { claimUnownedRegistrationsForEmail, resolvePostLoginPath } from "@/repos
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const explicitNext = searchParams.get("next");
+  // Only a same-site owner-area path is ever honoured (see safeReturnPath) — anything else falls back to the default.
+  const explicitNext = safeReturnPath(searchParams.get("next"));
 
   if (!code) {
     return NextResponse.redirect(`${origin}/business/owner/login?error=missing-code`);

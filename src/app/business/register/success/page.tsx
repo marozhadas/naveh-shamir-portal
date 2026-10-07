@@ -24,6 +24,8 @@ export default async function RegisterSuccessPage({ searchParams }: SuccessPageP
   const { plan } = await searchParams;
   const planName = plan ? (PLAN_NAME[plan] ?? plan) : null;
   const isPremium = plan === "premium";
+  // Plus/Premium registration requires a signed-in account, so the business is already in that account's personal area (as pending).
+  const hasAccount = plan === "plus" || plan === "premium";
 
   return (
     <>
@@ -39,10 +41,17 @@ export default async function RegisterSuccessPage({ searchParams }: SuccessPageP
           {planName && !isPremium && <p className={styles.planLine}>מסלול: {planName}</p>}
           <p className={styles.disclaimer}>
             {isPremium
-              ? "הגישה לאזור האישי תישלח רק לאחר אישור העסק והפעלת חבילת Premium."
-              : "30 ימי הניסיון עדיין לא התחילו. הוא יופעל רק לאחר אישור העסק והפעלה מפורשת."}
+              ? "העסק כבר מופיע באזור האישי שלכם כממתין לאישור. הפעלת חבילת Premium תתבצע לאחר אישור העסק."
+              : hasAccount
+                ? "העסק כבר מופיע באזור האישי שלכם כממתין לאישור. 30 ימי הניסיון עדיין לא התחילו — הם יופעלו רק לאחר אישור העסק והפעלה מפורשת."
+                : "30 ימי הניסיון עדיין לא התחילו. הוא יופעל רק לאחר אישור העסק והפעלה מפורשת."}
           </p>
           <div className={styles.actions}>
+            {hasAccount && (
+              <Button href="/business/dashboard" variant="accent">
+                לאזור האישי
+              </Button>
+            )}
             <Button href="/" variant="secondary">
               חזרה לעמוד הבית
             </Button>

@@ -190,9 +190,11 @@ type PlusRegistrationWizardProps = {
   planId: "plus" | "premium";
   /** The billing track chosen on /business/plans before landing here (via ?interval=), when valid. Only used as the initial value — the owner can still change it in step 5. */
   initialBillingInterval?: BillingInterval;
+  /** True when `initialBillingInterval` came from an explicit ?interval= in the URL — then it wins over a stale restored draft, so a fresh plan choice (e.g. Premium yearly, carried through login) is never silently replaced by an older draft's interval. */
+  billingIntervalFromUrl?: boolean;
 };
 
-export function PlusRegistrationWizard({ planId, initialBillingInterval = "monthly" }: PlusRegistrationWizardProps) {
+export function PlusRegistrationWizard({ planId, initialBillingInterval = "monthly", billingIntervalFromUrl = false }: PlusRegistrationWizardProps) {
   const router = useRouter();
   const draftKey = DRAFT_KEY_BY_PLAN[planId];
   const registrationIdRef = useRef<string>(crypto.randomUUID());
@@ -205,6 +207,8 @@ export function PlusRegistrationWizard({ planId, initialBillingInterval = "month
   const [uploadingGallery, setUploadingGallery] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // The session expired while the wizard was open — offer a re-login link (new tab, so the filled form survives).
+  const [needsLogin, setNeedsLogin] = useState(false);
   const hasLoadedDraftRef = useRef(false);
 
   // Restore a draft once on mount — same one-time-external-read pattern used by RegisterBusinessForm.
@@ -216,7 +220,7 @@ export function PlusRegistrationWizard({ planId, initialBillingInterval = "month
       if (!raw) return;
       const parsed = JSON.parse(raw) as { step: number; values: WizardValues };
       // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time read from sessionStorage on mount, not a prop/state sync
-      setValues((current) => ({ ...current, ...parsed.values }));
+      setValues((current) => ({ ...current, ...parsed.values, ...(billingIntervalFromUrl ? { billingInterval: initialBillingInterval } : {}) }));
       setStep(parsed.step ?? 1);
       setDraftRestored(true);
     } catch {
@@ -569,6 +573,8 @@ export function PlusRegistrationWizard({ planId, initialBillingInterval = "month
       }
       return;
     }
+    setNeedsLogin(result.status === "auth-required");
+    setNeedsLogin(result.status === "auth-required");
     setSubmitError(result.message ?? "אירעה שגיאה. נסו שוב.");
   }
 
@@ -604,6 +610,14 @@ export function PlusRegistrationWizard({ planId, initialBillingInterval = "month
       {submitError && (
         <p className={styles.error} role="alert">
           {submitError}
+          {needsLogin && (
+            <>
+              {" "}
+              <a href={`/business/owner/login?next=${encodeURIComponent(`/business/register/${planId}?interval=${values.billingInterval}`)}`} target="_blank" rel="noopener noreferrer">
+                התחברות מחדש
+              </a>
+            </>
+          )}
         </p>
       )}
 

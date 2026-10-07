@@ -11,7 +11,7 @@ import styles from "./login.module.css";
  * Password + email/username is the primary method (spec), with a plain link to switch to the
  * older magic-link flow — kept available as a fallback rather than removed, per spec section 32.
  */
-export function LoginPageContent() {
+export function LoginPageContent({ next }: { next?: string }) {
   const [method, setMethod] = useState<"password" | "magic-link">("password");
 
   if (method === "magic-link") {
@@ -29,11 +29,11 @@ export function LoginPageContent() {
 
   return (
     <>
-      <PasswordLoginForm />
+      <PasswordLoginForm next={next} />
 
       <div className={styles.divider}>או</div>
 
-      <GoogleSignInButton />
+      <GoogleSignInButton next={next} />
 
       <p className={styles.switchMethodRow}>
         <button type="button" className={styles.link} onClick={() => setMethod("magic-link")}>
@@ -43,7 +43,7 @@ export function LoginPageContent() {
 
       <p className={styles.footerRow}>
         אין לכם חשבון?{" "}
-        <Link href="/business/owner/signup" className={styles.link}>
+        <Link href={next ? `/business/owner/signup?next=${encodeURIComponent(next)}` : "/business/owner/signup"} className={styles.link}>
           הרשמה
         </Link>
       </p>

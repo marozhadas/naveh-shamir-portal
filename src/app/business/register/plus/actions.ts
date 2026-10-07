@@ -1,6 +1,6 @@
 "use server";
 
-import { createPublicSupabaseClient } from "@/lib/supabase/public-client";
+import { createAdminSupabaseClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin-client";
 import { getSupabaseSessionUser } from "@/lib/supabase/server-client";
 import { slugify } from "@/utils/slugify";
 import { uploadBusinessMedia } from "@/repositories/business-media-service";
@@ -18,12 +18,14 @@ const UPLOAD_ERROR_MESSAGE: Record<string, string> = {
   "upload-failed": "העלאת התמונה נכשלה. נסו שוב.",
 };
 
-/** Called once per image the wizard's media step uploads — never gated by admin auth (see business-media-service.ts). */
+/** Called once per image the wizard's media step uploads — not an admin action, but Plus/Premium registration now requires a signed-in account, so neither does this accept anonymous callers. */
 export async function uploadBusinessMediaAction(
   registrationId: string,
   kind: "cover" | "gallery",
   formData: FormData,
 ): Promise<UploadMediaActionState> {
+  if (!(await getSupabaseSessionUser())) return { success: false, message: "יש להתחבר כדי להעלות תמונות." };
+
   const file = formData.get("file");
   if (!(file instanceof File)) return { success: false, message: "לא נבחר קובץ." };
 
@@ -33,11 +35,12 @@ export async function uploadBusinessMediaAction(
 }
 
 export type SubmitPlusRegistrationState = {
-  status: "idle" | "validation-error" | "server-error" | "success";
+  status: "idle" | "validation-error" | "server-error" | "auth-required" | "success";
   message?: string;
   fieldErrors?: Record<string, string[]>;
 };
 
+const AUTH_REQUIRED_MESSAGE = "ההתחברות פגה. יש להתחבר מחדש — מומלץ בלשונית חדשה, כדי שהפרטים שמילאתם לא יאבדו — ואז לשלוח שוב.";
 const GENERIC_SERVER_ERROR_MESSAGE = "לא הצלחנו לשמור את העסק כרגע. הפרטים שמילאת נשמרו, ואפשר לנסות שוב בעוד רגע.";
 
 function randomSuffix(): string {
@@ -73,6 +76,12 @@ async function submitExtendedBusinessRegistration(
 ): Promise<SubmitPlusRegistrationState> {
   if (honeypot) return { status: "success" };
 
+  // Plus/Premium registration requires a real signed-in account — and `owner_id` is written from THIS
+  // server-side session only (never from client input, never inferred from an email match). The page
+  // guard keeps signed-out visitors out of the wizard; this is the check a hand-crafted POST cannot skip.
+  const sessionUser = await getSupabaseSessionUser();
+  if (!sessionUser) return { status: "auth-required", message: AUTH_REQUIRED_MESSAGE };
+
   const result = plusBusinessRegistrationSchema.safeParse({
     ...input,
     planId,
@@ -90,15 +99,17 @@ async function submitExtendedBusinessRegistration(
   }
 
   const values = result.data;
-  const sessionUser = await getSupabaseSessionUser();
-  const supabase = createPublicSupabaseClient();
+  // Service-role insert: the anon role's INSERT policy now requires owner_id IS NULL (so nobody can use
+  // the public key to register a business under someone else), and this path always sets an owner.
+  if (!isSupabaseAdminConfigured()) return { status: "server-error", message: GENERIC_SERVER_ERROR_MESSAGE };
+  const supabase = createAdminSupabaseClient();
   const baseSlug = slugify(values.businessName);
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const slug = attempt === 0 ? baseSlug : slugify(values.businessName, randomSuffix());
     const { error } = await supabase.from("business_registrations").insert({
       id: values.registrationId,
-      owner_id: sessionUser?.id ?? null,
+      owner_id: sessionUser.id,
       slug,
       business_name: values.businessName,
       category_id: values.categoryIds[0],

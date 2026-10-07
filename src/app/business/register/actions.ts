@@ -3,9 +3,9 @@
 import { randomUUID } from "node:crypto";
 import { after } from "next/server";
 import { createPublicSupabaseClient } from "@/lib/supabase/public-client";
+import { createAdminSupabaseClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin-client";
 import { getSupabaseSessionUser } from "@/lib/supabase/server-client";
 import { slugify } from "@/utils/slugify";
-import { isSupabaseAdminConfigured } from "@/lib/supabase/admin-client";
 import { getOpenNotificationForEntity } from "@/lib/admin/notifications";
 import { sendRegistrationNotificationEmail } from "@/lib/email/send-registration-notification-email";
 import { businessRegistrationSchema, EMPTY_FORM_VALUES, type BusinessRegistrationFormValues } from "./schema";
@@ -80,7 +80,10 @@ export async function submitBusinessRegistration(
 
   const values = result.data;
   const sessionUser = await getSupabaseSessionUser();
-  const supabase = createPublicSupabaseClient();
+  // Anonymous Basic submissions use the public client (RLS: owner_id must be NULL). A signed-in submitter's
+  // owner_id comes from the server-side session, so that insert goes through the service role.
+  const ownerId = sessionUser && isSupabaseAdminConfigured() ? sessionUser.id : null;
+  const supabase = ownerId ? createAdminSupabaseClient() : createPublicSupabaseClient();
   const baseSlug = slugify(values.businessName);
 
   // Try the plain slug first; retry a couple of times with a random suffix on a collision
@@ -94,7 +97,7 @@ export async function submitBusinessRegistration(
     const createdAt = new Date().toISOString();
     const { error } = await supabase.from("business_registrations").insert({
       id: registrationId,
-      owner_id: sessionUser?.id ?? null,
+      owner_id: ownerId,
       slug,
       business_name: values.businessName,
       category_id: values.categoryId,

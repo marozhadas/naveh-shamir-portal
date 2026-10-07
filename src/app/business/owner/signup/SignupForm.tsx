@@ -8,7 +8,7 @@ import styles from "../login/login.module.css";
 
 const INITIAL_STATE: SignupState = { status: "idle" };
 
-export function SignupForm() {
+export function SignupForm({ next }: { next?: string } = {}) {
   const [state, formAction, isPending] = useActionState(signupWithPasswordAction, INITIAL_STATE);
   const [showPassword, setShowPassword] = useState(false);
   const fullNameId = useId();
@@ -28,6 +28,7 @@ export function SignupForm() {
 
   return (
     <form action={formAction} className={styles.form} noValidate>
+      {next && <input type="hidden" name="next" value={next} />}
       <div className={styles.field}>
         <label htmlFor={fullNameId}>שם מלא</label>
         <input id={fullNameId} name="fullName" type="text" required autoFocus autoComplete="name" />

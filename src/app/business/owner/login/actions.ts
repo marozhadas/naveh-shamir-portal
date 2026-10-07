@@ -8,6 +8,7 @@ import { looksLikeEmail, normalizeUsername } from "@/utils/username";
 import { resolveUsernameToEmail, resolvePostLoginPath, claimUnownedRegistrationsForEmail } from "@/repositories/owner-auth-service";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/utils/get-client-ip";
+import { safeReturnPath } from "@/utils/safe-return-path";
 
 export type RequestMagicLinkState = { status: "idle" | "sent" | "error"; message?: string };
 
@@ -84,7 +85,10 @@ export async function loginWithPasswordAction(_prevState: LoginWithPasswordState
     }
   }
 
-  redirect(await resolvePostLoginPath(data.user.id));
+  // An explicit, validated return path (e.g. back into the Plus/Premium registration wizard)
+  // wins; otherwise the usual ownership-aware default.
+  const returnTo = safeReturnPath(typeof formData.get("next") === "string" ? (formData.get("next") as string) : null);
+  redirect(returnTo ?? (await resolvePostLoginPath(data.user.id)));
 }
 
 /**
@@ -94,16 +98,22 @@ export async function loginWithPasswordAction(_prevState: LoginWithPasswordState
  * /auth/callback (which exchanges the code for a session exactly like the magic-link flow does)
  * — no provider-specific code needed there at all.
  */
-export async function startGoogleOAuthAction(): Promise<void> {
+export async function startGoogleOAuthAction(formData?: FormData): Promise<void> {
+  // `next` rides through the whole OAuth round trip on the existing /auth/callback?next= support
+  // (the same mechanism the password-reset email already uses) — no second return-path mechanism.
+  const nextRaw = formData?.get("next");
+  const returnTo = safeReturnPath(typeof nextRaw === "string" ? nextRaw : null);
+  const callbackUrl = `${getSiteOrigin()}/auth/callback${returnTo ? `?next=${encodeURIComponent(returnTo)}` : ""}`;
+
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: `${getSiteOrigin()}/auth/callback`, skipBrowserRedirect: true },
+    options: { redirectTo: callbackUrl, skipBrowserRedirect: true },
   });
 
   if (error || !data.url) {
     console.error("[startGoogleOAuthAction] signInWithOAuth failed:", error?.message);
-    redirect("/business/owner/login?error=google-unavailable");
+    redirect(`/business/owner/login?error=google-unavailable${returnTo ? `&next=${encodeURIComponent(returnTo)}` : ""}`);
   }
   redirect(data.url);
 }

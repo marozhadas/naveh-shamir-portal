@@ -9,7 +9,12 @@ import styles from "./login.module.css";
 
 const INITIAL_STATE: LoginWithPasswordState = { status: "idle" };
 
-export function PasswordLoginForm() {
+type PasswordLoginFormProps = {
+  /** Validated same-site path to land on after a successful sign-in. */
+  next?: string;
+};
+
+export function PasswordLoginForm({ next }: PasswordLoginFormProps = {}) {
   const [state, formAction, isPending] = useActionState(loginWithPasswordAction, INITIAL_STATE);
   const [showPassword, setShowPassword] = useState(false);
   const identifierId = useId();
@@ -17,6 +22,7 @@ export function PasswordLoginForm() {
 
   return (
     <form action={formAction} className={styles.form} noValidate>
+      {next && <input type="hidden" name="next" value={next} />}
       <div className={styles.field}>
         <label htmlFor={identifierId}>שם משתמש או אימייל</label>
         <input id={identifierId} name="identifier" type="text" dir="ltr" required autoFocus autoComplete="username" />
