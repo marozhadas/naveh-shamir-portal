@@ -81,10 +81,6 @@
     box-shadow: var(--shadow-lg, 0 8px 24px rgba(0, 0, 0, 0.2));
   }
 
-  html[dir="rtl"] .sidebar {
-    transform: translateX(-100%);
-  }
-
   .sidebar.mobileOpen {
     transform: translateX(0);
   }

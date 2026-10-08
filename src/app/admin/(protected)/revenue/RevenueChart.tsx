@@ -8,7 +8,7 @@ import styles from "./revenue.module.css";
  */
 export function RevenueChart({ series }: { series: RevenueBucket[] }) {
   const max = Math.max(1, ...series.map((bucket) => bucket.amountAgorot));
-  const labelEvery = Math.max(1, Math.ceil(series.length / 12));
+  const labelEvery = Math.max(1, Math.ceil(series.length / 8));
   return (
     <figure className={styles.chart}>
       <div className={styles.bars} role="img" aria-label={`גרף הכנסות בפועל, ${series.length} נקודות`}>

@@ -155,6 +155,7 @@ export default async function AdminRevenuePage({ searchParams }: { searchParams:
 
       <form method="get" className={styles.filters} aria-label="סינון תקופה">
         <input type="hidden" name="tab" value={tab} />
+        {Object.entries(filters).map(([key, value]) => (value ? <input key={key} type="hidden" name={key} value={value} /> : null))}
         <label>
           תקופה
           <select name="period" defaultValue={preset}>
