@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getRegistrationById } from "@/lib/admin/business-registrations";
+import { getRegistrationById, getRegistrationSubscriptionRow } from "@/lib/admin/business-registrations";
 import { getNotificationForEntity } from "@/lib/admin/notifications";
 import { getCategoryLabel } from "@/data/business-categories";
 import { formatNotificationDateTime } from "@/utils/admin-notification-format";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { ApproveRejectPanel } from "./ApproveRejectPanel";
 import { DeleteBusinessButton } from "./DeleteBusinessButton";
 import { BusinessPlanControl } from "./BusinessPlanControl";
+import { BusinessOfferControl } from "./BusinessOfferControl";
 import { BusinessSlugControl } from "./BusinessSlugControl";
 import { BusinessManagementLinkControl } from "./BusinessManagementLinkControl";
 import { retryNotificationEmailAction } from "./actions";
@@ -51,6 +52,7 @@ export default async function AdminBusinessDetailPage({ params }: BusinessDetail
   if (!registration) notFound();
 
   const notification = await getNotificationForEntity("business-registration", id);
+  const subscriptionRow = registration.plan_tier !== "free" ? await getRegistrationSubscriptionRow(registration.id) : null;
   const subscriptionSummary = registration.status === "approved" ? await getAdminSubscriptionSummary(registration, new Date()) : null;
 
   return (
@@ -125,6 +127,18 @@ export default async function AdminBusinessDetailPage({ params }: BusinessDetail
         selectedPlanId={toBusinessPlanId(registration.plan_tier)}
         currentActivePlanId={toBusinessPlanId(registration.active_plan_id)}
       />
+
+      {registration.plan_tier !== "free" && (
+        <BusinessOfferControl
+          businessId={registration.id}
+          currentOfferCode={registration.offer_code}
+          frozenTrial={
+            subscriptionRow
+              ? { offerCode: subscriptionRow.offer_code, trialDays: subscriptionRow.trial_days, trialStartedAt: subscriptionRow.trial_started_at, trialEndsAt: subscriptionRow.trial_ends_at }
+              : null
+          }
+        />
+      )}
 
       <BusinessSlugControl
         businessId={registration.id}

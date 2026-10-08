@@ -10,13 +10,14 @@ import { authAdapter, isRealBusinessOwnerSession } from "@/adapters/mock-auth-ad
 import { subscriptionRepository } from "@/repositories/mock-subscription-repository";
 import { businessRepository } from "@/repositories/mock-business-repository";
 import { getBusinessPlan } from "@/data/business-plans";
-import { LAUNCH_PRICE_LABEL, TRIAL_DAYS, formatPriceWithInterval, getCurrentPrice, isBillingInterval } from "@/data/subscription-pricing";
+import { getTrialDaysForOffer } from "@/data/subscription-offers";
+import { LAUNCH_PRICE_LABEL, formatPriceWithInterval, getCurrentPrice, isBillingInterval } from "@/data/subscription-pricing";
 import type { TrialEligibility } from "@/types/trial";
 import styles from "./trial.module.css";
 
 export const metadata: Metadata = {
-  title: "הפעלת 30 ימי ניסיון | עסקים בנווה שמיר",
-  description: "פתחו עמוד עסק מלא בפורטל נווה שמיר עם 30 ימי ניסיון חינם. לא נדרש אמצעי תשלום ולא מתבצע חיוב.",
+  title: "הפעלת תקופת ניסיון | עסקים בנווה שמיר",
+  description: "פתחו עמוד עסק מלא בפורטל נווה שמיר עם תקופת ניסיון חינם. לא נדרש אמצעי תשלום ולא מתבצע חיוב.",
   robots: { index: false, follow: false },
 };
 
@@ -44,6 +45,8 @@ export default async function BusinessTrialPage() {
   }
 
   const business = viewer && businessId ? await businessRepository.getDraftById(businessId, viewer.id) : null;
+  // The trial length is the business's own offer (30 standard / 90 pilot), read from the stored business row.
+  const trialDays = getTrialDaysForOffer(business?.offerCode);
   const planTier = business?.selectedPlanId === "premium" ? "premium" : "plus";
   const plan = getBusinessPlan(planTier);
   const interval = isBillingInterval(business?.selectedBillingInterval) ? business.selectedBillingInterval : "monthly";
@@ -58,7 +61,7 @@ export default async function BusinessTrialPage() {
         <div className={styles.container}>
           <h1 className={styles.title}>מפעילים את עמוד העסק המלא</h1>
           <p className={styles.subtitle}>
-            {TRIAL_DAYS} ימי ניסיון להתנסות מלאה בעמוד עסק בפורטל נווה שמיר, ללא כרטיס אשראי.
+            {trialDays} ימי ניסיון להתנסות מלאה בעמוד עסק בפורטל נווה שמיר, ללא כרטיס אשראי.
           </p>
 
           <p className={styles.featuresHeading}>מה כלול</p>
@@ -74,7 +77,7 @@ export default async function BusinessTrialPage() {
           <div className={styles.billingBox}>
             <div className={styles.billingRow}>
               <CalendarClock size={18} aria-hidden="true" />
-              <span>משך הניסיון: 30 ימים בדיוק, החל מרגע ההפעלה.</span>
+              <span>משך הניסיון: {trialDays} ימים בדיוק, החל מרגע ההפעלה.</span>
             </div>
             <p className={styles.billingDetail}>
               לאחר תום הניסיון, אם לא הופעל מנוי בתשלום — עמוד העסק יעבור למצב מושהה: התוכן יישמר במלואו, אך
@@ -85,7 +88,7 @@ export default async function BusinessTrialPage() {
 
           <div className={styles.actionBox}>
             {eligibility.eligible ? (
-              <TrialStartForm />
+              <TrialStartForm trialDays={trialDays} />
             ) : (
               <p className={styles.notice} role="status">
                 {ELIGIBILITY_MESSAGE[eligibility.reason] ?? "לא ניתן להתחיל ניסיון כרגע."}

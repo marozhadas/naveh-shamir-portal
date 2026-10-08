@@ -1,3 +1,5 @@
+import type { OfferCode } from "@/data/subscription-offers";
+
 export type BusinessRegistrationStatus = "pending" | "approved" | "rejected";
 
 /** Mirrors the public.business_registrations table (see the "create_business_registrations" migration). */
@@ -78,6 +80,8 @@ export type BusinessRegistrationRow = {
   last_self_edit_at: string | null;
   /** The billing track the owner picked at registration. The price is only snapshotted onto the subscription when the trial starts (see startRealBusinessTrial). */
   selected_billing_interval: "monthly" | "yearly";
+  /** Benefit group of THIS business (not of the user) — set only by an admin, frozen once a subscription exists. See subscription-offers.ts. */
+  offer_code: OfferCode;
 };
 
 /** Fields the public registration form is allowed to submit — status/featured/verified are never client-supplied (RLS also enforces this server-side). */

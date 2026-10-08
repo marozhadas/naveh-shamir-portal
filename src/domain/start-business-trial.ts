@@ -1,8 +1,7 @@
 import type { BusinessSubscription } from "@/types/subscription";
 import type { BusinessPlanId } from "@/types/business-plan";
 
-const TRIAL_DAYS = 30;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
+import { computeTrialWindow } from "@/data/subscription-offers";
 
 /**
  * Pure constructor for a brand-new trial subscription — exactly 30 days (spec section 7: never
@@ -17,7 +16,8 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
  */
 export function startBusinessTrial(businessId: string, ownerId: string, now: Date, planId: Extract<BusinessPlanId, "plus" | "premium"> = "premium"): BusinessSubscription {
   const nowIso = now.toISOString();
-  const trialEndsAt = new Date(now.getTime() + TRIAL_DAYS * MS_PER_DAY).toISOString();
+  // The in-memory demo businesses only ever use the standard offer.
+  const { trialEndsAt, offerCode, trialDays } = computeTrialWindow("launch_standard", now);
 
   return {
     id: `sub-${businessId}-${now.getTime()}`,
@@ -27,6 +27,8 @@ export function startBusinessTrial(businessId: string, ownerId: string, now: Dat
     status: "trialing",
     trialStartedAt: nowIso,
     trialEndsAt,
+    offerCode,
+    trialDays,
     cancelAtPeriodEnd: false,
     paymentProvider: "mock",
     createdAt: nowIso,

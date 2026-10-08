@@ -23,6 +23,8 @@ export function mapSubscriptionRowToBusinessSubscription(row: BusinessSubscripti
     priceAmountIls: row.price_amount_ils ?? undefined,
     priceVersion: row.price_version ?? undefined,
     isLaunchPrice: row.is_launch_price ?? undefined,
+    offerCode: row.offer_code ?? undefined,
+    trialDays: row.trial_days ?? undefined,
     paymentFailedAt: row.payment_failed_at ?? undefined,
     gracePeriodEndsAt: row.grace_period_ends_at ?? undefined,
     createdAt: row.created_at,

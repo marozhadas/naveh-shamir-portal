@@ -2,6 +2,8 @@ import "server-only";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin-client";
 import { generateManagementToken, hashManagementToken } from "@/utils/management-token";
 import type { BusinessRegistrationRow, BusinessRegistrationStatus } from "@/types/business-registration";
+import type { BusinessSubscriptionRow } from "@/types/subscription";
+import type { OfferCode } from "@/data/subscription-offers";
 
 export async function listAllRegistrations(): Promise<BusinessRegistrationRow[]> {
   const supabase = createAdminSupabaseClient();
@@ -150,4 +152,24 @@ export async function deleteRegistration(id: string): Promise<void> {
   const supabase = createAdminSupabaseClient();
   const { error } = await supabase.from("business_registrations").delete().eq("id", id);
   if (error) throw new Error(error.message);
+}
+
+/**
+ * The one dedicated write path for the business's benefit group (offer) — only ever called from
+ * changeBusinessOfferAction, which checks that no subscription exists yet and writes the audit
+ * log. The database also refuses this UPDATE once a subscription row exists (trigger
+ * prevent_offer_change_after_subscription), so a trial's offer cannot be moved from anywhere.
+ */
+export async function updateRegistrationOffer(id: string, offerCode: OfferCode): Promise<void> {
+  const supabase = createAdminSupabaseClient();
+  const { error } = await supabase.from("business_registrations").update({ offer_code: offerCode }).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+/** The raw subscription row for a business (null before a trial was ever activated) — the source of the frozen offer/trial snapshot shown to admins. */
+export async function getRegistrationSubscriptionRow(registrationId: string): Promise<BusinessSubscriptionRow | null> {
+  const supabase = createAdminSupabaseClient();
+  const { data, error } = await supabase.from("business_subscriptions").select("*").eq("business_registration_id", registrationId).maybeSingle();
+  if (error) throw new Error(error.message);
+  return data;
 }

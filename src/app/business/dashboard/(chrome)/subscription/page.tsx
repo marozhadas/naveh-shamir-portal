@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTrialDaysForOffer } from "@/data/subscription-offers";
 import { SubscriptionStatusCard } from "@/components/business-dashboard/SubscriptionStatusCard/SubscriptionStatusCard";
 import { getSubscriptionSummary } from "@/domain/get-subscription-summary";
 import { getBusinessPlan } from "@/data/business-plans";
@@ -106,7 +107,7 @@ export default async function BusinessSubscriptionPage() {
 
       {isRealSubscription && summary.planId !== "basic" && (
         <p className={styles.notice} role="status">
-          סליקה עדיין לא הופעלה בפורטל: לא מתבצע חיוב, לא נאספים פרטי אשראי, ולא נקבע מועד חיוב. בשלב זה אפשר להפעיל רק את 30 ימי הניסיון החינמיים.
+          סליקה עדיין לא הופעלה בפורטל: לא מתבצע חיוב, לא נאספים פרטי אשראי, ולא נקבע מועד חיוב. בשלב זה אפשר להפעיל רק את {getTrialDaysForOffer(business.offerCode)} ימי הניסיון החינמיים.
         </p>
       )}
 
@@ -117,6 +118,7 @@ export default async function BusinessSubscriptionPage() {
         isRealSubscription={isRealSubscription}
         businessSlug={business.slug}
         blockedReason={summary.stage === "awaiting-approval" ? "awaiting-approval" : null}
+        trialDays={getTrialDaysForOffer(business.offerCode)}
       />
 
       <div className={styles.planCard}>

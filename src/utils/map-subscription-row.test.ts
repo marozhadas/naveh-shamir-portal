@@ -21,6 +21,8 @@ function makeRow(overrides: Partial<BusinessSubscriptionRow> = {}): BusinessSubs
     is_launch_price: null,
     payment_failed_at: null,
     grace_period_ends_at: null,
+    offer_code: null,
+    trial_days: null,
     created_at: "2026-06-01T00:00:00.000Z",
     updated_at: "2026-06-01T00:00:00.000Z",
     ...overrides,

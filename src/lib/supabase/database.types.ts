@@ -83,6 +83,7 @@ export type Database = {
           | "management_token_last_used_at"
           | "last_self_edit_at"
           | "selected_billing_interval"
+          | "offer_code"
         > & {
           id?: string;
           status?: BusinessRegistrationRow["status"];
@@ -114,6 +115,7 @@ export type Database = {
           management_token_last_used_at?: string | null;
           last_self_edit_at?: string | null;
           selected_billing_interval?: BusinessRegistrationRow["selected_billing_interval"];
+          offer_code?: BusinessRegistrationRow["offer_code"];
         };
         Update: Partial<BusinessRegistrationRow>;
         Relationships: [];
@@ -153,12 +155,14 @@ export type Database = {
         Row: BusinessSubscriptionRow;
         Insert: Omit<
           BusinessSubscriptionRow,
-          "id" | "created_at" | "updated_at" | "current_period_started_at" | "current_period_ends_at" | "canceled_at" | "billing_interval" | "price_amount_ils" | "price_version" | "is_launch_price" | "payment_failed_at" | "grace_period_ends_at"
+          "id" | "created_at" | "updated_at" | "current_period_started_at" | "current_period_ends_at" | "canceled_at" | "billing_interval" | "price_amount_ils" | "price_version" | "is_launch_price" | "payment_failed_at" | "grace_period_ends_at" | "offer_code" | "trial_days"
         > & {
           billing_interval?: BusinessSubscriptionRow["billing_interval"];
           price_amount_ils?: number | null;
           price_version?: string | null;
           is_launch_price?: boolean | null;
+          offer_code?: BusinessSubscriptionRow["offer_code"];
+          trial_days?: number | null;
           payment_failed_at?: string | null;
           grace_period_ends_at?: string | null;
           id?: string;

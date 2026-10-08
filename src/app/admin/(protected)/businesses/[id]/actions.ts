@@ -6,8 +6,10 @@ import { isSupabaseAdminConfigured } from "@/lib/supabase/admin-client";
 import {
   deleteRegistration,
   getRegistrationById,
+  getRegistrationSubscriptionRow,
   rotateBusinessManagementToken,
   updateRegistrationActivePlan,
+  updateRegistrationOffer,
   updateRegistrationDashboardAccessConsent,
   updateRegistrationFields,
   updateRegistrationSlug,
@@ -20,6 +22,9 @@ import { deleteBusinessMediaByUrl, uploadBusinessMedia } from "@/repositories/bu
 import { businessEditFormSchema, type BusinessEditFormValues } from "./schema";
 import { changeBusinessPlanSchema, type ChangeBusinessPlanInput } from "./change-plan-schema";
 import { changeBusinessSlugSchema, type ChangeBusinessSlugInput } from "./change-slug-schema";
+import { changeBusinessOfferSchema, type ChangeBusinessOfferInput } from "./change-offer-schema";
+import { decideOfferChange } from "@/domain/decide-offer-change";
+import { getOffer, type OfferCode } from "@/data/subscription-offers";
 import { isValidBusinessSlug } from "@/utils/business-slug";
 import { recordSlugRedirect } from "@/repositories/business-slug-redirect-repository";
 import { checkBusinessManagementEligibility, BUSINESS_MANAGEMENT_INELIGIBILITY_MESSAGE } from "@/utils/business-management-access";
@@ -455,4 +460,76 @@ export async function deleteBusinessAction(registrationId: string): Promise<void
   });
 
   revalidateBusinessViews(registrationId);
+}
+
+export type ChangeBusinessOfferResult =
+  | { status: "success"; previousOffer: OfferCode; newOffer: OfferCode }
+  | { status: "validation-error"; message: string }
+  | { status: "not-found"; message: string }
+  | { status: "locked"; message: string }
+  | { status: "server-error"; message: string };
+
+/**
+ * The only way a business's benefit group (standard / pilot) is ever set — admin-only, decided and
+ * enforced entirely here on the server. The client sends nothing but the business id and the
+ * requested offer code; it is validated against the known codes, and the trial length that results
+ * from it is computed server-side at trial activation (never accepted from a request). Refused once
+ * the business has a subscription (its offer is then frozen — see decideOfferChange). Every real
+ * change is written to the audit log.
+ */
+export async function changeBusinessOfferAction(input: ChangeBusinessOfferInput): Promise<ChangeBusinessOfferResult> {
+  const adminId = await requireAdmin();
+
+  const parsed = changeBusinessOfferSchema.safeParse(input);
+  if (!parsed.success) {
+    return { status: "validation-error", message: parsed.error.issues[0]?.message ?? "קלט לא תקין." };
+  }
+  const { businessId, offerCode, reason } = parsed.data;
+
+  const registration = await getRegistrationById(businessId);
+  if (!registration) return { status: "not-found", message: "העסק לא נמצא." };
+  if (registration.plan_tier === "free") {
+    return { status: "validation-error", message: "קבוצת הטבה רלוונטית רק לעסקי Plus ו-Premium." };
+  }
+
+  const previousOffer = registration.offer_code;
+
+  let hasSubscription: boolean;
+  try {
+    hasSubscription = (await getRegistrationSubscriptionRow(businessId)) !== null;
+  } catch (error) {
+    console.error("[changeBusinessOfferAction] subscription lookup failed:", error);
+    return { status: "server-error", message: "לא הצלחנו לבדוק את מצב המנוי. נסו שוב." };
+  }
+
+  const decision = decideOfferChange({ currentOffer: previousOffer, requestedOffer: offerCode, hasSubscription });
+  if (!decision.ok) {
+    return { status: "locked", message: "תקופת הניסיון כבר הופעלה לעסק הזה, ולכן לא ניתן לשנות את קבוצת ההטבה. שינוי הטבה קיימת דורש תהליך נפרד." };
+  }
+  if (!decision.changed) return { status: "success", previousOffer, newOffer: offerCode };
+
+  try {
+    await updateRegistrationOffer(businessId, offerCode);
+
+    await recordAuditLog({
+      adminId,
+      action: decision.auditAction,
+      entityType: "business-registration",
+      entityId: businessId,
+      metadata: {
+        businessName: registration.business_name,
+        previousOffer,
+        newOffer: offerCode,
+        previousTrialDays: getOffer(previousOffer).trialDays,
+        newTrialDays: getOffer(offerCode).trialDays,
+        reason: reason ?? null,
+      },
+    });
+
+    revalidateBusinessViews(businessId);
+    return { status: "success", previousOffer, newOffer: offerCode };
+  } catch (error) {
+    console.error("[changeBusinessOfferAction] failed:", error);
+    return { status: "server-error", message: "לא הצלחנו לעדכן את קבוצת ההטבה כרגע. נסו שוב." };
+  }
 }

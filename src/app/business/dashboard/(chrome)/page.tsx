@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Button } from "@/components/ui/Button";
+import { getTrialDaysForOffer } from "@/data/subscription-offers";
 import { SubscriptionStatusCard } from "@/components/business-dashboard/SubscriptionStatusCard/SubscriptionStatusCard";
 import { isSupabaseBusinessId } from "@/utils/business-id";
 import { getLatestUnreadTrialNotification } from "@/repositories/business-notifications";
@@ -55,6 +56,7 @@ export default async function BusinessDashboardPage() {
         variant="compact"
         isRealSubscription={isRealBusiness}
         businessSlug={business.slug}
+        trialDays={getTrialDaysForOffer(business.offerCode)}
       />
 
       <div className={styles.actions}>

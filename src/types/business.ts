@@ -1,3 +1,4 @@
+import type { OfferCode } from "@/data/subscription-offers";
 import type { BusinessPublicationStatus } from "./business-status";
 import type { BusinessPlanId } from "./business-plan";
 
@@ -112,6 +113,8 @@ export type Business = {
   activePlanId?: BusinessPlanId;
   /** The billing track chosen at registration (monthly/yearly). The price itself is only assigned to the subscription when the trial starts. */
   selectedBillingInterval?: "monthly" | "yearly";
+  /** Benefit group of this business (standard / pilot) — decides the trial length. Admin-set; never user-supplied. */
+  offerCode?: OfferCode;
   /** Last successful owner self-edit save (never set by admin edits). See getBusinessSelfEditAccess. */
   lastSelfEditAt?: string;
   fullDescription?: string;

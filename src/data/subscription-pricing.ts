@@ -1,3 +1,4 @@
+import { SUBSCRIPTION_OFFERS } from "@/data/subscription-offers";
 /**
  * The single source of truth for paid-plan prices and trial length. Every pricing surface
  * (/business/plans, the Plus/Premium registration pages and wizard, /business/trial, the owner's
@@ -14,7 +15,8 @@ export type BillingInterval = "monthly" | "yearly";
 
 export const BILLING_INTERVALS: BillingInterval[] = ["monthly", "yearly"];
 
-export const TRIAL_DAYS = 30;
+/** The STANDARD offer's trial length — defined once in subscription-offers.ts (a pilot business gets its own, longer trial from there). */
+export const TRIAL_DAYS = SUBSCRIPTION_OFFERS.launch_standard.trialDays;
 
 export const LAUNCH_PRICE_LABEL = "מחיר השקה";
 

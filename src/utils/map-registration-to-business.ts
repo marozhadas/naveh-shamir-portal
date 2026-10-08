@@ -80,6 +80,7 @@ export function mapRegistrationToBusiness(row: BusinessRegistrationRow): Busines
     selectedPlanId: toBusinessPlanId(row.plan_tier),
     activePlanId: toBusinessPlanId(row.active_plan_id),
     selectedBillingInterval: row.selected_billing_interval,
+    offerCode: row.offer_code,
     lastSelfEditAt: row.last_self_edit_at ?? undefined,
     fullDescription: row.description,
     image: row.cover_image ? { src: row.cover_image.url, alt: row.cover_image.alt } : undefined,

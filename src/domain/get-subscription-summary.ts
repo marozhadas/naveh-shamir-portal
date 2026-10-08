@@ -1,3 +1,4 @@
+import { getTrialDaysForOffer } from "@/data/subscription-offers";
 import { BILLING_INTERVALS, getCurrentPrice, isBillingInterval, type BillingInterval, type PaidPlanId } from "@/data/subscription-pricing";
 import { isValidBusinessSlug } from "@/utils/business-slug";
 import type { Business } from "@/types/business";
@@ -52,7 +53,8 @@ export type SubscriptionSummary = {
 
 const PLAN_NAME: Record<BusinessPlanId, string> = { basic: "Basic", plus: "Plus", premium: "Premium" };
 
-const STAGE_COPY: Record<SubscriptionStage, { label: string; description: string }> = {
+function buildStageCopy(trialDays: number): Record<SubscriptionStage, { label: string; description: string }> {
+  return {
   basic: { label: "רישום בסיסי (חינם)", description: "העסק מופיע בכרטיס בסיסי בארכיון העסקים. אפשר לשדרג ל־Plus או Premium בכל שלב." },
   "awaiting-approval": {
     label: "ממתין לאישור",
@@ -64,7 +66,7 @@ const STAGE_COPY: Record<SubscriptionStage, { label: string; description: string
   },
   "awaiting-trial-start": {
     label: "אושר — הניסיון טרם הופעל",
-    description: "העסק אושר וניתן להפעיל את 30 ימי הניסיון החינמיים. הניסיון לא התחיל עד להפעלה מפורשת.",
+    description: `העסק אושר וניתן להפעיל את ${trialDays} ימי הניסיון החינמיים. הניסיון לא התחיל עד להפעלה מפורשת.`,
   },
   "admin-granted": { label: "חבילה פעילה (הוקצתה על ידי הפורטל)", description: "החבילה הופעלה על ידי מנהל הפורטל, ללא תקופת ניסיון או חיוב." },
   trialing: { label: "בתקופת ניסיון", description: "תקופת הניסיון החינמית פעילה. בשלב זה לא מתבצע חיוב." },
@@ -77,7 +79,8 @@ const STAGE_COPY: Record<SubscriptionStage, { label: string; description: string
     description: "תקופת הניסיון הסתיימה. כל התוכן והתמונות שמורים, והעמוד אינו מוצג לציבור כרגע.",
   },
   paused: { label: "המנוי מושהה", description: "המנוי מושהה. פנו לצוות הפורטל לפרטים." },
-};
+  };
+}
 
 function isPaid(planId: BusinessPlanId): planId is PaidPlanId {
   return planId === "plus" || planId === "premium";
@@ -173,7 +176,7 @@ export function getSubscriptionSummary(params: {
     }
   }
 
-  const copy = STAGE_COPY[stage];
+  const copy = buildStageCopy(getTrialDaysForOffer(subscription?.offerCode ?? business.offerCode))[stage];
   return {
     planId: displayPlanId,
     planName: PLAN_NAME[displayPlanId],

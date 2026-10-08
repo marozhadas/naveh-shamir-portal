@@ -5,7 +5,8 @@ import { toRegistrationId } from "@/utils/business-id";
 import { isValidBusinessSlug } from "@/utils/business-slug";
 import type { BusinessSubscription } from "@/types/subscription";
 import type { TrialEligibility } from "@/types/trial";
-import { createPriceSnapshot, isBillingInterval, TRIAL_DAYS } from "@/data/subscription-pricing";
+import { createPriceSnapshot, isBillingInterval } from "@/data/subscription-pricing";
+import { computeTrialWindow } from "@/data/subscription-offers";
 
 /**
  * The real, Supabase-backed half of SubscriptionRepository — everything here operates on
@@ -95,7 +96,7 @@ export async function startRealBusinessTrial(businessId: string, ownerId: string
   // getBusinessListingAccess() had no way to tell Plus from Premium.
   const { data: registration, error: registrationError } = await admin
     .from("business_registrations")
-    .select("plan_tier, selected_billing_interval")
+    .select("plan_tier, selected_billing_interval, offer_code")
     .eq("id", registrationId)
     .maybeSingle();
   if (registrationError || !registration) {
@@ -108,8 +109,11 @@ export async function startRealBusinessTrial(businessId: string, ownerId: string
   // the price version offered today — a later list-price change never rewrites this row.
   const snapshot = createPriceSnapshot(planId, isBillingInterval(registration.selected_billing_interval) ? registration.selected_billing_interval : "monthly");
 
+  // Trial length comes ONLY from the offer stored on the business row (set by an admin) — read fresh
+  // from the database right here, never from anything the client sent. The result is snapshotted onto
+  // the subscription below, so a later change to the offer cannot touch this trial.
   const now = new Date();
-  const trialEndsAt = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+  const trial = computeTrialWindow(registration.offer_code, now);
 
   const { data, error } = await admin
     .from("business_subscriptions")
@@ -118,8 +122,10 @@ export async function startRealBusinessTrial(businessId: string, ownerId: string
       owner_id: ownerId,
       plan_id: planId,
       status: "trialing",
-      trial_started_at: now.toISOString(),
-      trial_ends_at: trialEndsAt.toISOString(),
+      trial_started_at: trial.trialStartedAt,
+      trial_ends_at: trial.trialEndsAt,
+      offer_code: trial.offerCode,
+      trial_days: trial.trialDays,
       cancel_at_period_end: false,
       billing_interval: snapshot.billingInterval,
       price_amount_ils: snapshot.amountIls,
@@ -144,7 +150,7 @@ export async function startRealBusinessTrial(businessId: string, ownerId: string
     business_registration_id: registrationId,
     event_type: "trial_started",
     actor_id: ownerId,
-    metadata: { planId, billingInterval: snapshot.billingInterval, priceVersion: snapshot.priceVersion },
+    metadata: { planId, billingInterval: snapshot.billingInterval, priceVersion: snapshot.priceVersion, offerCode: trial.offerCode, trialDays: trial.trialDays },
   });
   if (logError) console.error("[startRealBusinessTrial] audit log insert failed:", logError.message);
 

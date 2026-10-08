@@ -1,3 +1,5 @@
+import type { OfferCode } from "@/data/subscription-offers";
+
 export type SubscriptionStatus = "trialing" | "active" | "past-due" | "grace-period" | "canceled" | "expired" | "paused";
 
 /**
@@ -29,6 +31,9 @@ export type BusinessSubscriptionRow = {
   /** Set only by a real billing-failure event (none exists yet — no payment provider is connected). */
   payment_failed_at: string | null;
   grace_period_ends_at: string | null;
+  /** Snapshot taken when the trial was activated — null on rows created before offers existed (those were all standard 30-day trials). */
+  offer_code: OfferCode | null;
+  trial_days: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -49,6 +54,9 @@ export type BusinessSubscription = {
   priceAmountIls?: number;
   priceVersion?: string;
   isLaunchPrice?: boolean;
+  /** Snapshot of the offer and trial length this subscription was activated with. Undefined on legacy rows. */
+  offerCode?: OfferCode;
+  trialDays?: number;
   paymentFailedAt?: string;
   gracePeriodEndsAt?: string;
   paymentProvider?: "mock" | "stripe" | "other";

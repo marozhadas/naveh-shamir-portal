@@ -3,6 +3,7 @@ import { TrialProgressBar } from "@/components/business-dashboard/TrialProgressB
 import { startCheckoutAction, cancelSubscriptionAction, reactivateSubscriptionAction } from "@/app/business/dashboard/subscription-actions";
 import { MOCK_PAYMENT_DISCLAIMER } from "@/adapters/mock-payment-provider-adapter";
 import { isValidBusinessSlug } from "@/utils/business-slug";
+import { TRIAL_DAYS } from "@/data/subscription-pricing";
 import type { BusinessSubscription, SubscriptionAccess } from "@/types/subscription";
 import styles from "./SubscriptionStatusCard.module.css";
 
@@ -22,6 +23,8 @@ type SubscriptionStatusCardProps = {
   businessSlug?: string | null;
   /** Set when the trial cannot be offered yet for a reason the owner should see instead of a button. */
   blockedReason?: "awaiting-approval" | null;
+  /** Trial length of THIS business's offer (30 standard / 90 pilot) — shown before a trial exists; once it exists the subscription's own snapshot is used. */
+  trialDays?: number;
 };
 
 function formatDate(iso: string): string {
@@ -35,13 +38,14 @@ export function SubscriptionStatusCard({
   isRealSubscription = false,
   businessSlug = null,
   blockedReason = null,
+  trialDays = TRIAL_DAYS,
 }: SubscriptionStatusCardProps) {
   if (!subscription || !access) {
     if (blockedReason === "awaiting-approval") {
       return (
         <div className={`${styles.card} ${styles.neutral}`}>
           <p className={styles.title}>העסק ממתין לאישור צוות הפורטל</p>
-          <p className={styles.description}>לאחר האישור תוכלו להפעיל את 30 ימי הניסיון. תקופת הניסיון לא מתחילה לפני כן.</p>
+          <p className={styles.description}>לאחר האישור תוכלו להפעיל את {trialDays} ימי הניסיון. תקופת הניסיון לא מתחילה לפני כן.</p>
         </div>
       );
     }
@@ -62,7 +66,7 @@ export function SubscriptionStatusCard({
         {needsSlug ? (
           <>
             <Button variant="accent" disabled>
-              הפעלת 30 ימי ניסיון
+              הפעלת {trialDays} ימי ניסיון
             </Button>
             <p className={styles.description}>
               לפני הפעלת המנוי יש להגדיר כתובת URL באנגלית לעסק. הצוות שלנו ייצור איתך קשר בקרוב — אפשר גם לפנות אלינו ישירות דרך עמוד יצירת הקשר.
@@ -70,7 +74,7 @@ export function SubscriptionStatusCard({
           </>
         ) : (
           <Button href={isRealSubscription ? "/business/trial" : "/business/register"} variant="accent">
-            הפעלת 30 ימי ניסיון
+            הפעלת {trialDays} ימי ניסיון
           </Button>
         )}
       </div>
@@ -80,7 +84,7 @@ export function SubscriptionStatusCard({
   if (access.reason === "trial-active" && access.daysRemainingInTrial !== null) {
     return (
       <div className={`${styles.card} ${styles.positive}`}>
-        <p className={styles.title}>30 ימי הניסיון שלכם פעילים</p>
+        <p className={styles.title}>{subscription.trialDays ?? trialDays} ימי הניסיון שלכם פעילים</p>
         <TrialProgressBar daysRemaining={access.daysRemainingInTrial} />
         {variant === "full" && isRealSubscription && (
           <div className={styles.ctaRow}>
