@@ -192,9 +192,11 @@ type PlusRegistrationWizardProps = {
   initialBillingInterval?: BillingInterval;
   /** True when `initialBillingInterval` came from an explicit ?interval= in the URL — then it wins over a stale restored draft, so a fresh plan choice (e.g. Premium yearly, carried through login) is never silently replaced by an older draft's interval. */
   billingIntervalFromUrl?: boolean;
+  /** Reports the selected billing track (the value that will be submitted) whenever it changes, so the plan summary card can mirror it. */
+  onBillingIntervalChange?: (interval: BillingInterval) => void;
 };
 
-export function PlusRegistrationWizard({ planId, initialBillingInterval = "monthly", billingIntervalFromUrl = false }: PlusRegistrationWizardProps) {
+export function PlusRegistrationWizard({ planId, initialBillingInterval = "monthly", billingIntervalFromUrl = false, onBillingIntervalChange }: PlusRegistrationWizardProps) {
   const router = useRouter();
   const draftKey = DRAFT_KEY_BY_PLAN[planId];
   const registrationIdRef = useRef<string>(crypto.randomUUID());
@@ -239,6 +241,11 @@ export function PlusRegistrationWizard({ planId, initialBillingInterval = "month
     }, 500);
     return () => clearTimeout(timeout);
   }, [step, values, draftKey]);
+
+  // The summary card (RegistrationFlow) mirrors the interval that is actually going to be submitted.
+  useEffect(() => {
+    onBillingIntervalChange?.(values.billingInterval);
+  }, [values.billingInterval, onBillingIntervalChange]);
 
   function clearDraft() {
     try {

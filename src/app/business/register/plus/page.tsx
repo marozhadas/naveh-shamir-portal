@@ -4,12 +4,11 @@ import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
 import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { BUSINESS_PLANS } from "@/data/business-plans";
-import { PlanPriceBlock } from "@/components/pricing/PlanPriceBlock";
 import { isBillingInterval } from "@/data/subscription-pricing";
 import { getSupabaseSessionUser } from "@/lib/supabase/server-client";
 import { registrationReturnPath } from "@/utils/safe-return-path";
 import { OwnerAuthGate } from "@/components/auth/OwnerAuthGate/OwnerAuthGate";
-import { PlusRegistrationWizard } from "./PlusRegistrationWizard";
+import { RegistrationFlow } from "./RegistrationFlow";
 import styles from "./plus-wizard.module.css";
 
 export const metadata: Metadata = { title: "הרשמה לחבילת Plus | נווה שמיר", robots: { index: false, follow: false } };
@@ -28,6 +27,7 @@ export default async function RegisterPlusPage({ searchParams }: RegisterPlusPag
   // only mounted once there is a session, so nothing a visitor typed can be lost to a login redirect;
   // the plan and billing interval live in this URL and ride through login as the return path.
   const sessionUser = await getSupabaseSessionUser();
+
   return (
     <>
       <ConnectedHeader />
@@ -53,39 +53,34 @@ export default async function RegisterPlusPage({ searchParams }: RegisterPlusPag
             <p className={styles.description}>
               מלאו את פרטי העסק, הוסיפו תמונות ושירותים, ואנחנו נכין את העמוד שלכם לאישור ולפרסום.
             </p>
-            <p className={styles.priceLine}>30 ימי ניסיון חינם, במסלול החודשי ובמסלול השנתי. מחירי Plus הם מחירי השקה.</p>
+            <p className={styles.priceLine}>30 ימי ניסיון חינם. מחירי Plus הם מחירי השקה.</p>
             <p className={styles.disclaimer}>בשלב זה לא נדרש אמצעי תשלום ולא מתבצע חיוב. הניסיון מתחיל רק לאחר אישור העסק והפעלה מפורשת.</p>
           </div>
 
-          <div className={styles.layout}>
-            {sessionUser ? (
-              <PlusRegistrationWizard planId="plus" initialBillingInterval={initialBillingInterval} billingIntervalFromUrl={isBillingInterval(interval)} />
-            ) : (
+          <RegistrationFlow
+            planId="plus"
+            planName="Plus"
+            pricing={pricing}
+            initialBillingInterval={initialBillingInterval}
+            billingIntervalFromUrl={isBillingInterval(interval)}
+            authenticated={Boolean(sessionUser)}
+            gate={
               <OwnerAuthGate
                 planName="Plus"
                 billingIntervalLabel={initialBillingInterval === "yearly" ? "מסלול שנתי" : "מסלול חודשי"}
                 returnTo={registrationReturnPath("plus", initialBillingInterval)}
               />
-            )}
-
-            <aside className={styles.summaryCard} aria-label="סיכום חבילת Plus">
-              <p className={styles.summaryPlanName}>Plus</p>
-              <PlanPriceBlock monthly={pricing.monthly} yearly={pricing.yearly} />
-              <p className={styles.summaryBillingNote}>30 ימי ניסיון חינם בשני המסלולים</p>
-              <ul className={styles.summaryFeatureList}>
-                <li>עמוד עסק מלא</li>
-                <li>גלריית תמונות</li>
-                <li>רשימת שירותים</li>
-                <li>שעות פעילות</li>
-                <li>כרטיס עסק לחיץ</li>
-                <li>דרכי יצירת קשר</li>
-                <li>עריכה פעם אחת בכל חודש קלנדרי (שעון ישראל)</li>
-              </ul>
-              <Link href="/business/plans" className={styles.summaryBackLink}>
-                חזרה להשוואת החבילות
-              </Link>
-            </aside>
-          </div>
+            }
+            features={[
+              "עמוד עסק מלא",
+              "גלריית תמונות",
+              "רשימת שירותים",
+              "שעות פעילות",
+              "כרטיס עסק לחיץ",
+              "דרכי יצירת קשר",
+              "עריכה פעם אחת בכל חודש קלנדרי (שעון ישראל)",
+            ]}
+          />
         </div>
       </main>
       <Footer settings={defaultFooterSettings} />
