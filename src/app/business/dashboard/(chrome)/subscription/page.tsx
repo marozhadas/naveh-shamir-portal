@@ -5,6 +5,10 @@ import { getSubscriptionSummary } from "@/domain/get-subscription-summary";
 import { getBusinessPlan } from "@/data/business-plans";
 import { BILLING_INTERVAL_LABEL, LAUNCH_PRICE_LABEL, formatPriceWithInterval } from "@/data/subscription-pricing";
 import { isSupabaseBusinessId } from "@/utils/business-id";
+import { getPayMeConfig } from "@/lib/payme/config";
+import { getOwnedPaymentMethodMask } from "@/repositories/supabase-subscription-service";
+import { CancelPayMeSubscriptionButton } from "@/components/business-dashboard/CancelPayMeSubscriptionButton/CancelPayMeSubscriptionButton";
+import { PaymentMethodTrialForm } from "@/components/business-dashboard/PaymentMethodTrialForm/PaymentMethodTrialForm";
 import { resolveDashboardViewer } from "../../resolve-dashboard-viewer";
 import styles from "./subscription.module.css";
 
@@ -23,8 +27,13 @@ export default async function BusinessSubscriptionPage() {
 
   const { subscription, business } = view;
   const isRealSubscription = isSupabaseBusinessId(business.id);
-  const summary = getSubscriptionSummary({ business, subscription, access: view.access, selfEditAccess: view.selfEditAccess, now: new Date() });
+  const renderNow = new Date();
+  const summary = getSubscriptionSummary({ business, subscription, access: view.access, selfEditAccess: view.selfEditAccess, now: renderNow });
   const plan = getBusinessPlan(summary.planId === "basic" ? "free" : summary.planId);
+  const payMeConfig = isRealSubscription ? getPayMeConfig() : null;
+  const payment = isRealSubscription && payMeConfig ? await getOwnedPaymentMethodMask(business.id, view.viewer.id) : null;
+  const graceDaysLeft =
+    summary.gracePeriodEndsAt !== null ? Math.max(0, Math.ceil((new Date(summary.gracePeriodEndsAt).getTime() - renderNow.getTime()) / (24 * 60 * 60 * 1000))) : null;
 
   return (
     <div className={styles.wrap}>
@@ -98,6 +107,46 @@ export default async function BusinessSubscriptionPage() {
         </div>
       </dl>
       <p className={styles.notice}>{summary.editLimit.detail}</p>
+
+      {payMeConfig && summary.planId !== "basic" && (
+        <section className={styles.planCard} aria-labelledby="billing-heading">
+          <h2 id="billing-heading" className={styles.statusHeading}>
+            אמצעי תשלום וחיוב
+          </h2>
+          {payment?.hasPaymentMethod ? (
+            <p className={styles.statusDescription}>אמצעי תשלום מוגדר{payment.cardMask ? ` (כרטיס ${payment.cardMask.slice(-4)})` : ""}. הכרטיס נשמר אצל PayMe בלבד.</p>
+          ) : (
+            <p className={styles.statusDescription}>טרם הוגדר אמצעי תשלום. הוא יידרש בהפעלת תקופת הניסיון.</p>
+          )}
+          {subscription?.paymentProvider === "payme" && (summary.stage === "trialing" || summary.stage === "active" || summary.stage === "grace-period") && <CancelPayMeSubscriptionButton />}
+          {summary.stage === "grace-period" && graceDaysLeft !== null && (
+            <p className={styles.notice} role="alert">
+              החיוב האחרון נכשל. העסק ממשיך להיות פעיל עוד {graceDaysLeft} ימים (עד {summary.gracePeriodEndsAt ? formatDate(summary.gracePeriodEndsAt) : ""}). PayMe ינסה לחייב שוב — אם הבעיה לא תיפתר, ההטבות יופסקו בסיום תקופת החסד.
+            </p>
+          )}
+          {summary.stage === "past-due" && (
+            <p className={styles.notice} role="alert">
+              החיוב נכשל ותקופת החסד הסתיימה, ולכן העמוד אינו מוצג כרגע. התוכן שמור. פנו אלינו כדי לעדכן אמצעי תשלום.
+            </p>
+          )}
+        </section>
+      )}
+
+      {payMeConfig && summary.stage === "awaiting-trial-start" && (
+        <section className={styles.planCard} aria-labelledby="start-trial-heading">
+          <h2 id="start-trial-heading" className={styles.statusHeading}>
+            הפעלת תקופת הניסיון
+          </h2>
+          <PaymentMethodTrialForm
+            hostedFieldsKey={payMeConfig.hostedFieldsKey}
+            testMode={payMeConfig.env === "sandbox"}
+            trialDays={getTrialDaysForOffer(business.offerCode)}
+            planName={summary.planName}
+            priceLabel={summary.price ? formatPriceWithInterval(summary.price.amountIls, summary.price.interval) : ""}
+            amountValue={summary.price ? summary.price.amountIls.toFixed(2) : "0.00"}
+          />
+        </section>
+      )}
 
       {summary.planId !== "basic" && summary.price?.source === "current-offer" && (
         <p className={styles.notice}>

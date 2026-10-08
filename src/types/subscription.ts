@@ -34,6 +34,14 @@ export type BusinessSubscriptionRow = {
   /** Snapshot taken when the trial was activated — null on rows created before offers existed (those were all standard 30-day trials). */
   offer_code: OfferCode | null;
   trial_days: number | null;
+  /** PayMe (the only provider) identifiers + billing state — null until a payment method was added and a PayMe subscription exists. */
+  payment_provider: "payme" | null;
+  provider_subscription_id: string | null;
+  provider_last_transaction_id: string | null;
+  last_payment_succeeded_at: string | null;
+  last_payment_failed_at: string | null;
+  next_billing_at: string | null;
+  payment_failure_reason: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -59,9 +67,14 @@ export type BusinessSubscription = {
   trialDays?: number;
   paymentFailedAt?: string;
   gracePeriodEndsAt?: string;
-  paymentProvider?: "mock" | "stripe" | "other";
+  paymentProvider?: "mock" | "stripe" | "payme" | "other";
   providerCustomerId?: string;
   providerSubscriptionId?: string;
+  providerLastTransactionId?: string;
+  lastPaymentSucceededAt?: string;
+  lastPaymentFailedAt?: string;
+  nextBillingAt?: string;
+  paymentFailureReason?: string;
   createdAt: string;
   updatedAt: string;
 };

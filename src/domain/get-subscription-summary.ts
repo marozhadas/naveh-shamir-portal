@@ -187,7 +187,13 @@ export function getSubscriptionSummary(params: {
     price,
     trial: subscription?.trialStartedAt && subscription.trialEndsAt ? { startedAt: subscription.trialStartedAt, endsAt: subscription.trialEndsAt } : null,
     gracePeriodEndsAt: stage === "grace-period" ? (subscription?.gracePeriodEndsAt ?? null) : null,
-    nextBillingDate: BILLING_PROVIDER_CONNECTED && subscription?.status === "active" ? (subscription.currentPeriodEndsAt ?? null) : null,
+    // Only a REAL date: PayMe-managed subscriptions carry the next charge date PayMe itself reported; nothing is ever guessed.
+    nextBillingDate:
+      subscription?.paymentProvider === "payme"
+        ? (subscription.nextBillingAt ?? null)
+        : BILLING_PROVIDER_CONNECTED && subscription?.status === "active"
+          ? (subscription.currentPeriodEndsAt ?? null)
+          : null,
     editLimit: describeEditLimit(active, selected, selfEditAccess),
     canStartTrial: stage === "awaiting-trial-start",
   };

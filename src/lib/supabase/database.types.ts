@@ -1,3 +1,4 @@
+import type { BillingEventRow, BillingPaymentMethodRow, BillingTransactionRow } from "@/types/billing";
 import type { PublicBusinessRow } from "./public-columns";
 import type { BusinessRegistrationRow } from "@/types/business-registration";
 import type {
@@ -22,7 +23,17 @@ import type { BusinessReviewRow } from "@/types/business-review";
 export type BusinessEventLogRow = {
   id: string;
   business_registration_id: string | null;
-  event_type: "ownership_claimed" | "trial_started" | "trial_expiring_soon" | "trial_expired" | "subscription_activated";
+  event_type:
+    | "ownership_claimed"
+    | "trial_started"
+    | "trial_expiring_soon"
+    | "trial_expired"
+    | "subscription_activated"
+    | "payment_method_added"
+    | "payment_failed"
+    | "payment_recovered"
+    | "grace_period_ended"
+    | "subscription_canceled";
   actor_id: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
@@ -162,7 +173,7 @@ export type Database = {
         Row: BusinessSubscriptionRow;
         Insert: Omit<
           BusinessSubscriptionRow,
-          "id" | "created_at" | "updated_at" | "current_period_started_at" | "current_period_ends_at" | "canceled_at" | "billing_interval" | "price_amount_ils" | "price_version" | "is_launch_price" | "payment_failed_at" | "grace_period_ends_at" | "offer_code" | "trial_days"
+          "id" | "created_at" | "updated_at" | "current_period_started_at" | "current_period_ends_at" | "canceled_at" | "billing_interval" | "price_amount_ils" | "price_version" | "is_launch_price" | "payment_failed_at" | "grace_period_ends_at" | "offer_code" | "trial_days" | "payment_provider" | "provider_subscription_id" | "provider_last_transaction_id" | "last_payment_succeeded_at" | "last_payment_failed_at" | "next_billing_at" | "payment_failure_reason"
         > & {
           billing_interval?: BusinessSubscriptionRow["billing_interval"];
           price_amount_ils?: number | null;
@@ -170,6 +181,13 @@ export type Database = {
           is_launch_price?: boolean | null;
           offer_code?: BusinessSubscriptionRow["offer_code"];
           trial_days?: number | null;
+          payment_provider?: BusinessSubscriptionRow["payment_provider"];
+          provider_subscription_id?: string | null;
+          provider_last_transaction_id?: string | null;
+          last_payment_succeeded_at?: string | null;
+          last_payment_failed_at?: string | null;
+          next_billing_at?: string | null;
+          payment_failure_reason?: string | null;
           payment_failed_at?: string | null;
           grace_period_ends_at?: string | null;
           id?: string;
@@ -310,6 +328,43 @@ export type Database = {
         Row: BusinessSlugRedirectRow;
         Insert: Omit<BusinessSlugRedirectRow, "id" | "created_at"> & { id?: string; created_at?: string };
         Update: Partial<BusinessSlugRedirectRow>;
+        Relationships: [];
+      };
+      billing_payment_methods: {
+        Row: BillingPaymentMethodRow;
+        Insert: Omit<BillingPaymentMethodRow, "id" | "created_at" | "updated_at" | "provider"> & { id?: string; updated_at?: string; provider?: BillingPaymentMethodRow["provider"] };
+        Update: Partial<BillingPaymentMethodRow>;
+        Relationships: [];
+      };
+      billing_events: {
+        Row: BillingEventRow;
+        Insert: Omit<BillingEventRow, "id" | "received_at" | "processed_at" | "summary" | "error" | "business_registration_id" | "subscription_id" | "provider_subscription_id"> & {
+          id?: string;
+          summary?: Record<string, unknown>;
+          error?: string | null;
+          business_registration_id?: string | null;
+          subscription_id?: string | null;
+          provider_subscription_id?: string | null;
+          processed_at?: string | null;
+        };
+        Update: Partial<BillingEventRow>;
+        Relationships: [];
+      };
+      billing_transactions: {
+        Row: BillingTransactionRow;
+        Insert: Omit<BillingTransactionRow, "id" | "created_at" | "currency" | "business_registration_id" | "business_name" | "subscription_id" | "plan_id" | "billing_interval" | "offer_code" | "failure_reason" | "provider_status"> & {
+          id?: string;
+          currency?: string;
+          business_registration_id?: string | null;
+          business_name?: string | null;
+          subscription_id?: string | null;
+          plan_id?: string | null;
+          billing_interval?: BillingTransactionRow["billing_interval"];
+          offer_code?: string | null;
+          failure_reason?: string | null;
+          provider_status?: string | null;
+        };
+        Update: Partial<BillingTransactionRow>;
         Relationships: [];
       };
       community_news: {

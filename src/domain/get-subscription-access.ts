@@ -2,6 +2,9 @@ import type { BusinessSubscription, SubscriptionAccess } from "@/types/subscript
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+/** A PayMe-managed trial charges at its end and PayMe's callback flips the status a moment later — access is not cut during that short sync window (the hourly DB job uses the same 3 days). */
+export const BILLING_SYNC_WINDOW_DAYS = 3;
+
 function daysRemaining(until: string, now: Date): number {
   return Math.max(0, Math.ceil((new Date(until).getTime() - now.getTime()) / MS_PER_DAY));
 }
@@ -24,6 +27,21 @@ export function getSubscriptionAccess(subscription: BusinessSubscription, now: D
         canAppearInArchive: true,
         canManageSubscription: true,
         daysRemainingInTrial: remaining,
+        reason: "trial-active",
+      };
+    }
+    const awaitingFirstCharge =
+      subscription.paymentProvider === "payme" &&
+      Boolean(subscription.providerSubscriptionId) &&
+      now.getTime() - new Date(subscription.trialEndsAt).getTime() < BILLING_SYNC_WINDOW_DAYS * MS_PER_DAY;
+    if (awaitingFirstCharge) {
+      return {
+        canEdit: true,
+        canPreview: true,
+        canPublish: true,
+        canAppearInArchive: true,
+        canManageSubscription: true,
+        daysRemainingInTrial: 0,
         reason: "trial-active",
       };
     }

@@ -11,6 +11,9 @@ import { subscriptionRepository } from "@/repositories/mock-subscription-reposit
 import { businessRepository } from "@/repositories/mock-business-repository";
 import { getBusinessPlan } from "@/data/business-plans";
 import { getTrialDaysForOffer } from "@/data/subscription-offers";
+import { getPayMeConfig } from "@/lib/payme/config";
+import { isSupabaseBusinessId } from "@/utils/business-id";
+import { PaymentMethodTrialForm } from "@/components/business-dashboard/PaymentMethodTrialForm/PaymentMethodTrialForm";
 import { LAUNCH_PRICE_LABEL, formatPriceWithInterval, getCurrentPrice, isBillingInterval } from "@/data/subscription-pricing";
 import type { TrialEligibility } from "@/types/trial";
 import styles from "./trial.module.css";
@@ -51,6 +54,9 @@ export default async function BusinessTrialPage() {
   const plan = getBusinessPlan(planTier);
   const interval = isBillingInterval(business?.selectedBillingInterval) ? business.selectedBillingInterval : "monthly";
   const offer = getCurrentPrice(planTier, interval);
+  // With PayMe configured, a real business starts its trial WITH a payment method (card entered in PayMe Hosted
+  // Fields); without it, the previous card-less trial remains.
+  const payMeConfig = businessId && isSupabaseBusinessId(businessId) ? getPayMeConfig() : null;
   const priceLine = `המסלול שבחרתם: ${plan.name}, ${formatPriceWithInterval(offer.amountIls, interval)}${offer.isLaunchPrice ? ` (${LAUNCH_PRICE_LABEL})` : ""}. עדיין לא מתבצע חיוב, וסליקה טרם חוברה.`;
 
   return (
@@ -61,7 +67,7 @@ export default async function BusinessTrialPage() {
         <div className={styles.container}>
           <h1 className={styles.title}>מפעילים את עמוד העסק המלא</h1>
           <p className={styles.subtitle}>
-            {trialDays} ימי ניסיון להתנסות מלאה בעמוד עסק בפורטל נווה שמיר, ללא כרטיס אשראי.
+            {trialDays} ימי ניסיון להתנסות מלאה בעמוד עסק בפורטל נווה שמיר, ללא חיוב במהלך הניסיון.
           </p>
 
           <p className={styles.featuresHeading}>מה כלול</p>
@@ -83,12 +89,25 @@ export default async function BusinessTrialPage() {
               לאחר תום הניסיון, אם לא הופעל מנוי בתשלום — עמוד העסק יעבור למצב מושהה: התוכן יישמר במלואו, אך
               העמוד לא יוצג לציבור עד להפעלת מנוי. {priceLine}
             </p>
-            <p className={styles.billingDetail}>בשלב זה לא נדרש אמצעי תשלום להפעלת הניסיון.</p>
+            <p className={styles.billingDetail}>
+              {payMeConfig ? "להפעלת הניסיון נדרש אמצעי תשלום. לא מתבצע חיוב במהלך תקופת הניסיון." : "בשלב זה לא נדרש אמצעי תשלום להפעלת הניסיון."}
+            </p>
           </div>
 
           <div className={styles.actionBox}>
             {eligibility.eligible ? (
-              <TrialStartForm trialDays={trialDays} />
+              payMeConfig ? (
+                <PaymentMethodTrialForm
+                  hostedFieldsKey={payMeConfig.hostedFieldsKey}
+                  testMode={payMeConfig.env === "sandbox"}
+                  trialDays={trialDays}
+                  planName={plan.name}
+                  priceLabel={formatPriceWithInterval(offer.amountIls, interval)}
+                  amountValue={offer.amountIls.toFixed(2)}
+                />
+              ) : (
+                <TrialStartForm trialDays={trialDays} />
+              )
             ) : (
               <p className={styles.notice} role="status">
                 {ELIGIBILITY_MESSAGE[eligibility.reason] ?? "לא ניתן להתחיל ניסיון כרגע."}

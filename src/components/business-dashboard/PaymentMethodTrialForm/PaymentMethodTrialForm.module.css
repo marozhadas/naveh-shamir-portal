@@ -1,0 +1,97 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.lead {
+  margin: 0;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
+  color: var(--color-text-primary);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field label,
+.fieldLabel {
+  font-size: var(--fs-body-sm);
+  font-weight: var(--fw-demibold);
+  color: var(--color-text-primary);
+}
+
+.field input {
+  font-family: var(--font-family-base);
+  font-size: var(--fs-body);
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  min-width: 0;
+}
+
+.cardBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--slate-50, #f8fafc);
+}
+
+.cardRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+/* PayMe injects its own iframe here; the box only gives it a consistent size/frame. */
+.hosted {
+  min-height: 44px;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  direction: ltr;
+}
+
+.secure {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--color-text-secondary);
+}
+
+.consent {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
+}
+
+.consent input {
+  margin-top: 4px;
+}
+
+.error {
+  margin: 0;
+  color: var(--color-error, #b3261e);
+  font-size: var(--fs-body-sm);
+}
+
+@media (max-width: 520px) {
+  .grid,
+  .cardRow {
+    grid-template-columns: 1fr;
+  }
+}

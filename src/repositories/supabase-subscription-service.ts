@@ -7,6 +7,10 @@ import type { BusinessSubscription } from "@/types/subscription";
 import type { TrialEligibility } from "@/types/trial";
 import { createPriceSnapshot, isBillingInterval } from "@/data/subscription-pricing";
 import { computeTrialWindow } from "@/data/subscription-offers";
+import { getSiteOrigin } from "@/utils/site-origin";
+import { buildPayMeCallbackUrl, getPayMeConfig, isPayMeConfigured } from "@/lib/payme/config";
+import { cancelPayMeSubscription, generatePayMeSubscription, parsePayMeDateTime } from "@/lib/payme/client";
+import { agorotFromIls, computeSubscriptionStartDate, formatPayMeDate, paymeIterationType } from "@/lib/payme/payme-helpers";
 
 /**
  * The real, Supabase-backed half of SubscriptionRepository — everything here operates on
@@ -71,7 +75,7 @@ export async function checkRealTrialEligibility(businessId: string, ownerId: str
 
 export type StartRealTrialResult =
   | { success: true; subscription: BusinessSubscription }
-  | { success: false; reason: "not-eligible" | "already-exists" | "unknown-error" };
+  | { success: false; reason: "not-eligible" | "already-exists" | "payment-method-required" | "unknown-error" };
 
 /**
  * Atomic in the sense that matters here: the unique constraint on business_registration_id (see
@@ -82,6 +86,9 @@ export type StartRealTrialResult =
  */
 export async function startRealBusinessTrial(businessId: string, ownerId: string): Promise<StartRealTrialResult> {
   if (!isSupabaseAdminConfigured()) return { success: false, reason: "unknown-error" };
+  // Once PayMe is configured a trial is only ever started WITH a payment method (see
+  // startRealBusinessTrialWithPaymentMethod) — the card-less path is closed, also against crafted requests.
+  if (isPayMeConfigured()) return { success: false, reason: "payment-method-required" };
 
   const eligibility = await checkRealTrialEligibility(businessId, ownerId);
   if (!eligibility.eligible) {
@@ -167,4 +174,184 @@ export async function expireDueRealTrials(): Promise<number> {
     return 0;
   }
   return data ?? 0;
+}
+
+export type StartTrialWithPaymentMethodResult =
+  | { success: true; subscription: BusinessSubscription }
+  | { success: false; reason: "not-eligible" | "already-exists" | "payme-not-configured" | "payme-rejected" | "unknown-error" };
+
+/**
+ * The PayMe-backed way to start a trial (used instead of startRealBusinessTrial once PayMe is configured):
+ * approved business → payment method tokenized in PayMe Hosted Fields (the card never touches our servers) →
+ * token reaches us → PayMe subscription created with its FIRST charge dated exactly at the trial end →
+ * trial row written with the full snapshot (offer, trial days, price, interval, PayMe ids).
+ *
+ * Order matters and is compensated: the PayMe subscription is created BEFORE the local row, and if the local
+ * insert then loses a race (unique constraint — a double click), the PayMe subscription is cancelled again,
+ * so a business can never end up charged without a trial row or with two PayMe subscriptions. Trial length
+ * comes only from the offer stored on the business (server-side), exactly as in startRealBusinessTrial.
+ * Nothing here ever logs or returns the token.
+ */
+export async function startRealBusinessTrialWithPaymentMethod(
+  businessId: string,
+  ownerId: string,
+  paymentToken: string,
+  cardMask: string | null,
+): Promise<StartTrialWithPaymentMethodResult> {
+  const config = getPayMeConfig();
+  if (!config || !isSupabaseAdminConfigured()) return { success: false, reason: "payme-not-configured" };
+
+  const eligibility = await checkRealTrialEligibility(businessId, ownerId);
+  if (!eligibility.eligible) {
+    return { success: false, reason: eligibility.reason === "trial-already-used" || eligibility.reason === "active-subscription" ? "already-exists" : "not-eligible" };
+  }
+
+  const admin = createAdminSupabaseClient();
+  const registrationId = toRegistrationId(businessId);
+
+  const { data: registration } = await admin
+    .from("business_registrations")
+    .select("plan_tier, selected_billing_interval, offer_code, business_name")
+    .eq("id", registrationId)
+    .eq("owner_id", ownerId)
+    .maybeSingle();
+  if (!registration) return { success: false, reason: "not-eligible" };
+
+  const planId: "plus" | "premium" = registration.plan_tier === "premium" ? "premium" : "plus";
+  const interval = isBillingInterval(registration.selected_billing_interval) ? registration.selected_billing_interval : "monthly";
+  const snapshot = createPriceSnapshot(planId, interval);
+  const trial = computeTrialWindow(registration.offer_code, new Date());
+
+  // 1) Keep the reusable token (server-only table; never the card itself).
+  const { error: methodError } = await admin.from("billing_payment_methods").upsert(
+    { business_registration_id: registrationId, owner_id: ownerId, provider: "payme", provider_token: paymentToken, card_mask: cardMask, updated_at: new Date().toISOString() },
+    { onConflict: "business_registration_id" },
+  );
+  if (methodError) return { success: false, reason: "unknown-error" };
+
+  // 2) Create the PayMe subscription — first charge exactly when the trial ends.
+  let created;
+  try {
+    created = await generatePayMeSubscription({
+      buyerKey: paymentToken,
+      merchantSubscriptionId: registrationId,
+      priceAgorot: agorotFromIls(snapshot.amountIls),
+      iterationType: paymeIterationType(interval),
+      startDate: formatPayMeDate(computeSubscriptionStartDate(new Date(trial.trialEndsAt), interval)),
+      description: `${planId === "premium" ? "Premium" : "Plus"} — ${interval === "monthly" ? "מנוי חודשי" : "מנוי שנתי"} | פורטל נווה שמיר`,
+      callbackUrl: buildPayMeCallbackUrl(getSiteOrigin(), config.webhookSecret),
+    });
+  } catch (error) {
+    console.error("[startRealBusinessTrialWithPaymentMethod] PayMe subscription failed:", error instanceof Error ? error.message : "unknown");
+    await admin.from("billing_payment_methods").delete().eq("business_registration_id", registrationId);
+    return { success: false, reason: "payme-rejected" };
+  }
+
+  // 3) The local trial row, with the full snapshot.
+  const { data, error } = await admin
+    .from("business_subscriptions")
+    .insert({
+      business_registration_id: registrationId,
+      owner_id: ownerId,
+      plan_id: planId,
+      status: "trialing",
+      trial_started_at: trial.trialStartedAt,
+      trial_ends_at: trial.trialEndsAt,
+      offer_code: trial.offerCode,
+      trial_days: trial.trialDays,
+      cancel_at_period_end: false,
+      billing_interval: snapshot.billingInterval,
+      price_amount_ils: snapshot.amountIls,
+      price_version: snapshot.priceVersion,
+      is_launch_price: snapshot.isLaunchPrice,
+      payment_provider: "payme",
+      provider_subscription_id: created.subPaymeId,
+      next_billing_at: parsePayMeDateTime(created.nextDate)?.toISOString() ?? null,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    // Lost a race or failed to write — undo the PayMe side so nobody is ever charged without a trial row.
+    try {
+      await cancelPayMeSubscription(created.subPaymeId);
+    } catch (cancelError) {
+      console.error("[startRealBusinessTrialWithPaymentMethod] could not cancel orphaned PayMe subscription:", cancelError instanceof Error ? cancelError.message : "unknown");
+    }
+    if (error.code === "23505") return { success: false, reason: "already-exists" };
+    console.error("[startRealBusinessTrialWithPaymentMethod] insert failed:", error.code, error.message);
+    return { success: false, reason: "unknown-error" };
+  }
+
+  await admin.from("business_registrations").update({ active_plan_id: planId }).eq("id", registrationId);
+  await admin.from("business_events_log").insert([
+    { business_registration_id: registrationId, event_type: "payment_method_added", actor_id: ownerId, metadata: { provider: "payme" } },
+    {
+      business_registration_id: registrationId,
+      event_type: "trial_started",
+      actor_id: ownerId,
+      metadata: { planId, billingInterval: snapshot.billingInterval, priceVersion: snapshot.priceVersion, offerCode: trial.offerCode, trialDays: trial.trialDays, provider: "payme" },
+    },
+  ]);
+
+  return { success: true, subscription: mapSubscriptionRowToBusinessSubscription(data) };
+}
+
+/** The masked card (never the token) of a business's payment method, for the owner's own "המנוי שלי" screen. Owner-checked. */
+export async function getOwnedPaymentMethodMask(businessId: string, ownerId: string): Promise<{ hasPaymentMethod: boolean; cardMask: string | null }> {
+  if (!isSupabaseAdminConfigured()) return { hasPaymentMethod: false, cardMask: null };
+  const admin = createAdminSupabaseClient();
+  const { data } = await admin
+    .from("billing_payment_methods")
+    .select("card_mask")
+    .eq("business_registration_id", toRegistrationId(businessId))
+    .eq("owner_id", ownerId)
+    .maybeSingle();
+  return { hasPaymentMethod: Boolean(data), cardMask: data?.card_mask ?? null };
+}
+
+export type CancelPayMeSubscriptionResult = { success: true } | { success: false; reason: "not-found" | "already-ended" | "payme-error" };
+
+/**
+ * Owner-initiated cancel of a PayMe-managed subscription: PayMe's cancel-subscription is called first, and only
+ * after PayMe confirms does the local row change (canceled, cancel_at_period_end, access kept through the trial /
+ * the already-paid period — nothing is deleted and nothing is refunded automatically). The owner filter makes a
+ * foreign business id a no-op.
+ */
+export async function cancelOwnedPayMeSubscription(businessId: string, ownerId: string): Promise<CancelPayMeSubscriptionResult> {
+  if (!isSupabaseAdminConfigured()) return { success: false, reason: "payme-error" };
+  const admin = createAdminSupabaseClient();
+  const { data: sub } = await admin
+    .from("business_subscriptions")
+    .select("*")
+    .eq("business_registration_id", toRegistrationId(businessId))
+    .eq("owner_id", ownerId)
+    .eq("payment_provider", "payme")
+    .maybeSingle();
+  if (!sub || !sub.provider_subscription_id) return { success: false, reason: "not-found" };
+  if (sub.status === "canceled" || sub.status === "expired") return { success: false, reason: "already-ended" };
+
+  try {
+    await cancelPayMeSubscription(sub.provider_subscription_id);
+  } catch (error) {
+    console.error("[cancelOwnedPayMeSubscription] PayMe cancel failed:", error instanceof Error ? error.message : "unknown");
+    return { success: false, reason: "payme-error" };
+  }
+
+  const nowIso = new Date().toISOString();
+  let accessUntil: string | null = sub.current_period_ends_at;
+  if (sub.status === "trialing") accessUntil = sub.trial_ends_at;
+  const { error } = await admin
+    .from("business_subscriptions")
+    .update({ status: "canceled", cancel_at_period_end: true, canceled_at: nowIso, current_period_ends_at: accessUntil })
+    .eq("id", sub.id);
+  if (error) return { success: false, reason: "payme-error" };
+
+  await admin.from("business_events_log").insert({
+    business_registration_id: sub.business_registration_id,
+    event_type: "subscription_canceled",
+    actor_id: ownerId,
+    metadata: { provider: "payme", initiatedBy: "owner" },
+  });
+  return { success: true };
 }

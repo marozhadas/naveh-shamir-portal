@@ -20,6 +20,21 @@ function makeSubscription(overrides: Partial<BusinessSubscription>): BusinessSub
   };
 }
 
+describe("getSubscriptionAccess — PayMe billing sync window", () => {
+  const payme = { paymentProvider: "payme" as const, providerSubscriptionId: "SUB-1" };
+
+  it("a PayMe-managed trial keeps access for 3 days after its end while PayMe's first charge is confirmed", () => {
+    const access = getSubscriptionAccess(makeSubscription({ ...payme, status: "trialing", trialEndsAt: "2026-06-14T00:00:00.000Z" }), NOW);
+    expect(access.reason).toBe("trial-active");
+    expect(access.canPublish).toBe(true);
+  });
+
+  it("…but not beyond the 3-day window, and never for a subscription without a PayMe subscription", () => {
+    expect(getSubscriptionAccess(makeSubscription({ ...payme, status: "trialing", trialEndsAt: "2026-06-10T00:00:00.000Z" }), NOW).reason).toBe("trial-expired");
+    expect(getSubscriptionAccess(makeSubscription({ status: "trialing", trialEndsAt: "2026-06-14T00:00:00.000Z" }), NOW).reason).toBe("trial-expired");
+  });
+});
+
 describe("getSubscriptionAccess", () => {
   it("trialing with time remaining: full access, days remaining computed", () => {
     const access = getSubscriptionAccess(makeSubscription({ status: "trialing" }), NOW);
