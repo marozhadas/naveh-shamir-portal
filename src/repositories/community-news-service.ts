@@ -1,5 +1,6 @@
 import "server-only";
 import { createPublicSupabaseClient } from "@/lib/supabase/public-client";
+import { PUBLIC_NEWS_COLUMNS, toPublicNewsRow } from "@/lib/supabase/public-columns";
 import type { CommunityNewsRow } from "@/types/community-news";
 
 /** Every published article, newest first — RLS already restricts anon to status="published" (see the create_community_news_table migration), so the .eq() here is belt-and-suspenders. */
@@ -7,14 +8,14 @@ export async function getPublishedNews(): Promise<CommunityNewsRow[]> {
   const supabase = createPublicSupabaseClient();
   const { data, error } = await supabase
     .from("community_news")
-    .select("*")
+    .select(PUBLIC_NEWS_COLUMNS)
     .eq("status", "published")
     .order("published_at", { ascending: false });
   if (error) {
     console.error("[getPublishedNews] failed:", error.message);
     return [];
   }
-  return data ?? [];
+  return (data ?? []).map(toPublicNewsRow);
 }
 
 /**
@@ -24,10 +25,10 @@ export async function getPublishedNews(): Promise<CommunityNewsRow[]> {
  */
 export async function getNewsBySlug(slug: string): Promise<CommunityNewsRow | null> {
   const supabase = createPublicSupabaseClient();
-  const { data, error } = await supabase.from("community_news").select("*").eq("slug", slug).maybeSingle();
+  const { data, error } = await supabase.from("community_news").select(PUBLIC_NEWS_COLUMNS).eq("slug", slug).maybeSingle();
   if (error) {
     console.error("[getNewsBySlug] failed:", error.message);
     return null;
   }
-  return data;
+  return data ? toPublicNewsRow(data) : null;
 }

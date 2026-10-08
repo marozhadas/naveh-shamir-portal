@@ -8,7 +8,7 @@ import { MOVABLE_SECTION_IDS } from "@/editor/schemas/page-editor.schema";
 import type { HomeRegionId, HomeSectionId } from "@/editor/types/editor.types";
 import type { CommunityEventRow } from "@/types/community-event";
 import type { CommunityNewsRow } from "@/types/community-news";
-import type { BusinessRegistrationRow } from "@/types/business-registration";
+import type { PublicBusinessRow } from "@/lib/supabase/public-columns";
 import { ConnectedQuickLinks } from "./ConnectedQuickLinks";
 import { ConnectedFeaturedBusinesses } from "./ConnectedFeaturedBusinesses";
 import { ConnectedUpcomingEvents } from "./ConnectedUpcomingEvents";
@@ -28,7 +28,7 @@ type ConnectedMovableSectionsProps = {
   /** Server-fetched real published community-news articles (page.tsx), newest first — special-cased through to ConnectedUpcomingEvents alongside upcomingEvents (that section now shows both). */
   communityNews?: CommunityNewsRow[];
   /** Server-fetched real admin-featured businesses (page.tsx), paired with each one's public-profile access — special-cased through to ConnectedFeaturedBusinesses only. */
-  featuredBusinesses?: { registration: BusinessRegistrationRow; canOpenProfile: boolean }[];
+  featuredBusinesses?: { registration: PublicBusinessRow; canOpenProfile: boolean }[];
 };
 
 /**

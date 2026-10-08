@@ -1,6 +1,7 @@
 import { ALL_BUSINESSES } from "@/data/all-businesses";
 import { getRelatedBusinesses } from "@/utils/get-related-businesses";
 import { createPublicSupabaseClient } from "@/lib/supabase/public-client";
+import { PUBLIC_BUSINESS_COLUMNS, type PublicBusinessRow } from "@/lib/supabase/public-columns";
 import { createAdminSupabaseClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin-client";
 import { mapRegistrationToBusiness } from "@/utils/map-registration-to-business";
 import { isSupabaseBusinessId, toRegistrationId } from "@/utils/business-id";
@@ -23,9 +24,9 @@ type EditableBusinessFields = Pick<
 async function getApprovedSupabaseBusinesses(): Promise<Business[]> {
   try {
     const supabase = createPublicSupabaseClient();
-    const { data, error } = await supabase.from("business_registrations").select("*").eq("status", "approved");
+    const { data, error } = await supabase.from("public_business_listings").select(PUBLIC_BUSINESS_COLUMNS);
     if (error || !data) return [];
-    return data.map(mapRegistrationToBusiness);
+    return (data as PublicBusinessRow[]).map(mapRegistrationToBusiness);
   } catch {
     return [];
   }

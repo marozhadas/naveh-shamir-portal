@@ -56,7 +56,7 @@ function makeRow(overrides: Partial<BusinessRegistrationRow> = {}): BusinessRegi
 
 describe("mapBusinessToTeaserCard", () => {
   it("maps core fields directly", () => {
-    const card = mapBusinessToTeaserCard(makeRow(), true);
+    const card = mapBusinessToTeaserCard(makeRow({ public_phone: "+972500000101" }), true);
     expect(card.name).toBe("סטודיו נועה");
     expect(card.slug).toBe("studio-noa");
     expect(card.phone).toBe("tel:+972500000101");
@@ -72,18 +72,19 @@ describe("mapBusinessToTeaserCard", () => {
   // used there (only ever true for Plus/Premium), so a basic-tier featured business gets a phone
   // number on its homepage card but never a WhatsApp button, even when it has a number on file.
   it("omits whatsappUrl for a basic-tier business even when it has a whatsapp number", () => {
-    const card = mapBusinessToTeaserCard(makeRow({ whatsapp_phone: "+972500000101" }), false);
+    const card = mapBusinessToTeaserCard(makeRow({ public_phone: "+972500000101", public_whatsapp: "+972500000101" }), false);
     expect(card.whatsappUrl).toBe("");
     expect(card.phone).toBe("tel:+972500000101");
   });
 
   it("includes whatsappUrl for a plus/premium business (canOpenProfile true)", () => {
-    const card = mapBusinessToTeaserCard(makeRow({ whatsapp_phone: "+972500000101" }), true);
+    const card = mapBusinessToTeaserCard(makeRow({ public_whatsapp: "+972500000101" }), true);
     expect(card.whatsappUrl).toContain("https://wa.me/972500000101");
   });
 
-  it("prefers public_whatsapp over whatsapp_phone when both are set", () => {
-    const card = mapBusinessToTeaserCard(makeRow({ public_whatsapp: "+972501111111", whatsapp_phone: "+972500000101" }), true);
-    expect(card.whatsappUrl).toContain("https://wa.me/972501111111");
+  it("never falls back to the internal contact person's phone / whatsapp — only the public_* fields are used", () => {
+    const card = mapBusinessToTeaserCard({ ...makeRow(), public_phone: null, public_whatsapp: null, phone: "+972509999999", whatsapp_phone: "+972509999999" } as never, true);
+    expect(card.phone).toBe("");
+    expect(card.whatsappUrl).toBe("");
   });
 });

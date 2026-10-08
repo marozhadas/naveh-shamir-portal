@@ -151,3 +151,25 @@ describe("mapRegistrationToBusiness", () => {
     expect(business.testimonials?.[1].order).toBe(1);
   });
 });
+
+describe("mapRegistrationToBusiness — public whitelist rows", () => {
+  it("builds a Business from the public view columns alone, with nothing internal on it", () => {
+    const full = makeRow({ public_phone: "+972500000111", public_whatsapp: "+972500000112", phone: "+972509999999", email: "internal@example.com", owner_id: "owner-1" });
+    // Exactly what the anon-readable public_business_listings view returns — no internal columns at all.
+    const publicRow = Object.fromEntries(
+      [
+        "id", "slug", "business_name", "category_id", "category_ids", "business_type", "description", "short_description", "website_url", "address",
+        "service_area", "address_type", "featured", "verified", "created_at", "reviewed_at", "plan_tier", "active_plan_id", "public_phone",
+        "public_whatsapp", "public_email", "cover_image", "gallery", "services", "opening_hours", "social_links", "promotion", "testimonials", "status",
+      ].map((key) => [key, full[key as keyof typeof full]]),
+    ) as Parameters<typeof mapRegistrationToBusiness>[0];
+
+    const business = mapRegistrationToBusiness(publicRow);
+    expect(business.phone).toBe("+972500000111");
+    expect(business.ownerId).toBeUndefined();
+    expect(business.lastSelfEditAt).toBeUndefined();
+    expect(business.offerCode).toBeUndefined();
+    expect(JSON.stringify(business)).not.toContain("internal@example.com");
+    expect(JSON.stringify(business)).not.toContain("972509999999");
+  });
+});

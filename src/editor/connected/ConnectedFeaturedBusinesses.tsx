@@ -6,7 +6,7 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { defaultFeaturedBusinessesSettings } from "@/editor/config/editor-defaults";
 import { useResolvedSectionSettings } from "@/editor/hooks/use-resolved-section-settings";
 import { mapBusinessToTeaserCard } from "@/utils/map-business-to-teaser-card";
-import type { BusinessRegistrationRow } from "@/types/business-registration";
+import type { PublicBusinessRow } from "@/lib/supabase/public-columns";
 import sectionStyles from "@/components/home/FeaturedBusinessesSection/FeaturedBusinessesSection.module.css";
 import emptyStateStyles from "@/components/events/EventsEmptyState/EventsEmptyState.module.css";
 
@@ -18,7 +18,7 @@ type ConnectedFeaturedBusinessesProps = {
    * admin's picks in /admin/businesses are the single source of truth here, not the floating-
    * editor blob. Appearance/layout settings still come from the editor as normal.
    */
-  businesses?: { registration: BusinessRegistrationRow; canOpenProfile: boolean }[];
+  businesses?: { registration: PublicBusinessRow; canOpenProfile: boolean }[];
 };
 
 export function ConnectedFeaturedBusinesses({ businesses }: ConnectedFeaturedBusinessesProps) {

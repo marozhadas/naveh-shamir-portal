@@ -1,16 +1,17 @@
 import "server-only";
 import { createPublicSupabaseClient } from "@/lib/supabase/public-client";
+import { PUBLIC_EVENT_COLUMNS, toPublicEventRow } from "@/lib/supabase/public-columns";
 import type { CommunityEventRow } from "@/types/community-event";
 
 /** Every published event, any date — the public /events page does its own date/audience filtering client-side over this full set. RLS itself would also allow canceled/archived through, but the list intentionally only ever asks for "published". */
 export async function getPublishedEvents(): Promise<CommunityEventRow[]> {
   const supabase = createPublicSupabaseClient();
-  const { data, error } = await supabase.from("events").select("*").eq("status", "published").order("event_date", { ascending: true });
+  const { data, error } = await supabase.from("events").select(PUBLIC_EVENT_COLUMNS).eq("status", "published").order("event_date", { ascending: true });
   if (error) {
     console.error("[getPublishedEvents] failed:", error.message);
     return [];
   }
-  return data ?? [];
+  return (data ?? []).map(toPublicEventRow);
 }
 
 /**
@@ -21,10 +22,10 @@ export async function getPublishedEvents(): Promise<CommunityEventRow[]> {
  */
 export async function getEventBySlug(slug: string): Promise<CommunityEventRow | null> {
   const supabase = createPublicSupabaseClient();
-  const { data, error } = await supabase.from("events").select("*").eq("slug", slug).maybeSingle();
+  const { data, error } = await supabase.from("events").select(PUBLIC_EVENT_COLUMNS).eq("slug", slug).maybeSingle();
   if (error) {
     console.error("[getEventBySlug] failed:", error.message);
     return null;
   }
-  return data;
+  return data ? toPublicEventRow(data) : null;
 }

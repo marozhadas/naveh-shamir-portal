@@ -1,5 +1,6 @@
 import "server-only";
 import { createPublicSupabaseClient } from "@/lib/supabase/public-client";
+import { PUBLIC_REVIEW_COLUMNS, toPublicReviewRow } from "@/lib/supabase/public-columns";
 import type { BusinessReviewRow } from "@/types/business-review";
 
 /**
@@ -12,12 +13,12 @@ export async function getApprovedReviewsForBusiness(businessId: string): Promise
     const supabase = createPublicSupabaseClient();
     const { data, error } = await supabase
       .from("business_reviews")
-      .select("*")
+      .select(PUBLIC_REVIEW_COLUMNS)
       .eq("business_id", businessId)
       .eq("status", "approved")
       .order("created_at", { ascending: false });
     if (error || !data) return [];
-    return data;
+    return data.map(toPublicReviewRow);
   } catch {
     return [];
   }

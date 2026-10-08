@@ -1,7 +1,7 @@
 import { toLegacyCategory } from "./map-registration-to-business";
 import { createWhatsappLink } from "./create-whatsapp-link";
 import { CONTENT_LIMITS } from "@/editor/schemas/content-limits";
-import type { BusinessRegistrationRow } from "@/types/business-registration";
+import type { PublicBusinessRow } from "@/lib/supabase/public-columns";
 import type { BusinessCardContentSettings } from "@/editor/schemas/businesses.schema";
 
 function truncate(value: string, max: number): string {
@@ -38,7 +38,7 @@ function toWhatsappHref(phone: string | null): string {
  * gates share the exact same underlying signal since canOpenProfile is only ever true for
  * Plus/Premium — see getBusinessListingAccess.
  */
-export function mapBusinessToTeaserCard(row: BusinessRegistrationRow, canOpenProfile: boolean): BusinessCardContentSettings {
+export function mapBusinessToTeaserCard(row: PublicBusinessRow, canOpenProfile: boolean): BusinessCardContentSettings {
   return {
     id: row.id,
     slug: row.slug,
@@ -48,8 +48,8 @@ export function mapBusinessToTeaserCard(row: BusinessRegistrationRow, canOpenPro
     image: { src: row.cover_image?.url ?? "", alt: row.cover_image?.alt ?? row.business_name, objectFit: "cover" },
     callButtonLabel: "התקשרו",
     whatsappButtonLabel: "וואטסאפ",
-    phone: toTelHref(row.public_phone || row.phone),
-    whatsappUrl: canOpenProfile ? toWhatsappHref(row.public_whatsapp || row.whatsapp_phone) : "",
+    phone: toTelHref(row.public_phone),
+    whatsappUrl: canOpenProfile ? toWhatsappHref(row.public_whatsapp) : "",
     cardUrl: canOpenProfile ? `/businesses/${row.slug}` : "",
     visible: true,
   };

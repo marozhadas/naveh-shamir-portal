@@ -1,6 +1,7 @@
 import type { Business, BusinessCategory } from "@/types/business";
 import type { BusinessPublicationStatus } from "@/types/business-status";
 import type { BusinessRegistrationRow, BusinessRegistrationStatus } from "@/types/business-registration";
+import type { PublicBusinessRow } from "@/lib/supabase/public-columns";
 import type { BusinessPlanId } from "@/types/business-plan";
 import { toBusinessId } from "@/utils/business-id";
 
@@ -27,7 +28,7 @@ export function toLegacyCategory(categoryId: string): BusinessCategory {
   return ARCHIVE_CATEGORY_TO_LEGACY[categoryId] ?? "שירותים";
 }
 
-function buildWhatsappUrl(phone: string | null): string | undefined {
+function buildWhatsappUrl(phone: string | null | undefined): string | undefined {
   if (!phone) return undefined;
   const digits = phone.replace(/[^0-9]/g, "");
   return digits ? `https://wa.me/${digits}` : undefined;
@@ -52,9 +53,17 @@ const REGISTRATION_TO_PUBLICATION_STATUS: Record<BusinessRegistrationStatus, Bus
  * caller forgets to pre-filter (e.g. the owner's own dashboard, which must show a pending
  * registration to its owner without exposing it publicly).
  */
-export function mapRegistrationToBusiness(row: BusinessRegistrationRow): Business {
-  const publicPhone = row.public_phone ?? row.phone;
-  const publicWhatsapp = row.public_whatsapp ?? row.whatsapp_phone;
+/**
+ * Accepts either a full row (owner/admin paths, read with the service role) or the public
+ * whitelist subset (anon reads via public_business_listings). Fields that only a full row carries —
+ * the internal contact person's phone/email, owner_id, billing/offer/edit-allowance fields — are
+ * optional here and simply absent for public rows, so a public Business can never contain them.
+ */
+export type MappableRegistrationRow = PublicBusinessRow & Partial<Omit<BusinessRegistrationRow, keyof PublicBusinessRow>>;
+
+export function mapRegistrationToBusiness(row: MappableRegistrationRow): Business {
+  const publicPhone = row.public_phone ?? row.phone ?? null;
+  const publicWhatsapp = row.public_whatsapp ?? row.whatsapp_phone ?? null;
 
   return {
     id: toBusinessId(row.id),

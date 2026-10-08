@@ -15,7 +15,9 @@ export type BusinessProfileView =
   | { kind: "not-found" };
 
 function canPreviewAs(viewer: AuthenticatedUser | null, business: Business): viewer is AuthenticatedUser {
-  return Boolean(viewer && (viewer.role === "admin" || business.ownerId === viewer.id));
+  // Ownership is decided from the signed-in viewer's own owned-business ids (derived server-side from the
+  // session) — public business rows deliberately carry no owner_id.
+  return Boolean(viewer && (viewer.role === "admin" || viewer.ownedBusinessIds.includes(business.id) || business.ownerId === viewer.id));
 }
 
 /**

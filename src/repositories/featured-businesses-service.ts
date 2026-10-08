@@ -1,6 +1,6 @@
 import "server-only";
 import { createPublicSupabaseClient } from "@/lib/supabase/public-client";
-import type { BusinessRegistrationRow } from "@/types/business-registration";
+import { PUBLIC_BUSINESS_COLUMNS, type PublicBusinessRow } from "@/lib/supabase/public-columns";
 
 /**
  * Admin-curated homepage picks — approved AND explicitly marked `featured` via /admin/businesses.
@@ -9,12 +9,12 @@ import type { BusinessRegistrationRow } from "@/types/business-registration";
  * belt-and-suspenders, not the only guard. Never throws — an unreachable/misconfigured Supabase
  * just means the homepage teaser renders its empty state instead of crashing the page.
  */
-export async function getFeaturedApprovedBusinesses(limit = 4): Promise<BusinessRegistrationRow[]> {
+export async function getFeaturedApprovedBusinesses(limit = 4): Promise<PublicBusinessRow[]> {
   try {
     const supabase = createPublicSupabaseClient();
     const { data, error } = await supabase
-      .from("business_registrations")
-      .select("*")
+      .from("public_business_listings")
+      .select(PUBLIC_BUSINESS_COLUMNS)
       .eq("status", "approved")
       .eq("featured", true)
       .order("reviewed_at", { ascending: false })
@@ -23,7 +23,7 @@ export async function getFeaturedApprovedBusinesses(limit = 4): Promise<Business
       console.error("[getFeaturedApprovedBusinesses] failed:", error.message);
       return [];
     }
-    return data ?? [];
+    return (data ?? []) as PublicBusinessRow[];
   } catch (error) {
     console.error("[getFeaturedApprovedBusinesses] failed:", error);
     return [];

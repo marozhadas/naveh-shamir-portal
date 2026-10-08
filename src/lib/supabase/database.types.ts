@@ -1,3 +1,4 @@
+import type { PublicBusinessRow } from "./public-columns";
 import type { BusinessRegistrationRow } from "@/types/business-registration";
 import type {
   AdminAuditLogRow,
@@ -307,7 +308,13 @@ export type Database = {
         Relationships: [];
       };
     };
-    Views: Record<string, never>;
+    Views: {
+      /** The only anon read surface for businesses — whitelisted columns over approved rows (see public-columns.ts). */
+      public_business_listings: {
+        Row: PublicBusinessRow;
+        Relationships: [];
+      };
+    };
     Functions: {
       expire_due_trials: {
         Args: Record<string, never>;

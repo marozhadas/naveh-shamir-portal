@@ -1,5 +1,6 @@
 import "server-only";
 import { createPublicSupabaseClient } from "@/lib/supabase/public-client";
+import { PUBLIC_MARKETPLACE_COLUMNS, toPublicMarketplaceRow } from "@/lib/supabase/public-columns";
 import type { MarketplaceListingRow } from "@/types/marketplace";
 
 /**
@@ -10,12 +11,12 @@ import type { MarketplaceListingRow } from "@/types/marketplace";
  */
 export async function getActiveListings(): Promise<MarketplaceListingRow[]> {
   const supabase = createPublicSupabaseClient();
-  const { data, error } = await supabase.from("marketplace_listings").select("*").eq("status", "active").order("created_at", { ascending: false });
+  const { data, error } = await supabase.from("marketplace_listings").select(PUBLIC_MARKETPLACE_COLUMNS).eq("status", "active").order("created_at", { ascending: false });
   if (error) {
     console.error("[getActiveListings] failed:", error.message);
     return [];
   }
-  return data ?? [];
+  return (data ?? []).map(toPublicMarketplaceRow);
 }
 
 /**
@@ -27,12 +28,12 @@ export async function getActiveListings(): Promise<MarketplaceListingRow[]> {
  */
 export async function getActiveListingBySlug(slug: string): Promise<MarketplaceListingRow | null> {
   const supabase = createPublicSupabaseClient();
-  const { data, error } = await supabase.from("marketplace_listings").select("*").eq("slug", slug).maybeSingle();
+  const { data, error } = await supabase.from("marketplace_listings").select(PUBLIC_MARKETPLACE_COLUMNS).eq("slug", slug).maybeSingle();
   if (error) {
     console.error("[getActiveListingBySlug] failed:", error.message);
     return null;
   }
-  return data;
+  return data ? toPublicMarketplaceRow(data) : null;
 }
 
 /**
