@@ -35,6 +35,7 @@ const VALID_FIELDS = {
   websiteUrl: "",
   address: "",
   serviceArea: "",
+  privacyConsent: "on",
 };
 
 describe("registerBusinessAction — validation-error branch", () => {
@@ -43,7 +44,16 @@ describe("registerBusinessAction — validation-error branch", () => {
     const result = await registerBusinessAction(INITIAL_STATE, formData);
 
     expect(result.status).toBe("validation-error");
-    expect(result.values).toEqual({ ...VALID_FIELDS, businessName: "" });
+    expect(result.values).toEqual({ ...VALID_FIELDS, businessName: "", privacyConsent: true });
+  });
+
+  it("refuses a submission without the privacy consent — enforced in the server action, not just in the form", async () => {
+    const { privacyConsent: _omitted, ...withoutConsent } = VALID_FIELDS;
+    void _omitted;
+    const result = await registerBusinessAction(INITIAL_STATE, buildFormData(withoutConsent));
+
+    expect(result.status).toBe("validation-error");
+    expect(result.fieldErrors?.privacyConsent?.[0]).toBe("כדי להמשיך יש לאשר את מדיניות הפרטיות.");
   });
 
   it("only flags the actually-invalid field, not the valid ones", async () => {

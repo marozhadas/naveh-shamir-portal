@@ -85,6 +85,9 @@ export type Database = {
           | "last_self_edit_at"
           | "selected_billing_interval"
           | "offer_code"
+          | "privacy_consent"
+          | "privacy_consent_at"
+          | "privacy_policy_version"
         > & {
           id?: string;
           status?: BusinessRegistrationRow["status"];
@@ -117,6 +120,9 @@ export type Database = {
           last_self_edit_at?: string | null;
           selected_billing_interval?: BusinessRegistrationRow["selected_billing_interval"];
           offer_code?: BusinessRegistrationRow["offer_code"];
+          privacy_consent?: boolean;
+          privacy_consent_at?: string | null;
+          privacy_policy_version?: string | null;
         };
         Update: Partial<BusinessRegistrationRow>;
         Relationships: [];
@@ -210,12 +216,15 @@ export type Database = {
         Row: MarketplaceListingRow;
         Insert: Omit<
           MarketplaceListingRow,
-          "id" | "created_at" | "updated_at" | "report_count" | "management_token_hash" | "management_token_created_at" | "management_token_last_used_at"
+          "id" | "created_at" | "updated_at" | "report_count" | "management_token_hash" | "management_token_created_at" | "management_token_last_used_at" | "privacy_consent" | "privacy_consent_at" | "privacy_policy_version"
         > & {
           id?: string;
           created_at?: string;
           updated_at?: string;
           report_count?: number;
+          privacy_consent?: boolean;
+          privacy_consent_at?: string | null;
+          privacy_policy_version?: string | null;
           management_token_hash?: string | null;
           management_token_created_at?: string | null;
           management_token_last_used_at?: string | null;
@@ -231,7 +240,14 @@ export type Database = {
       };
       profiles: {
         Row: ProfileRow;
-        Insert: Omit<ProfileRow, "created_at" | "updated_at" | "role"> & { created_at?: string; updated_at?: string; role?: ProfileRow["role"] };
+        Insert: Omit<ProfileRow, "created_at" | "updated_at" | "role" | "privacy_consent" | "privacy_consent_at" | "privacy_policy_version"> & {
+          created_at?: string;
+          updated_at?: string;
+          role?: ProfileRow["role"];
+          privacy_consent?: boolean;
+          privacy_consent_at?: string | null;
+          privacy_policy_version?: string | null;
+        };
         Update: Partial<ProfileRow>;
         Relationships: [];
       };

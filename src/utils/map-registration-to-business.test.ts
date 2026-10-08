@@ -50,6 +50,9 @@ function makeRow(overrides: Partial<BusinessRegistrationRow> = {}): BusinessRegi
     last_self_edit_at: null,
     selected_billing_interval: "monthly",
     offer_code: "launch_standard",
+    privacy_consent: false,
+    privacy_consent_at: null,
+    privacy_policy_version: null,
     ...overrides,
   };
 }

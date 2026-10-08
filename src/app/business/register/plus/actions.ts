@@ -3,6 +3,7 @@
 import { createAdminSupabaseClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin-client";
 import { getSupabaseSessionUser } from "@/lib/supabase/server-client";
 import { slugify } from "@/utils/slugify";
+import { buildPrivacyConsentRecord } from "@/data/privacy-policy";
 import { uploadBusinessMedia } from "@/repositories/business-media-service";
 import { plusBusinessRegistrationSchema } from "./schema";
 import type { PlusBusinessRegistrationInput } from "@/types/business-plus-registration";
@@ -154,6 +155,8 @@ async function submitExtendedBusinessRegistration(
       status: "pending",
       featured: false,
       verified: false,
+      // The schema above already refused the submission without the explicit privacy consent.
+      ...buildPrivacyConsentRecord(),
     });
 
     if (!error) return { status: "success" };

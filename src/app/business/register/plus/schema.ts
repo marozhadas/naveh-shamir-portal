@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BUSINESS_CATEGORIES } from "@/data/business-categories";
 import { isSafeHrefOrEmpty } from "@/utils/validate-href";
+import { PRIVACY_CONSENT_ERROR } from "@/data/privacy-policy";
 
 export const BUSINESS_TYPE_OPTIONS = [
   { id: "store", label: "חנות" },
@@ -138,6 +139,8 @@ export const plusBusinessRegistrationObjectSchema = z.object({
   // way to get our own Hebrew message through, here and for the other three consent fields below.
   publicationConsent: z.boolean().refine((v) => v === true, { message: "יש לאשר את פרסום הפרטים" }),
   termsAccepted: z.boolean().refine((v) => v === true, { message: "יש לאשר את תנאי השימוש" }),
+  // Its own explicit checkbox (stored with a timestamp + policy version) — not folded into the terms checkbox.
+  privacyConsent: z.boolean().refine((v) => v === true, { message: PRIVACY_CONSENT_ERROR }),
   // Plus offers a free trial month; Premium (spec: no promised free month) does not — required
   // only for planId="plus", see the superRefine below.
   trialConsent: z.boolean().optional(),
@@ -216,7 +219,7 @@ export const plusStepFourSchema = plusBusinessRegistrationObjectSchema.pick({
 });
 
 export function plusStepFiveSchema(planId: "plus" | "premium") {
-  const base = plusBusinessRegistrationObjectSchema.pick({ publicationConsent: true, termsAccepted: true, trialConsent: true, dashboardAccessConsent: true });
+  const base = plusBusinessRegistrationObjectSchema.pick({ publicationConsent: true, termsAccepted: true, privacyConsent: true, trialConsent: true, dashboardAccessConsent: true });
   return base.superRefine((values, ctx) => {
     if (planId === "plus" && values.trialConsent !== true) {
       ctx.addIssue({ code: "custom", path: ["trialConsent"], message: "יש לאשר את הפעלת 30 ימי הניסיון" });

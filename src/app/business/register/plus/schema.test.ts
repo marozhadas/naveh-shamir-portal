@@ -31,6 +31,7 @@ function makeValidInput(overrides: Record<string, unknown> = {}) {
     promotion: null,
     publicationConsent: true,
     termsAccepted: true,
+    privacyConsent: true,
     trialConsent: true,
     ...overrides,
   };
@@ -140,6 +141,8 @@ describe("plusBusinessRegistrationSchema", () => {
   it("requires all three consent checkboxes to be true for Plus", () => {
     expect(plusBusinessRegistrationSchema.safeParse(makeValidInput({ publicationConsent: false })).success).toBe(false);
     expect(plusBusinessRegistrationSchema.safeParse(makeValidInput({ termsAccepted: false })).success).toBe(false);
+    // The server refuses a submission without the explicit privacy consent (cannot be bypassed via the action).
+    expect(plusBusinessRegistrationSchema.safeParse(makeValidInput({ privacyConsent: false })).success).toBe(false);
     expect(plusBusinessRegistrationSchema.safeParse(makeValidInput({ trialConsent: false })).success).toBe(false);
   });
 

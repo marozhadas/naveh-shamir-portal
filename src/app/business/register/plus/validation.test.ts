@@ -66,11 +66,24 @@ function validStepFive(overrides: Partial<StepFiveInput> = {}): StepFiveInput {
   return {
     publicationConsent: true,
     termsAccepted: true,
+    privacyConsent: true,
     trialConsent: true,
     dashboardAccessConsent: true,
     ...overrides,
   };
 }
+
+describe("validateStepFive — privacy policy consent", () => {
+  it("blocks without the privacy consent, with the required message", () => {
+    for (const planId of ["plus", "premium"] as const) {
+      expect(validateStepFive(validStepFive({ privacyConsent: false }), planId).privacyConsent).toBe("כדי להמשיך יש לאשר את מדיניות הפרטיות.");
+    }
+  });
+
+  it("passes once it is ticked", () => {
+    expect(validateStepFive(validStepFive(), "premium")).toEqual({});
+  });
+});
 
 describe("validateStepOne", () => {
   it("passes with valid input", () => {

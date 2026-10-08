@@ -99,9 +99,20 @@ export function toPublicWhatsAppGroupRow<T extends Omit<WhatsAppGroupRow, "admin
 export const PUBLIC_MARKETPLACE_COLUMNS =
   "id, slug, title, description, listing_type, category_id, price, is_free, condition, images, area, contact_name, phone, whatsapp_phone, status, created_at, updated_at" as const;
 
-/** Never fetched publicly: management_token_hash (+ its timestamps), rejection_reason, reviewed_at, report_count. */
+/** Never fetched publicly: management_token_hash (+ its timestamps), rejection_reason, reviewed_at, report_count, the privacy-consent record. */
 export function toPublicMarketplaceRow<
-  T extends Omit<MarketplaceListingRow, "rejection_reason" | "reviewed_at" | "report_count" | "management_token_hash" | "management_token_created_at" | "management_token_last_used_at">,
+  T extends Omit<
+    MarketplaceListingRow,
+    | "rejection_reason"
+    | "reviewed_at"
+    | "report_count"
+    | "management_token_hash"
+    | "management_token_created_at"
+    | "management_token_last_used_at"
+    | "privacy_consent"
+    | "privacy_consent_at"
+    | "privacy_policy_version"
+  >,
 >(row: T): MarketplaceListingRow {
   return {
     ...row,
@@ -111,6 +122,9 @@ export function toPublicMarketplaceRow<
     management_token_hash: null,
     management_token_created_at: null,
     management_token_last_used_at: null,
+    privacy_consent: false,
+    privacy_consent_at: null,
+    privacy_policy_version: null,
   };
 }
 

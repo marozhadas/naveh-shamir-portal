@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { PrivacyConsentCheckbox } from "@/components/legal/PrivacyConsentCheckbox/PrivacyConsentCheckbox";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { getVisibleBusinessCategories } from "@/data/business-categories";
@@ -67,6 +68,7 @@ type WizardValues = {
   promotionValidUntil: string;
   publicationConsent: boolean;
   termsAccepted: boolean;
+  privacyConsent: boolean;
   trialConsent: boolean;
   dashboardAccessConsent: boolean;
   billingInterval: BillingInterval;
@@ -97,6 +99,7 @@ const FIELD_LABEL: Record<string, string> = {
   tiktokUrl: "TikTok",
   publicationConsent: "אישור פרסום הפרטים",
   termsAccepted: "אישור תנאי השימוש",
+  privacyConsent: "אישור מדיניות הפרטיות",
   trialConsent: "אישור 30 ימי הניסיון",
   dashboardAccessConsent: "אישור גישה לאזור האישי",
 };
@@ -155,6 +158,7 @@ function createEmptyValues(initialBillingInterval: BillingInterval): WizardValue
     promotionValidUntil: "",
     publicationConsent: false,
     termsAccepted: false,
+    privacyConsent: false,
     trialConsent: false,
     dashboardAccessConsent: false,
     billingInterval: initialBillingInterval,
@@ -221,8 +225,9 @@ export function PlusRegistrationWizard({ planId, initialBillingInterval = "month
       const raw = sessionStorage.getItem(draftKey);
       if (!raw) return;
       const parsed = JSON.parse(raw) as { step: number; values: WizardValues };
+      // A consent is a fresh, explicit act every time — a saved draft never pre-ticks the privacy checkbox.
       // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time read from sessionStorage on mount, not a prop/state sync
-      setValues((current) => ({ ...current, ...parsed.values, ...(billingIntervalFromUrl ? { billingInterval: initialBillingInterval } : {}) }));
+      setValues((current) => ({ ...current, ...parsed.values, privacyConsent: false, ...(billingIntervalFromUrl ? { billingInterval: initialBillingInterval } : {}) }));
       setStep(parsed.step ?? 1);
       setDraftRestored(true);
     } catch {
@@ -287,7 +292,7 @@ export function PlusRegistrationWizard({ planId, initialBillingInterval = "month
         ...values.testimonials.flatMap((_, i) => [`testimonial-author-${i}`, `testimonial-text-${i}`, `testimonial-role-${i}`]),
       ],
       4: ["publicPhone", "publicWhatsapp", "publicEmail", "websiteUrl", "instagramUrl", "facebookUrl", "tiktokUrl", ...WEEKDAYS.map((d) => `hours_${d}`)],
-      5: ["publicationConsent", "termsAccepted", "trialConsent", "dashboardAccessConsent"],
+      5: ["publicationConsent", "termsAccepted", "privacyConsent", "trialConsent", "dashboardAccessConsent"],
     }),
     [values.services, values.testimonials],
   );
@@ -554,6 +559,7 @@ export function PlusRegistrationWizard({ planId, initialBillingInterval = "month
           : null,
       publicationConsent: values.publicationConsent,
       termsAccepted: values.termsAccepted,
+      privacyConsent: values.privacyConsent,
       trialConsent: values.trialConsent,
       dashboardAccessConsent: planId === "premium" ? values.dashboardAccessConsent : undefined,
     };
@@ -1586,7 +1592,12 @@ function ReviewStep({ values, planId, errors, onEdit, onChangeConsent }: ReviewS
             aria-invalid={Boolean(errors.termsAccepted)}
             aria-describedby={errors.termsAccepted ? "termsAccepted-error" : undefined}
           />
-          קראתי ואישרתי את תנאי השימוש ומדיניות הפרטיות.
+          קראתי ואישרתי את{" "}
+          <a href="/terms" target="_blank" rel="noopener noreferrer">
+            תנאי השימוש
+            <span className="sr-only"> (נפתח בלשונית חדשה)</span>
+          </a>
+          .
         </label>
         {errors.termsAccepted && (
           <p id="termsAccepted-error" className={styles.fieldErrorMessage} role="alert">
@@ -1594,6 +1605,12 @@ function ReviewStep({ values, planId, errors, onEdit, onChangeConsent }: ReviewS
           </p>
         )}
       </div>
+      <PrivacyConsentCheckbox
+        id="privacyConsent"
+        checked={values.privacyConsent}
+        onChange={(checked) => onChangeConsent("privacyConsent", checked)}
+        error={errors.privacyConsent}
+      />
       {planId === "plus" ? (
         <div className={`${styles.field} ${errors.trialConsent ? styles.fieldInvalid : ""}`}>
           <label className={styles.checkboxRow}>

@@ -34,6 +34,10 @@ export type MarketplaceListingRow = {
   management_token_hash: string | null;
   management_token_created_at: string | null;
   management_token_last_used_at: string | null;
+  /** Explicit privacy-policy consent given when the listing was posted — whether, when and which policy version. */
+  privacy_consent: boolean;
+  privacy_consent_at: string | null;
+  privacy_policy_version: string | null;
 };
 
 export const MARKETPLACE_STATUS_LABEL: Record<MarketplaceListingStatus, string> = {

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BUSINESS_CATEGORIES } from "@/data/business-categories";
 import { isSafeHrefOrEmpty } from "@/utils/validate-href";
+import { PRIVACY_CONSENT_ERROR } from "@/data/privacy-policy";
 
 /**
  * Mirrors the fields the registration form actually collects today (see business-registration.ts
@@ -20,6 +21,8 @@ export type BusinessRegistrationFormValues = {
   websiteUrl: string;
   address: string;
   serviceArea: string;
+  /** Explicit, unchecked-by-default acceptance of the privacy policy — required to submit. */
+  privacyConsent: boolean;
 };
 
 export const EMPTY_FORM_VALUES: BusinessRegistrationFormValues = {
@@ -34,6 +37,7 @@ export const EMPTY_FORM_VALUES: BusinessRegistrationFormValues = {
   websiteUrl: "",
   address: "",
   serviceArea: "",
+  privacyConsent: false,
 };
 
 /** DOM/visual order of the fields — used to focus the first invalid field after a failed submit. */
@@ -49,6 +53,7 @@ export const FIELD_ORDER: (keyof BusinessRegistrationFormValues)[] = [
   "websiteUrl",
   "address",
   "serviceArea",
+  "privacyConsent",
 ];
 
 const PHONE_PATTERN = /^\+?[0-9-\s]{6,}$/;
@@ -73,6 +78,7 @@ export const businessRegistrationSchema = z
     }),
     address: z.string().trim(),
     serviceArea: z.string().trim(),
+    privacyConsent: z.boolean().refine((value) => value === true, { message: PRIVACY_CONSENT_ERROR }),
   })
   .superRefine((values, ctx) => {
     if (!values.phone && !values.whatsappPhone && !values.email) {

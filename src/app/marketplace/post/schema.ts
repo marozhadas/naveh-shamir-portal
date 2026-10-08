@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MARKETPLACE_CATEGORIES } from "@/data/marketplace-categories";
+import { PRIVACY_CONSENT_ERROR } from "@/data/privacy-policy";
 
 export type MarketplaceListingFormValues = {
   title: string;
@@ -13,6 +14,8 @@ export type MarketplaceListingFormValues = {
   contactName: string;
   phone: string;
   whatsappPhone: string;
+  /** Explicit, unchecked-by-default acceptance of the privacy policy — required to publish. */
+  privacyConsent: boolean;
 };
 
 export const EMPTY_LISTING_FORM_VALUES: MarketplaceListingFormValues = {
@@ -27,6 +30,7 @@ export const EMPTY_LISTING_FORM_VALUES: MarketplaceListingFormValues = {
   contactName: "",
   phone: "",
   whatsappPhone: "",
+  privacyConsent: false,
 };
 
 export const FIELD_ORDER: (keyof MarketplaceListingFormValues)[] = [
@@ -38,6 +42,7 @@ export const FIELD_ORDER: (keyof MarketplaceListingFormValues)[] = [
   "contactName",
   "phone",
   "whatsappPhone",
+  "privacyConsent",
 ];
 
 const PHONE_PATTERN = /^\+?[0-9-\s]{6,}$/;
@@ -58,6 +63,7 @@ export const marketplaceListingSchema = z
     contactName: z.string().trim().min(1, "יש להזין שם איש/אשת קשר").max(120, "השם ארוך מדי — עד 120 תווים"),
     phone: z.string().trim().refine((value) => !value || PHONE_PATTERN.test(value), { message: "מספר הטלפון אינו תקין" }),
     whatsappPhone: z.string().trim().refine((value) => !value || PHONE_PATTERN.test(value), { message: "מספר הוואטסאפ אינו תקין" }),
+    privacyConsent: z.boolean().refine((value) => value === true, { message: PRIVACY_CONSENT_ERROR }),
   })
   .superRefine((values, ctx) => {
     if (!values.phone && !values.whatsappPhone) {

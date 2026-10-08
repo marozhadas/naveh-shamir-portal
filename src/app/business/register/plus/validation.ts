@@ -159,6 +159,7 @@ export function validateStepFour(input: StepFourInput): WizardErrors {
 export type StepFiveInput = {
   publicationConsent: boolean;
   termsAccepted: boolean;
+  privacyConsent: boolean;
   trialConsent: boolean;
   dashboardAccessConsent: boolean;
 };
@@ -176,7 +177,7 @@ export function stepForErrorKey(key: string): number {
   const STEP_ONE = new Set(["businessName", "categoryIds", "businessType", "contactName", "contactPhone", "contactEmail", "addressType", "address", "serviceArea"]);
   const STEP_TWO = new Set(["coverImage", "gallery", "shortDescription", "fullDescription"]);
   const STEP_FOUR = new Set(["publicPhone", "publicWhatsapp", "publicEmail", "websiteUrl", "instagramUrl", "facebookUrl", "tiktokUrl", "openingHours"]);
-  const STEP_FIVE = new Set(["publicationConsent", "termsAccepted", "trialConsent", "dashboardAccessConsent"]);
+  const STEP_FIVE = new Set(["publicationConsent", "termsAccepted", "privacyConsent", "trialConsent", "dashboardAccessConsent"]);
   if (STEP_ONE.has(key)) return 1;
   if (STEP_TWO.has(key)) return 2;
   if (key === "services") return 3;

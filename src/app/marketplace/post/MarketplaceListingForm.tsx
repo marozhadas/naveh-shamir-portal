@@ -4,6 +4,7 @@ import { useActionState, useId, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { PrivacyConsentCheckbox } from "@/components/legal/PrivacyConsentCheckbox/PrivacyConsentCheckbox";
 import { getVisibleMarketplaceCategories } from "@/data/marketplace-categories";
 import { MARKETPLACE_CONDITION_LABEL } from "@/types/marketplace";
 import { submitMarketplaceListingAction, uploadMarketplaceImageAction, type MarketplaceListingActionState } from "./actions";
@@ -30,6 +31,7 @@ const FIELD_LABELS: Record<keyof MarketplaceListingFormValues, string> = {
   contactName: "שם איש/אשת קשר",
   phone: "טלפון",
   whatsappPhone: "וואטסאפ",
+  privacyConsent: "אישור מדיניות הפרטיות",
 };
 
 function focusAndReveal(node: HTMLElement | null | undefined) {
@@ -64,6 +66,7 @@ export function MarketplaceListingForm() {
   const contactNameId = useId();
   const phoneId = useId();
   const whatsappId = useId();
+  const privacyId = useId();
 
   const fieldIds: Record<keyof MarketplaceListingFormValues, string> = {
     title: titleId,
@@ -77,6 +80,7 @@ export function MarketplaceListingForm() {
     contactName: contactNameId,
     phone: phoneId,
     whatsappPhone: whatsappId,
+    privacyConsent: privacyId,
   };
 
   function updateField<Field extends keyof MarketplaceListingFormValues>(field: Field) {
@@ -289,6 +293,13 @@ export function MarketplaceListingForm() {
       </div>
 
       <p className={styles.hint}>יש להזין לפחות דרך התקשרות אחת (טלפון או וואטסאפ). המודעה תתפרסם בלוח באופן מיידי לאחר השליחה.</p>
+
+      <PrivacyConsentCheckbox
+        id={privacyId}
+        checked={values.privacyConsent}
+        onChange={(checked) => setValues((current) => ({ ...current, privacyConsent: checked }))}
+        error={fieldError("privacyConsent")}
+      />
 
       <Button type="submit" variant="accent" disabled={isPending || isUploading}>
         {isPending ? "שולח…" : "שליחת מודעה"}

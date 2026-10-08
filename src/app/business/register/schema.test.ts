@@ -9,6 +9,7 @@ function validValues(overrides: Partial<BusinessRegistrationFormValues> = {}): B
     description: "מספרה שכונתית לכל המשפחה",
     contactName: "נועה כהן",
     phone: "0501234567",
+    privacyConsent: true,
     ...overrides,
   };
 }
@@ -17,6 +18,14 @@ describe("businessRegistrationSchema", () => {
   it("accepts a fully valid submission", () => {
     const result = businessRegistrationSchema.safeParse(validValues());
     expect(result.success).toBe(true);
+  });
+
+  it("requires the privacy-policy consent, with the exact required message", () => {
+    const result = businessRegistrationSchema.safeParse(validValues({ privacyConsent: false }));
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.flatten().fieldErrors.privacyConsent?.[0]).toBe("כדי להמשיך יש לאשר את מדיניות הפרטיות.");
+    }
   });
 
   it("requires a business name", () => {

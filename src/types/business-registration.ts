@@ -82,6 +82,10 @@ export type BusinessRegistrationRow = {
   selected_billing_interval: "monthly" | "yearly";
   /** Benefit group of THIS business (not of the user) — set only by an admin, frozen once a subscription exists. See subscription-offers.ts. */
   offer_code: OfferCode;
+  /** Explicit privacy-policy consent given at submission — whether, when, and which policy version. Rows from before the checkbox existed are false / null. */
+  privacy_consent: boolean;
+  privacy_consent_at: string | null;
+  privacy_policy_version: string | null;
 };
 
 /** Fields the public registration form is allowed to submit — status/featured/verified are never client-supplied (RLS also enforces this server-side). */

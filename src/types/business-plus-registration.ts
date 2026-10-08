@@ -81,6 +81,8 @@ export type PlusBusinessRegistrationInput = {
 
   publicationConsent: boolean;
   termsAccepted: boolean;
+  /** Explicit privacy-policy consent — required; stored server-side with a timestamp and the policy version. */
+  privacyConsent: boolean;
   trialConsent: boolean;
   /** Premium-only — "I consent to receiving a secure personal-area access link by email." Ignored for Plus. */
   dashboardAccessConsent?: boolean;

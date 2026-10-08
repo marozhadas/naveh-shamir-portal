@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useId, useRef, useState } from "react";
 import type { ChangeEvent, ReactNode, RefObject } from "react";
 import { Button } from "@/components/ui/Button";
+import { PrivacyConsentCheckbox } from "@/components/legal/PrivacyConsentCheckbox/PrivacyConsentCheckbox";
 import { registerBusinessAction, type BusinessRegistrationActionState } from "./actions";
 import { getVisibleBusinessCategories } from "@/data/business-categories";
 import { EMPTY_FORM_VALUES, FIELD_ORDER, firstInvalidField, type BusinessRegistrationFormValues } from "./schema";
@@ -28,6 +29,7 @@ const FIELD_LABELS: Record<keyof BusinessRegistrationFormValues, string> = {
   websiteUrl: "אתר אינטרנט",
   address: "כתובת",
   serviceArea: "אזור שירות",
+  privacyConsent: "אישור מדיניות הפרטיות",
 };
 
 type FieldElement = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
@@ -63,6 +65,7 @@ export function RegisterBusinessForm({ action = registerBusinessAction, planIntr
   const websiteUrlRef = useRef<HTMLInputElement>(null);
   const addressRef = useRef<HTMLInputElement>(null);
   const serviceAreaRef = useRef<HTMLInputElement>(null);
+  const privacyConsentRef = useRef<HTMLInputElement>(null);
 
   // References the stable refs above — built fresh each render, but every value inside it is the
   // same ref object every time, so this is just a lookup table, not something that creates or
@@ -79,6 +82,7 @@ export function RegisterBusinessForm({ action = registerBusinessAction, planIntr
     websiteUrl: websiteUrlRef,
     address: addressRef,
     serviceArea: serviceAreaRef,
+    privacyConsent: privacyConsentRef,
   };
 
   const nameId = useId();
@@ -92,6 +96,7 @@ export function RegisterBusinessForm({ action = registerBusinessAction, planIntr
   const websiteId = useId();
   const addressId = useId();
   const areaId = useId();
+  const privacyId = useId();
 
   const fieldIds: Record<keyof BusinessRegistrationFormValues, string> = {
     businessName: nameId,
@@ -105,6 +110,7 @@ export function RegisterBusinessForm({ action = registerBusinessAction, planIntr
     websiteUrl: websiteId,
     address: addressId,
     serviceArea: areaId,
+    privacyConsent: privacyId,
   };
 
   // Restore a locally-saved draft once, before the user has submitted anything this visit. Reading
@@ -118,6 +124,8 @@ export function RegisterBusinessForm({ action = registerBusinessAction, planIntr
       const raw = sessionStorage.getItem(DRAFT_STORAGE_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw) as Partial<BusinessRegistrationFormValues>;
+      // A consent is a fresh, explicit act every time — a saved draft never pre-ticks it.
+      delete parsed.privacyConsent;
       // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time read from sessionStorage on mount, not a prop/state sync
       setValues((current) => ({ ...current, ...parsed }));
       setDraftRestored(true);
@@ -459,6 +467,14 @@ export function RegisterBusinessForm({ action = registerBusinessAction, planIntr
       </div>
 
       <p className={styles.hint}>יש להזין לפחות דרך התקשרות אחת (טלפון, וואטסאפ או אימייל).</p>
+
+      <PrivacyConsentCheckbox
+        id={privacyId}
+        checked={values.privacyConsent}
+        onChange={(checked) => setValues((current) => ({ ...current, privacyConsent: checked }))}
+        error={fieldError("privacyConsent")}
+        inputRef={privacyConsentRef}
+      />
 
       <Button type="submit" variant="accent" disabled={isPending}>
         {isPending ? "שולח…" : "שליחת הרשמה"}

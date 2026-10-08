@@ -7,6 +7,7 @@ import { normalizeUsername, isValidUsername } from "@/utils/username";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/utils/get-client-ip";
 import { getSiteOrigin } from "@/utils/site-origin";
+import { PRIVACY_CONSENT_ERROR } from "@/data/privacy-policy";
 import { safeReturnPath } from "@/utils/safe-return-path";
 
 export type SignupState = { status: "idle" | "error" | "check-email"; message?: string };
@@ -32,6 +33,8 @@ export async function signupWithPasswordAction(_prevState: SignupState, formData
   const confirmPassword = typeof formData.get("confirmPassword") === "string" ? (formData.get("confirmPassword") as string) : "";
 
   if (!fullName) return { status: "error", message: "יש להזין שם מלא." };
+  // Enforced here, on the server, regardless of what the form does on the client.
+  if (formData.get("privacyConsent") !== "on") return { status: "error", message: PRIVACY_CONSENT_ERROR };
 
   const username = normalizeUsername(usernameRaw);
   if (!isValidUsername(username)) {

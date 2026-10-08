@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminSupabaseClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin-client";
+import { buildPrivacyConsentRecord } from "@/data/privacy-policy";
 
 /**
  * Resolves a username to its account's email address — server-only, and the ONLY place this
@@ -24,6 +25,8 @@ export async function isUsernameTaken(normalizedUsername: string): Promise<boole
 }
 
 type CreateProfileInput = { id: string; username: string; displayName: string; email: string };
+// Callers only reach createProfile after the sign-up form's explicit privacy consent was validated server-side, so the
+// consent record (timestamp + policy version) is written together with the profile.
 
 export type CreateProfileResult = { success: true } | { success: false; reason: "username-taken" | "unexpected" };
 
@@ -38,7 +41,7 @@ export type CreateProfileResult = { success: true } | { success: false; reason: 
 export async function createProfile({ id, username, displayName, email }: CreateProfileInput): Promise<CreateProfileResult> {
   if (!isSupabaseAdminConfigured()) return { success: false, reason: "unexpected" };
   const admin = createAdminSupabaseClient();
-  const { error } = await admin.from("profiles").insert({ id, username, display_name: displayName || null, email, role: "business_owner" });
+  const { error } = await admin.from("profiles").insert({ id, username, display_name: displayName || null, email, role: "business_owner", ...buildPrivacyConsentRecord() });
   if (!error) return { success: true };
   if (error.code === "23505") return { success: false, reason: "username-taken" };
   console.error("[createProfile] insert failed:", error.message);

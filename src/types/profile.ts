@@ -9,4 +9,8 @@ export type ProfileRow = {
   role: ProfileRole;
   created_at: string;
   updated_at: string;
+  /** Explicit privacy-policy consent given at sign-up — whether, when and which policy version. Rows from before the checkbox existed are false / null. */
+  privacy_consent: boolean;
+  privacy_consent_at: string | null;
+  privacy_policy_version: string | null;
 };

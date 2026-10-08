@@ -6,6 +6,7 @@ import { createPublicSupabaseClient } from "@/lib/supabase/public-client";
 import { createAdminSupabaseClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin-client";
 import { getSupabaseSessionUser } from "@/lib/supabase/server-client";
 import { slugify } from "@/utils/slugify";
+import { buildPrivacyConsentRecord } from "@/data/privacy-policy";
 import { getOpenNotificationForEntity } from "@/lib/admin/notifications";
 import { sendRegistrationNotificationEmail } from "@/lib/email/send-registration-notification-email";
 import { businessRegistrationSchema, EMPTY_FORM_VALUES, type BusinessRegistrationFormValues } from "./schema";
@@ -38,6 +39,7 @@ function readFormValues(formData: FormData): BusinessRegistrationFormValues {
     websiteUrl: readField(formData, "websiteUrl"),
     address: readField(formData, "address"),
     serviceArea: readField(formData, "serviceArea"),
+    privacyConsent: formData.get("privacyConsent") === "on",
   };
 }
 
@@ -117,6 +119,9 @@ export async function submitBusinessRegistration(
       // Every fresh registration starts inactive — activated later by a trial (startRealBusinessTrial)
       // or an admin (changeBusinessPlanAction), never at registration time itself.
       active_plan_id: "basic",
+      // Only reachable once the schema above confirmed the explicit privacy consent; the DB policy for
+      // anonymous inserts also refuses a row without it.
+      ...buildPrivacyConsentRecord(new Date(createdAt)),
     });
 
     if (!error) {

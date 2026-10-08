@@ -1,0 +1,52 @@
+.field {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 6px var(--space-2);
+}
+
+.input {
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  accent-color: var(--color-brand-accent, #1e3857);
+  cursor: pointer;
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--color-border-strong);
+  outline-offset: 2px;
+}
+
+.label {
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.link {
+  color: var(--color-text-primary);
+  font-weight: var(--fw-demibold);
+  text-decoration: underline;
+}
+
+.invalid .label {
+  color: var(--color-error, #b3261e);
+}
+
+.error {
+  grid-column: 2;
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--color-error, #b3261e);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

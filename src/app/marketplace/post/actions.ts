@@ -3,6 +3,7 @@
 import { createPublicSupabaseClient } from "@/lib/supabase/public-client";
 import { uploadMarketplaceMedia } from "@/repositories/marketplace-media-service";
 import { slugify } from "@/utils/slugify";
+import { buildPrivacyConsentRecord } from "@/data/privacy-policy";
 import { buildManagementUrl, generateManagementToken, hashManagementToken } from "@/utils/marketplace-management-token";
 import { getSiteOrigin } from "@/utils/site-origin";
 import { marketplaceListingSchema, EMPTY_LISTING_FORM_VALUES, type MarketplaceListingFormValues } from "./schema";
@@ -42,6 +43,7 @@ function readFormValues(formData: FormData): MarketplaceListingFormValues {
     contactName: readField(formData, "contactName"),
     phone: readField(formData, "phone"),
     whatsappPhone: readField(formData, "whatsappPhone"),
+    privacyConsent: formData.get("privacyConsent") === "on",
   };
 }
 
@@ -115,6 +117,9 @@ export async function submitMarketplaceListingAction(
       management_token_hash: managementTokenHash,
       management_token_created_at: new Date().toISOString(),
       management_token_last_used_at: null,
+      // Only reachable once the schema above confirmed the explicit privacy consent; the DB policy for
+      // anonymous inserts also refuses a listing without it.
+      ...buildPrivacyConsentRecord(),
     });
 
     if (!error) {
