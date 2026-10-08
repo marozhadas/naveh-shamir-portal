@@ -4,6 +4,7 @@ import { useActionState, useId, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { PRIVACY_CONSENT_ERROR } from "@/data/privacy-policy";
 import { PrivacyConsentCheckbox } from "@/components/legal/PrivacyConsentCheckbox/PrivacyConsentCheckbox";
 import { getVisibleMarketplaceCategories } from "@/data/marketplace-categories";
 import { MARKETPLACE_CONDITION_LABEL } from "@/types/marketplace";
@@ -67,6 +68,7 @@ export function MarketplaceListingForm() {
   const phoneId = useId();
   const whatsappId = useId();
   const privacyId = useId();
+  const [privacyClientError, setPrivacyClientError] = useState<string | undefined>();
 
   const fieldIds: Record<keyof MarketplaceListingFormValues, string> = {
     title: titleId,
@@ -144,6 +146,14 @@ export function MarketplaceListingForm() {
 
   return (
     <form
+      onSubmit={(event) => {
+        // Client-side guard (the server action re-validates and is the real enforcement).
+        if (!values.privacyConsent) {
+          event.preventDefault();
+          setPrivacyClientError(PRIVACY_CONSENT_ERROR);
+          focusAndReveal(document.getElementById(privacyId));
+        }
+      }}
       action={(formData) => {
         formData.set("images", JSON.stringify(images));
         formAction(formData);
@@ -297,8 +307,11 @@ export function MarketplaceListingForm() {
       <PrivacyConsentCheckbox
         id={privacyId}
         checked={values.privacyConsent}
-        onChange={(checked) => setValues((current) => ({ ...current, privacyConsent: checked }))}
-        error={fieldError("privacyConsent")}
+        onChange={(checked) => {
+          setValues((current) => ({ ...current, privacyConsent: checked }));
+          if (checked) setPrivacyClientError(undefined);
+        }}
+        error={privacyClientError ?? fieldError("privacyConsent")}
       />
 
       <Button type="submit" variant="accent" disabled={isPending || isUploading}>

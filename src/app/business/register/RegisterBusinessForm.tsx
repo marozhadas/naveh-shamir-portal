@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useId, useRef, useState } from "react";
 import type { ChangeEvent, ReactNode, RefObject } from "react";
 import { Button } from "@/components/ui/Button";
+import { PRIVACY_CONSENT_ERROR } from "@/data/privacy-policy";
 import { PrivacyConsentCheckbox } from "@/components/legal/PrivacyConsentCheckbox/PrivacyConsentCheckbox";
 import { registerBusinessAction, type BusinessRegistrationActionState } from "./actions";
 import { getVisibleBusinessCategories } from "@/data/business-categories";
@@ -97,6 +98,7 @@ export function RegisterBusinessForm({ action = registerBusinessAction, planIntr
   const addressId = useId();
   const areaId = useId();
   const privacyId = useId();
+  const [privacyClientError, setPrivacyClientError] = useState<string | undefined>();
 
   const fieldIds: Record<keyof BusinessRegistrationFormValues, string> = {
     businessName: nameId,
@@ -215,7 +217,15 @@ export function RegisterBusinessForm({ action = registerBusinessAction, planIntr
   const invalidFields = state.status === "validation-error" ? FIELD_ORDER.filter((field) => fieldError(field)) : [];
 
   return (
-    <form action={formAction} className={styles.form} noValidate>
+    <form action={formAction} onSubmit={(event) => {
+        // Client-side guard (the server action re-validates and is the real enforcement).
+        if (!values.privacyConsent) {
+          event.preventDefault();
+          setPrivacyClientError(PRIVACY_CONSENT_ERROR);
+          focusAndReveal(privacyConsentRef.current);
+        }
+      }}
+      className={styles.form} noValidate>
       {planIntro}
       {draftRestored && state.status === "idle" && <p className={styles.draftNotice}>שחזרנו את הפרטים שמילאת.</p>}
 
@@ -471,8 +481,11 @@ export function RegisterBusinessForm({ action = registerBusinessAction, planIntr
       <PrivacyConsentCheckbox
         id={privacyId}
         checked={values.privacyConsent}
-        onChange={(checked) => setValues((current) => ({ ...current, privacyConsent: checked }))}
-        error={fieldError("privacyConsent")}
+        onChange={(checked) => {
+          setValues((current) => ({ ...current, privacyConsent: checked }));
+          if (checked) setPrivacyClientError(undefined);
+        }}
+        error={privacyClientError ?? fieldError("privacyConsent")}
         inputRef={privacyConsentRef}
       />
 
