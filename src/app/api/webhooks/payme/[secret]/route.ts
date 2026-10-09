@@ -12,11 +12,11 @@ type RouteContext = { params: Promise<{ secret: string }> };
 /**
  * PayMe subscription callbacks (sub_callback_url → POST, application/x-www-form-urlencoded).
  *
- * Authentication: PayMe's documented callbacks carry no signature, so the URL itself is the shared
- * secret — PAYME_WEBHOOK_SECRET is the last path segment of the callback URL we gave PayMe and is
- * compared in constant time. A wrong/missing secret gets a plain 404 (it must look like the route does
- * not exist). Even with the secret, the body is only a hint: processPayMeCallback reads the real state
- * back from PayMe's API before changing anything.
+ * Authentication (the model PayMe confirmed for Seller accounts): subscription callbacks carry no signature and
+ * there is no endpoint to read a subscription back, so step one is the URL itself — PAYME_WEBHOOK_SECRET is the
+ * last path segment of the callback URL we gave PayMe and is compared in constant time. A wrong/missing secret
+ * gets a plain 404 (it must look like the route does not exist) and the body is never read. The remaining checks
+ * (our seller id, a subscription id we stored, idempotency) are in processPayMeCallback / verify-callback.ts.
  */
 export async function POST(request: Request, { params }: RouteContext): Promise<Response> {
   const config = getPayMeConfig();

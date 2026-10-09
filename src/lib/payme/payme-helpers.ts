@@ -1,13 +1,11 @@
 /**
  * Pure PayMe helpers (no I/O, no secrets) — everything that can be decided without calling PayMe
  * lives here so it is unit-tested against the documented API (docs.payme.io → Subscriptions /
- * generate-subscription / get-subscriptions):
+ * generate-subscription):
  *
  *  - amounts are agorot (sub_price 5075 = 50.75 ₪; PayMe's minimum is 500)
  *  - sub_iteration_type: 1 daily, 2 weekly, 3 monthly, 4 yearly
  *  - sub_start_date for monthly must have a day-of-month between 1 and 28
- *  - subscription statuses: 1 initial (not yet paid), 2 active (paid), 4 failed, 5 canceled,
- *    6 completed, 7 failed — pending automatic retry
  *  - callback types: sub-create, sub-active, sub-iteration-success, sub-complete, sub-cancel, sub-failure
  */
 import { createHash, timingSafeEqual } from "node:crypto";
@@ -61,29 +59,6 @@ export function computeSubscriptionStartDate(trialEndsAt: Date, interval: Billin
   const nextMonth = p.month === 12 ? 1 : p.month + 1;
   const nextYear = p.month === 12 ? p.year + 1 : p.year;
   return new Date(Date.UTC(nextYear, nextMonth - 1, 1, 0, 5, 0));
-}
-
-// ── Subscription status ─────────────────────────────────────────────────────────────────────────
-
-export type PayMeSubStatus = "initial" | "active" | "failed" | "canceled" | "completed" | "failed-retrying" | "unknown";
-
-export function parsePayMeSubStatus(raw: unknown): PayMeSubStatus {
-  switch (String(raw)) {
-    case "1":
-      return "initial";
-    case "2":
-      return "active";
-    case "4":
-      return "failed";
-    case "5":
-      return "canceled";
-    case "6":
-      return "completed";
-    case "7":
-      return "failed-retrying";
-    default:
-      return "unknown";
-  }
 }
 
 export const PAYME_NOTIFY_TYPES = ["sub-create", "sub-active", "sub-iteration-success", "sub-complete", "sub-cancel", "sub-failure"] as const;

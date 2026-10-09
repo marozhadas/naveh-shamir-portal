@@ -6,12 +6,11 @@ const processMock = vi.fn();
 vi.mock("@/lib/payme/process-callback", () => ({ processPayMeCallback: (...args: unknown[]) => processMock(...args) }));
 
 const SECRET = "s".repeat(40);
-const ENV_KEYS = ["PAYME_ENV", "PAYME_SELLER_ID", "PAYME_SECRET_KEY", "PAYME_HOSTED_FIELDS_KEY", "PAYME_WEBHOOK_SECRET"] as const;
+const ENV_KEYS = ["PAYME_ENV", "PAYME_SELLER_ID", "PAYME_HOSTED_FIELDS_KEY", "PAYME_WEBHOOK_SECRET"] as const;
 
 function configure() {
   process.env.PAYME_ENV = "sandbox";
   process.env.PAYME_SELLER_ID = "MPL-TEST-SELLER";
-  process.env.PAYME_SECRET_KEY = "secret-key-test";
   process.env.PAYME_HOSTED_FIELDS_KEY = "hosted-key-test";
   process.env.PAYME_WEBHOOK_SECRET = SECRET;
 }

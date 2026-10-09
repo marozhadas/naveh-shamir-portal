@@ -1,14 +1,19 @@
 import { computeGracePeriodEnd } from "@/domain/subscription-grace-period";
-import { agorotFromIls, type PayMeSubStatus } from "./payme-helpers";
+import { agorotFromIls } from "./payme-helpers";
 import type { SubscriptionStatus } from "@/types/subscription";
 import type { BillingTransactionKind, BillingTransactionStatus } from "@/types/billing";
 
 /**
- * PURE decision: given the local subscription and what PayMe itself reports (read back from PayMe's API,
- * not taken from the callback body), what must change locally? No I/O here — the webhook processor applies
- * the result. Statuses used are the existing ones: trialing, active, past-due, grace-period, canceled,
- * expired. A failed charge starts the 7-day grace period (the business stays live); a paid iteration
- * clears it; cancel keeps access through the period already paid for.
+ * PURE decision: given the local subscription and ONE verified callback (see verify-callback.ts), what must change
+ * locally? No I/O — the webhook processor applies the result. Statuses used are the existing ones: trialing, active,
+ * past-due, grace-period, canceled, expired. A failed charge starts the 7-day grace period (the business stays live);
+ * a paid iteration clears it; cancel keeps access through the period already paid for.
+ *
+ * Trust model: PayMe's subscription callbacks are unsigned and there is no endpoint to read a subscription back, so
+ * the ONLY callback field that drives a decision is the documented notify_type. Money never comes from the callback:
+ * the amount of a payment is OUR stored price snapshot, the time is our clock, and the optional extras the callback
+ * may carry (an iteration counter, a transaction id, an error text) are used only to label/deduplicate, never to
+ * decide whether money moved. Anything suspicious becomes "needs-attention": no state change, no revenue.
  */
 export type LocalSubscriptionForTransition = {
   status: SubscriptionStatus;
@@ -21,15 +26,13 @@ export type LocalSubscriptionForTransition = {
   currentPeriodEndsAt: string | null;
 };
 
-export type VerifiedPayMeSubscription = {
-  status: PayMeSubStatus;
-  iterationsCompleted: number;
-  /** PayMe's own price for one iteration, in agorot. */
-  priceAgorot: number | null;
-  /** When the latest iteration was paid, as reported by PayMe (null if not reported). */
-  paymentDate: Date | null;
-  /** PayMe's error text for a failed attempt (e.g. "Failed, pending automatic retry"). */
+export type PayMeCallbackEvent = {
+  /** The documented notify_type: sub-create, sub-active, sub-iteration-success, sub-complete, sub-cancel, sub-failure. */
+  notifyType: string;
+  /** PayMe's own error text for a failed attempt, when the callback carries one. Display only. */
   errorText: string | null;
+  /** The iteration counter, when the callback carries one. Used only to build a stable transaction id. */
+  iterationsCompleted: number | null;
 };
 
 export type TransitionContext = {
@@ -59,6 +62,8 @@ export type BusinessEventType = "subscription_activated" | "payment_recovered" |
 
 export type TransitionDecision =
   | { kind: "no-change"; reason: string }
+  /** Looks wrong → nothing changes, no revenue; the event is recorded as failed so an admin sees it under "דורש טיפול". */
+  | { kind: "needs-attention"; reason: string }
   | {
       kind: "payment-succeeded" | "payment-failed" | "canceled";
       patch: SubscriptionPatch;
@@ -75,6 +80,16 @@ export type TransitionDecision =
       activatePlan: boolean;
     };
 
+const HOUR_MS = 60 * 60 * 1000;
+/** A payment can arrive a little before the stored trial end (clock/timezone rounding) — but not a day early. */
+const EARLY_PAYMENT_TOLERANCE_MS = 24 * HOUR_MS;
+/**
+ * Billing periods are a month or a year, so a second "payment succeeded" within this window of the last recorded one
+ * is the SAME charge announced twice (PayMe can send both sub-active and sub-iteration-success for one charge) —
+ * never a second payment. This is what keeps revenue from being counted twice when the callback has no charge id.
+ */
+const SAME_CHARGE_WINDOW_MS = 48 * HOUR_MS;
+
 function addInterval(from: Date, interval: "monthly" | "yearly" | null): Date | null {
   if (!interval) return null;
   const next = new Date(from.getTime());
@@ -90,81 +105,102 @@ function safeReason(text: string | null): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-export function decideSubscriptionTransition(local: LocalSubscriptionForTransition, verified: VerifiedPayMeSubscription, ctx: TransitionContext): TransitionDecision {
+export function decideSubscriptionTransition(local: LocalSubscriptionForTransition, event: PayMeCallbackEvent, ctx: TransitionContext): TransitionDecision {
   const nowIso = ctx.now.toISOString();
-  const amountAgorot = verified.priceAgorot ?? (local.priceAmountIls !== null ? agorotFromIls(local.priceAmountIls) : 0);
+  const ended = local.status === "canceled" || local.status === "expired";
 
-  if (verified.status === "active" && verified.iterationsCompleted >= 1) {
-    const paidAt = verified.paymentDate ?? ctx.now;
-    const periodEnd = addInterval(paidAt, local.billingInterval);
-    const first = verified.iterationsCompleted <= 1;
-    const wasInTrouble = local.status === "grace-period" || local.status === "past-due" || local.status === "expired";
-    return {
-      kind: "payment-succeeded",
-      patch: {
-        status: "active",
-        payment_failed_at: null,
-        grace_period_ends_at: null,
-        payment_failure_reason: null,
-        last_payment_succeeded_at: paidAt.toISOString(),
-        current_period_started_at: paidAt.toISOString(),
-        current_period_ends_at: periodEnd ? periodEnd.toISOString() : null,
-        cancel_at_period_end: false,
-        canceled_at: null,
-        provider_last_transaction_id: ctx.callbackTransactionId ?? `${ctx.subPaymeId}:iter:${verified.iterationsCompleted}`,
-      },
-      transaction: {
-        providerTransactionId: ctx.callbackTransactionId ?? `${ctx.subPaymeId}:iter:${verified.iterationsCompleted}`,
-        kind: first ? "charge" : "renewal",
-        status: "succeeded",
-        amountAgorot,
-        occurredAt: paidAt.toISOString(),
-        failureReason: null,
-      },
-      businessEvent: local.status === "trialing" ? "subscription_activated" : wasInTrouble ? "payment_recovered" : null,
-      activatePlan: true,
-    };
-  }
+  switch (event.notifyType) {
+    case "sub-create":
+    case "sub-complete":
+      return { kind: "no-change", reason: `informational-${event.notifyType}` };
 
-  if (verified.status === "failed" || verified.status === "failed-retrying") {
-    if (local.status === "canceled" || local.status === "expired") return { kind: "no-change", reason: "subscription-already-ended" };
+    case "sub-active":
+    case "sub-iteration-success": {
+      // Revenue is only ever our own snapshot price — without it there is nothing safe to record.
+      if (local.priceAmountIls === null) return { kind: "needs-attention", reason: "no-price-snapshot" };
+      if (ended) return { kind: "needs-attention", reason: "payment-after-subscription-ended" };
+      if (local.status === "trialing" && local.trialEndsAt && ctx.now.getTime() < new Date(local.trialEndsAt).getTime() - EARLY_PAYMENT_TOLERANCE_MS) {
+        return { kind: "needs-attention", reason: "payment-reported-during-trial" };
+      }
+      if (local.lastPaymentSucceededAt && ctx.now.getTime() - new Date(local.lastPaymentSucceededAt).getTime() < SAME_CHARGE_WINDOW_MS) {
+        return { kind: "no-change", reason: "duplicate-payment-notification" };
+      }
 
-    const alreadyInTrouble = local.status === "grace-period" || local.status === "past-due";
-    const reason = safeReason(verified.errorText);
-    const failedTransactionId = ctx.callbackTransactionId ?? `${ctx.subPaymeId}:fail:${ctx.eventKey.slice(0, 16)}`;
-    const patch: SubscriptionPatch = {
-      last_payment_failed_at: nowIso,
-      payment_failure_reason: reason,
-    };
-    if (!alreadyInTrouble) {
-      // First failure: stamp it and open the 7-day grace period — the page stays live meanwhile.
-      patch.status = "grace-period";
-      patch.payment_failed_at = nowIso;
-      patch.grace_period_ends_at = computeGracePeriodEnd(ctx.now).toISOString();
+      const first = local.status === "trialing" || !local.lastPaymentSucceededAt;
+      const wasInTrouble = local.status === "grace-period" || local.status === "past-due";
+      const periodEnd = addInterval(ctx.now, local.billingInterval);
+      const transactionId =
+        ctx.callbackTransactionId ?? (event.iterationsCompleted && event.iterationsCompleted > 0 ? `${ctx.subPaymeId}:iter:${event.iterationsCompleted}` : `${ctx.subPaymeId}:paid:${nowIso.slice(0, 10)}`);
+      return {
+        kind: "payment-succeeded",
+        patch: {
+          status: "active",
+          payment_failed_at: null,
+          grace_period_ends_at: null,
+          payment_failure_reason: null,
+          last_payment_succeeded_at: nowIso,
+          current_period_started_at: nowIso,
+          current_period_ends_at: periodEnd ? periodEnd.toISOString() : null,
+          cancel_at_period_end: false,
+          canceled_at: null,
+          provider_last_transaction_id: transactionId,
+        },
+        transaction: {
+          providerTransactionId: transactionId,
+          kind: first ? "charge" : "renewal",
+          status: "succeeded",
+          amountAgorot: agorotFromIls(local.priceAmountIls),
+          occurredAt: nowIso,
+          failureReason: null,
+        },
+        businessEvent: local.status === "trialing" ? "subscription_activated" : wasInTrouble ? "payment_recovered" : null,
+        activatePlan: true,
+      };
     }
-    return {
-      kind: "payment-failed",
-      patch,
-      transaction: { providerTransactionId: failedTransactionId, kind: "failed", status: "failed", amountAgorot, occurredAt: nowIso, failureReason: reason },
-      businessEvent: alreadyInTrouble ? null : "payment_failed",
-      activatePlan: false,
-    };
-  }
 
-  if (verified.status === "canceled") {
-    if (local.status === "canceled" || local.status === "expired") return { kind: "no-change", reason: "already-canceled" };
-    let accessUntil: string | null = local.currentPeriodEndsAt;
-    if (local.status === "trialing") accessUntil = local.trialEndsAt;
-    else if (local.lastPaymentSucceededAt) accessUntil = addInterval(new Date(local.lastPaymentSucceededAt), local.billingInterval)?.toISOString() ?? accessUntil;
-    return {
-      kind: "canceled",
-      patch: { status: "canceled", cancel_at_period_end: true, canceled_at: nowIso, current_period_ends_at: accessUntil },
-      transaction: null,
-      businessEvent: "subscription_canceled",
-      activatePlan: false,
-    };
-  }
+    case "sub-failure": {
+      if (ended) return { kind: "no-change", reason: "subscription-already-ended" };
+      const alreadyInTrouble = local.status === "grace-period" || local.status === "past-due";
+      const reason = safeReason(event.errorText);
+      const failedTransactionId = ctx.callbackTransactionId ?? `${ctx.subPaymeId}:fail:${ctx.eventKey.slice(0, 16)}`;
+      const patch: SubscriptionPatch = { last_payment_failed_at: nowIso, payment_failure_reason: reason };
+      if (!alreadyInTrouble) {
+        // First failure: stamp it and open the 7-day grace period — the page stays live meanwhile.
+        patch.status = "grace-period";
+        patch.payment_failed_at = nowIso;
+        patch.grace_period_ends_at = computeGracePeriodEnd(ctx.now).toISOString();
+      }
+      return {
+        kind: "payment-failed",
+        patch,
+        transaction: {
+          providerTransactionId: failedTransactionId,
+          kind: "failed",
+          status: "failed",
+          amountAgorot: local.priceAmountIls !== null ? agorotFromIls(local.priceAmountIls) : 0,
+          occurredAt: nowIso,
+          failureReason: reason,
+        },
+        businessEvent: alreadyInTrouble ? null : "payment_failed",
+        activatePlan: false,
+      };
+    }
 
-  // initial (not yet paid) / completed / unknown — nothing to change locally.
-  return { kind: "no-change", reason: `payme-status-${verified.status}` };
+    case "sub-cancel": {
+      if (ended) return { kind: "no-change", reason: "already-canceled" };
+      let accessUntil: string | null = local.currentPeriodEndsAt;
+      if (local.status === "trialing") accessUntil = local.trialEndsAt;
+      else if (local.lastPaymentSucceededAt) accessUntil = addInterval(new Date(local.lastPaymentSucceededAt), local.billingInterval)?.toISOString() ?? accessUntil;
+      return {
+        kind: "canceled",
+        patch: { status: "canceled", cancel_at_period_end: true, canceled_at: nowIso, current_period_ends_at: accessUntil },
+        transaction: null,
+        businessEvent: "subscription_canceled",
+        activatePlan: false,
+      };
+    }
+
+    default:
+      return { kind: "no-change", reason: "unknown-notify-type" };
+  }
 }

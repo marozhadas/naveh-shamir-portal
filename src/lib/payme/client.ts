@@ -1,18 +1,17 @@
 import "server-only";
 import { getPayMeConfig, type PayMeConfig } from "./config";
-import { parsePayMeSubStatus, redactSecrets, type PayMeSubStatus } from "./payme-helpers";
+import { redactSecrets } from "./payme-helpers";
 
 /**
  * Thin server-side client for the PayMe endpoints the integration needs (docs.payme.io):
  *   POST {base}/generate-subscription   — create the recurring subscription, charged with the buyer token
  *   POST {base}/cancel-subscription     — cancel it
- *   POST {base}/get-subscriptions       — read it back (the source of truth for webhook verification)
  *
- * Authentication: PayMe's public docs identify the seller by seller_payme_id in the request body ("your private key
- * in PayMe system") and show no field or header for the seller Secret Key on these endpoints, and this account has no
- * Partner Key (payme_client_key). So no partner key is sent, and the Secret Key (PAYME_SECRET_KEY) is loaded and
- * redacted from every error but is NOT yet attached to any request — where PayMe expects it must be confirmed with
- * PayMe/in the sandbox first (see the open questions), rather than guessed here.
+ * There is deliberately NO call that reads a subscription back: get-subscriptions is not available to Seller accounts
+ * (PayMe confirmed). Subscription updates arrive only as callbacks to sub_callback_url — see process-callback.ts.
+ *
+ * Authentication: for a Seller account PayMe identifies the seller by seller_payme_id in the request body, and nothing
+ * else — no Partner Key (payme_client_key) and no seller Secret Key (PayMe confirmed neither is used for Subscriptions).
  *
  * Secrets stay in this module: request bodies and PayMe's error text are never logged raw, and every
  * error that leaves here is passed through redactSecrets() first.
@@ -29,7 +28,7 @@ export class PayMeError extends Error {
 }
 
 function secretsOf(config: PayMeConfig, extra: string[] = []): string[] {
-  return [config.sellerId, config.secretKey, config.hostedFieldsKey, config.webhookSecret, ...extra];
+  return [config.sellerId, config.hostedFieldsKey, config.webhookSecret, ...extra];
 }
 
 async function post<T>(config: PayMeConfig, path: string, body: Record<string, unknown>, extraSecrets: string[] = []): Promise<T> {
@@ -117,15 +116,6 @@ export async function cancelPayMeSubscription(subPaymeId: string): Promise<void>
   await post(config, "cancel-subscription", { seller_payme_id: config.sellerId, sub_payme_id: subPaymeId, language: "he" });
 }
 
-export type PayMeSubscriptionReadback = {
-  subPaymeId: string;
-  status: PayMeSubStatus;
-  iterationsCompleted: number;
-  priceAgorot: number | null;
-  paymentDate: Date | null;
-  errorText: string | null;
-};
-
 export function parsePayMeDateTime(value: unknown): Date | null {
   if (typeof value !== "string" || !value) return null;
   // PayMe returns ISO-like "YYYY-MM-DD HH:mm:ss" (Israel time) — interpret as Asia/Jerusalem wall-clock.
@@ -142,38 +132,4 @@ export function parsePayMeDateTime(value: unknown): Date | null {
     .find((part) => part.type === "timeZoneName")?.value.match(/GMT([+-]\d+)/)?.[1];
   const offsetHours = offsetMinutes ? Number(offsetMinutes) : 2;
   return new Date(asUtc - offsetHours * 60 * 60 * 1000);
-}
-
-/** Reads one subscription back from PayMe (get-subscriptions). Returns null when PayMe does not know it. */
-export async function getPayMeSubscription(subPaymeId: string): Promise<PayMeSubscriptionReadback | null> {
-  const config = getPayMeConfig();
-  if (!config) throw new PayMeError("PayMe is not configured", "not-configured");
-
-  const result = await post<{
-    items_count?: number;
-    items?: {
-      sub_payme_id?: string;
-      seller_payme_id?: string;
-      sub_status?: string | number;
-      sub_iterations_completed?: string | number;
-      sub_price?: string | number;
-      sub_payment_date?: string;
-      sub_error_text?: string;
-    }[];
-  }>(config, "get-subscriptions", { seller_payme_id: config.sellerId, sub_payme_id: subPaymeId });
-
-  const item = result.items?.find((entry) => entry.sub_payme_id === subPaymeId);
-  if (!item) return null;
-  // The subscription must belong to OUR seller — never trust an id that resolves to someone else's.
-  if (item.seller_payme_id && item.seller_payme_id !== config.sellerId) return null;
-
-  const price = Number(item.sub_price);
-  return {
-    subPaymeId,
-    status: parsePayMeSubStatus(item.sub_status),
-    iterationsCompleted: Number(item.sub_iterations_completed ?? 0) || 0,
-    priceAgorot: Number.isFinite(price) ? price : null,
-    paymentDate: parsePayMeDateTime(item.sub_payment_date),
-    errorText: item.sub_error_text ? String(item.sub_error_text) : null,
-  };
 }

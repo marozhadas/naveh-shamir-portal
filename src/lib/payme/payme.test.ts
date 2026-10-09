@@ -7,12 +7,11 @@ import {
   constantTimeEquals,
   formatPayMeDate,
   parsePayMeCallbackBody,
-  parsePayMeSubStatus,
   paymeIterationType,
   redactSecrets,
   safeCallbackSummary,
 } from "./payme-helpers";
-import { decideSubscriptionTransition, type LocalSubscriptionForTransition } from "./decide-subscription-transition";
+import { decideSubscriptionTransition, type LocalSubscriptionForTransition, type PayMeCallbackEvent } from "./decide-subscription-transition";
 
 const NOW = new Date("2026-10-08T10:00:00.000Z");
 
@@ -81,10 +80,6 @@ describe("callback parsing", () => {
     expect(Object.keys(summary).sort()).toEqual(["notify_type", "sub_iterations_completed", "sub_payme_id", "sub_status", "subscription_id"]);
     expect(JSON.stringify(summary)).not.toContain("SECRET-TOKEN");
   });
-
-  it("maps PayMe subscription statuses", () => {
-    expect([1, 2, 4, 5, 6, 7, 3].map(parsePayMeSubStatus)).toEqual(["initial", "active", "failed", "canceled", "completed", "failed-retrying", "unknown"]);
-  });
 });
 
 describe("secrets", () => {
@@ -114,10 +109,11 @@ function local(overrides: Partial<LocalSubscriptionForTransition> = {}): LocalSu
 }
 
 const ctx = { now: NOW, subPaymeId: "SUB1", callbackTransactionId: null, eventKey: "abcdef0123456789abcdef" };
+const event = (notifyType: string, extra: Partial<PayMeCallbackEvent> = {}): PayMeCallbackEvent => ({ notifyType, errorText: null, iterationsCompleted: null, ...extra });
 
-describe("decideSubscriptionTransition", () => {
-  it("first successful charge after the trial: trialing → active, clears failure state, records revenue", () => {
-    const decision = decideSubscriptionTransition(local(), { status: "active", iterationsCompleted: 1, priceAgorot: 3900, paymentDate: NOW, errorText: null }, ctx);
+describe("decideSubscriptionTransition (driven by the documented notify_type only)", () => {
+  it("first successful charge after the trial: trialing → active, clears failure state, books OUR snapshot price as revenue", () => {
+    const decision = decideSubscriptionTransition(local(), event("sub-active"), ctx);
     expect(decision.kind).toBe("payment-succeeded");
     if (decision.kind !== "payment-succeeded") return;
     expect(decision.patch.status).toBe("active");
@@ -128,16 +124,56 @@ describe("decideSubscriptionTransition", () => {
     expect(decision.patch.current_period_ends_at).toBe("2026-11-08T10:00:00.000Z");
   });
 
-  it("later successful charges are renewals; yearly periods run a year", () => {
-    const decision = decideSubscriptionTransition(local({ status: "active", billingInterval: "yearly", priceAmountIls: 390 }), { status: "active", iterationsCompleted: 2, priceAgorot: 39000, paymentDate: NOW, errorText: null }, ctx);
+  it("the amount comes from the stored snapshot — never from the callback", () => {
+    const decision = decideSubscriptionTransition(local({ priceAmountIls: 490, billingInterval: "yearly" }), { ...event("sub-active"), sub_price: "1", price: "1" } as unknown as PayMeCallbackEvent, ctx);
+    if (decision.kind !== "payment-succeeded") throw new Error("expected success");
+    expect(decision.transaction?.amountAgorot).toBe(49000);
+  });
+
+  it("a later successful charge is a renewal; yearly periods run a year", () => {
+    const decision = decideSubscriptionTransition(local({ status: "active", billingInterval: "yearly", priceAmountIls: 390, lastPaymentSucceededAt: "2025-10-08T10:00:00.000Z" }), event("sub-iteration-success"), ctx);
     if (decision.kind !== "payment-succeeded") throw new Error("expected success");
     expect(decision.transaction?.kind).toBe("renewal");
     expect(decision.businessEvent).toBeNull();
     expect(decision.patch.current_period_ends_at).toBe("2027-10-08T10:00:00.000Z");
   });
 
+  it("transaction id: the callback's own id wins, then the iteration counter, then a per-day key", () => {
+    const withId = decideSubscriptionTransition(local(), event("sub-active"), { ...ctx, callbackTransactionId: "SALE-123" });
+    const withIteration = decideSubscriptionTransition(local(), event("sub-active", { iterationsCompleted: 1 }), ctx);
+    const fallback = decideSubscriptionTransition(local(), event("sub-active"), ctx);
+    expect(withId.kind === "payment-succeeded" && withId.transaction?.providerTransactionId).toBe("SALE-123");
+    expect(withIteration.kind === "payment-succeeded" && withIteration.transaction?.providerTransactionId).toBe("SUB1:iter:1");
+    expect(fallback.kind === "payment-succeeded" && fallback.transaction?.providerTransactionId).toBe("SUB1:paid:2026-10-08");
+  });
+
+  it("sub-active AND sub-iteration-success for ONE charge count once: the second is a duplicate notification", () => {
+    const first = decideSubscriptionTransition(local(), event("sub-active"), ctx);
+    expect(first.kind).toBe("payment-succeeded");
+    // the same charge announced again an hour later, after the first one was applied
+    const second = decideSubscriptionTransition(local({ status: "active", lastPaymentSucceededAt: NOW.toISOString() }), event("sub-iteration-success"), { ...ctx, now: new Date(NOW.getTime() + 60 * 60 * 1000) });
+    expect(second).toEqual({ kind: "no-change", reason: "duplicate-payment-notification" });
+  });
+
+  it("a payment reported long before the trial ends, or after the subscription ended, is NOT booked — it needs attention", () => {
+    expect(decideSubscriptionTransition(local({ trialEndsAt: "2026-10-20T10:00:00.000Z" }), event("sub-active"), ctx)).toEqual({ kind: "needs-attention", reason: "payment-reported-during-trial" });
+    expect(decideSubscriptionTransition(local({ status: "canceled" }), event("sub-active"), ctx)).toEqual({ kind: "needs-attention", reason: "payment-after-subscription-ended" });
+    expect(decideSubscriptionTransition(local({ status: "expired" }), event("sub-iteration-success"), ctx)).toEqual({ kind: "needs-attention", reason: "payment-after-subscription-ended" });
+  });
+
+  it("a payment with no stored price snapshot cannot be booked safely", () => {
+    expect(decideSubscriptionTransition(local({ priceAmountIls: null }), event("sub-active"), ctx)).toEqual({ kind: "needs-attention", reason: "no-price-snapshot" });
+  });
+
+  it("a payment up to a day before the stored trial end is accepted (rounding), a day or more earlier is not", () => {
+    const nearly = decideSubscriptionTransition(local({ trialEndsAt: "2026-10-09T09:00:00.000Z" }), event("sub-active"), ctx);
+    expect(nearly.kind).toBe("payment-succeeded");
+    const tooEarly = decideSubscriptionTransition(local({ trialEndsAt: "2026-10-09T11:00:00.000Z" }), event("sub-active"), ctx);
+    expect(tooEarly.kind).toBe("needs-attention");
+  });
+
   it("a failed charge opens a 7-day grace period (page stays live) and records a failed transaction — never revenue", () => {
-    const decision = decideSubscriptionTransition(local({ status: "active" }), { status: "failed-retrying", iterationsCompleted: 1, priceAgorot: 3900, paymentDate: null, errorText: "Failed, pending automatic retry" }, ctx);
+    const decision = decideSubscriptionTransition(local({ status: "active", lastPaymentSucceededAt: "2026-09-08T10:00:00.000Z" }), event("sub-failure", { errorText: "Failed, pending automatic retry" }), ctx);
     if (decision.kind !== "payment-failed") throw new Error("expected failure");
     expect(decision.patch.status).toBe("grace-period");
     expect(decision.patch.payment_failed_at).toBe(NOW.toISOString());
@@ -148,11 +184,7 @@ describe("decideSubscriptionTransition", () => {
   });
 
   it("a second failure inside the grace period does NOT restart or extend it", () => {
-    const decision = decideSubscriptionTransition(
-      local({ status: "grace-period", paymentFailedAt: "2026-10-05T10:00:00.000Z", gracePeriodEndsAt: "2026-10-12T10:00:00.000Z" }),
-      { status: "failed", iterationsCompleted: 1, priceAgorot: 3900, paymentDate: null, errorText: "Declined" },
-      ctx,
-    );
+    const decision = decideSubscriptionTransition(local({ status: "grace-period", paymentFailedAt: "2026-10-05T10:00:00.000Z", gracePeriodEndsAt: "2026-10-12T10:00:00.000Z" }), event("sub-failure", { errorText: "Declined" }), ctx);
     if (decision.kind !== "payment-failed") throw new Error("expected failure");
     expect(decision.patch.status).toBeUndefined();
     expect(decision.patch.grace_period_ends_at).toBeUndefined();
@@ -162,8 +194,8 @@ describe("decideSubscriptionTransition", () => {
 
   it("a successful charge during grace recovers the subscription and clears the grace period", () => {
     const decision = decideSubscriptionTransition(
-      local({ status: "grace-period", paymentFailedAt: "2026-10-05T10:00:00.000Z", gracePeriodEndsAt: "2026-10-12T10:00:00.000Z" }),
-      { status: "active", iterationsCompleted: 2, priceAgorot: 3900, paymentDate: NOW, errorText: null },
+      local({ status: "grace-period", paymentFailedAt: "2026-10-05T10:00:00.000Z", gracePeriodEndsAt: "2026-10-12T10:00:00.000Z", lastPaymentSucceededAt: "2026-09-05T10:00:00.000Z" }),
+      event("sub-iteration-success"),
       ctx,
     );
     if (decision.kind !== "payment-succeeded") throw new Error("expected success");
@@ -173,22 +205,21 @@ describe("decideSubscriptionTransition", () => {
   });
 
   it("cancel during the trial keeps access until the trial end; after payment, until the paid period end", () => {
-    const duringTrial = decideSubscriptionTransition(local({ status: "trialing" }), { status: "canceled", iterationsCompleted: 0, priceAgorot: 3900, paymentDate: null, errorText: null }, ctx);
+    const duringTrial = decideSubscriptionTransition(local({ status: "trialing" }), event("sub-cancel"), ctx);
     if (duringTrial.kind !== "canceled") throw new Error("expected cancel");
     expect(duringTrial.patch.current_period_ends_at).toBe("2026-10-08T09:00:00.000Z");
     expect(duringTrial.patch.cancel_at_period_end).toBe(true);
 
-    const afterPayment = decideSubscriptionTransition(local({ status: "active", lastPaymentSucceededAt: "2026-10-01T10:00:00.000Z" }), { status: "canceled", iterationsCompleted: 1, priceAgorot: 3900, paymentDate: null, errorText: null }, ctx);
+    const afterPayment = decideSubscriptionTransition(local({ status: "active", lastPaymentSucceededAt: "2026-10-01T10:00:00.000Z" }), event("sub-cancel"), ctx);
     if (afterPayment.kind !== "canceled") throw new Error("expected cancel");
     expect(afterPayment.patch.current_period_ends_at).toBe("2026-11-01T10:00:00.000Z");
   });
 
-  it("does nothing for initial / completed / unknown PayMe states, or for already ended subscriptions", () => {
-    expect(decideSubscriptionTransition(local(), { status: "initial", iterationsCompleted: 0, priceAgorot: 3900, paymentDate: null, errorText: null }, ctx).kind).toBe("no-change");
-    expect(decideSubscriptionTransition(local({ status: "canceled" }), { status: "failed", iterationsCompleted: 1, priceAgorot: 3900, paymentDate: null, errorText: null }, ctx).kind).toBe("no-change");
-  });
-
-  it("an 'active' PayMe subscription that has not charged yet (still in trial) changes nothing", () => {
-    expect(decideSubscriptionTransition(local(), { status: "active", iterationsCompleted: 0, priceAgorot: 3900, paymentDate: null, errorText: null }, ctx).kind).toBe("no-change");
+  it("informational / unknown notifications change nothing; ended subscriptions ignore failures and cancels", () => {
+    expect(decideSubscriptionTransition(local(), event("sub-create"), ctx).kind).toBe("no-change");
+    expect(decideSubscriptionTransition(local(), event("sub-complete"), ctx).kind).toBe("no-change");
+    expect(decideSubscriptionTransition(local(), event("something-new"), ctx)).toEqual({ kind: "no-change", reason: "unknown-notify-type" });
+    expect(decideSubscriptionTransition(local({ status: "canceled" }), event("sub-failure"), ctx).kind).toBe("no-change");
+    expect(decideSubscriptionTransition(local({ status: "canceled" }), event("sub-cancel"), ctx).kind).toBe("no-change");
   });
 });
