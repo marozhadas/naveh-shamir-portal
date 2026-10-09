@@ -59,7 +59,7 @@ export default function EssentialNumbersPage() {
               קבוצות WhatsApp של נווה שמיר
             </h2>
             <p className={styles.whatsappGroupsDescription}>כל קבוצות ה־WhatsApp השכונתיות במקום אחד — לפי נושא, קהל ותחום עניין.</p>
-            <p className={styles.supportText}>לחצו על הקבוצה המתאימה כדי לעבור ל־WhatsApp ולבקש להצטרף.</p>
+            <p className={styles.whatsappGroupsSupportText}>לחצו על הקבוצה המתאימה כדי לעבור ל־WhatsApp ולבקש להצטרף.</p>
 
             <Suspense fallback={<WhatsAppGroupsGridSkeleton />}>
               <WhatsAppGroupsLoader />
