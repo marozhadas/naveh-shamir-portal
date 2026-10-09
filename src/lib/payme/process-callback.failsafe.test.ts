@@ -59,7 +59,11 @@ vi.mock("@/lib/supabase/admin-client", () => ({ createAdminSupabaseClient: () =>
 const getSubscription = vi.fn();
 vi.mock("./client", () => ({
   getPayMeSubscription: (...args: unknown[]) => getSubscription(...args),
-  PayMeError: class PayMeError extends Error {},
+  PayMeError: class PayMeError extends Error {
+    constructor(message: string, readonly kind: string) {
+      super(message);
+    }
+  },
 }));
 
 const BODY = "notify_type=sub-iteration-success&sub_payme_id=SUB-XYZ&sale_payme_id=SALE-1&price=3900";
@@ -77,7 +81,7 @@ describe("processPayMeCallback — unverifiable callbacks change nothing", () =>
 
   it("PayMe rejects/cannot answer the read-back → no subscription change, no revenue, only a failed event", async () => {
     const { PayMeError } = await import("./client");
-    getSubscription.mockRejectedValue(new PayMeError("PayMe rejected get-subscriptions: partner key required"));
+    getSubscription.mockRejectedValue(new PayMeError("PayMe rejected get-subscriptions: partner key required", "rejected"));
     const { processPayMeCallback } = await import("./process-callback");
 
     const result = await processPayMeCallback(BODY);
