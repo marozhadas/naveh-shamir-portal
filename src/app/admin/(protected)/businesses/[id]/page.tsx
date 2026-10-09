@@ -11,6 +11,8 @@ import { ApproveRejectPanel } from "./ApproveRejectPanel";
 import { DeleteBusinessButton } from "./DeleteBusinessButton";
 import { BusinessPlanControl } from "./BusinessPlanControl";
 import { BusinessOfferControl } from "./BusinessOfferControl";
+import { BusinessBillingTestControl } from "./BusinessBillingTestControl";
+import { getPayMeConfig } from "@/lib/payme/config";
 import { BusinessSlugControl } from "./BusinessSlugControl";
 import { BusinessManagementLinkControl } from "./BusinessManagementLinkControl";
 import { retryNotificationEmailAction } from "./actions";
@@ -137,6 +139,15 @@ export default async function AdminBusinessDetailPage({ params }: BusinessDetail
               ? { offerCode: subscriptionRow.offer_code, trialDays: subscriptionRow.trial_days, trialStartedAt: subscriptionRow.trial_started_at, trialEndsAt: subscriptionRow.trial_ends_at }
               : null
           }
+        />
+      )}
+
+      {registration.plan_tier !== "free" && (
+        <BusinessBillingTestControl
+          businessId={registration.id}
+          enabled={registration.billing_test_enabled === true}
+          payMeEnv={getPayMeConfig()?.env ?? null}
+          hasPayMeSubscription={subscriptionRow?.payment_provider === "payme"}
         />
       )}
 

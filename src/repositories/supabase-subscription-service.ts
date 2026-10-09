@@ -8,7 +8,8 @@ import type { TrialEligibility } from "@/types/trial";
 import { createPriceSnapshot, isBillingInterval } from "@/data/subscription-pricing";
 import { computeTrialWindow } from "@/data/subscription-offers";
 import { getSiteOrigin } from "@/utils/site-origin";
-import { buildPayMeCallbackUrl, getPayMeConfig, isPayMeConfigured } from "@/lib/payme/config";
+import { buildPayMeCallbackUrl } from "@/lib/payme/config";
+import { getPayMeConfigForBusiness } from "@/lib/payme/flow-access";
 import { cancelPayMeSubscription, generatePayMeSubscription, parsePayMeDateTime } from "@/lib/payme/client";
 import { agorotFromIls, computeSubscriptionStartDate, formatPayMeDate, paymeIterationType } from "@/lib/payme/payme-helpers";
 
@@ -86,9 +87,10 @@ export type StartRealTrialResult =
  */
 export async function startRealBusinessTrial(businessId: string, ownerId: string): Promise<StartRealTrialResult> {
   if (!isSupabaseAdminConfigured()) return { success: false, reason: "unknown-error" };
-  // Once PayMe is configured a trial is only ever started WITH a payment method (see
-  // startRealBusinessTrialWithPaymentMethod) — the card-less path is closed, also against crafted requests.
-  if (isPayMeConfigured()) return { success: false, reason: "payment-method-required" };
+  // Once PayMe is open FOR THIS BUSINESS (live, or sandbox with the admin test switch on) a trial is only ever
+  // started WITH a payment method (see startRealBusinessTrialWithPaymentMethod) — the card-less path is closed
+  // for it, also against crafted requests. Other businesses keep the card-less trial while PayMe is sandbox-only.
+  if (await getPayMeConfigForBusiness(businessId)) return { success: false, reason: "payment-method-required" };
 
   const eligibility = await checkRealTrialEligibility(businessId, ownerId);
   if (!eligibility.eligible) {
@@ -198,7 +200,8 @@ export async function startRealBusinessTrialWithPaymentMethod(
   paymentToken: string,
   cardMask: string | null,
 ): Promise<StartTrialWithPaymentMethodResult> {
-  const config = getPayMeConfig();
+  // Enforced here, where the flow really starts: in sandbox only an admin-enabled business gets a config at all.
+  const config = await getPayMeConfigForBusiness(businessId);
   if (!config || !isSupabaseAdminConfigured()) return { success: false, reason: "payme-not-configured" };
 
   const eligibility = await checkRealTrialEligibility(businessId, ownerId);

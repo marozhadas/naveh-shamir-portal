@@ -90,6 +90,7 @@ export type AdminAuditAction =
   | "business-pilot-assigned"
   | "business-pilot-removed"
   | "business-offer-changed"
+  | "business-billing-test-changed"
   | "business-dashboard-access-consent-updated"
   | "review-approved"
   | "review-rejected"

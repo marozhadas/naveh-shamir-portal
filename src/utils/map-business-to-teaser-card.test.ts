@@ -53,6 +53,7 @@ function makeRow(overrides: Partial<BusinessRegistrationRow> = {}): BusinessRegi
     privacy_consent: false,
     privacy_consent_at: null,
     privacy_policy_version: null,
+    billing_test_enabled: false,
     ...overrides,
   };
 }

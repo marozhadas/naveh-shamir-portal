@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { authAdapter } from "@/adapters/mock-auth-adapter";
 import { cancelOwnedPayMeSubscription, startRealBusinessTrialWithPaymentMethod } from "@/repositories/supabase-subscription-service";
 import { isPayMeConfigured } from "@/lib/payme/config";
+import { getPayMeConfigForBusiness } from "@/lib/payme/flow-access";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { isSupabaseBusinessId } from "@/utils/business-id";
 
@@ -36,6 +37,9 @@ export async function activateTrialWithPaymentMethodAction(input: { token: strin
 
   const businessId = user.ownedBusinessIds[0];
   if (!businessId || !isSupabaseBusinessId(businessId)) return { status: "error", message: "לא נמצא עסק המשויך לחשבון זה." };
+
+  // Sandbox guard: while PAYME_ENV=sandbox only an admin-enabled business may go on (the service layer checks again).
+  if (!(await getPayMeConfigForBusiness(businessId))) return { status: "error", message: ERROR_MESSAGE["payme-not-configured"] };
 
   if (typeof input.token !== "string" || !TOKEN_PATTERN.test(input.token)) return { status: "error", message: ERROR_MESSAGE["payme-rejected"] };
   const cardMask = typeof input.cardMask === "string" && CARD_MASK_PATTERN.test(input.cardMask) ? input.cardMask : null;

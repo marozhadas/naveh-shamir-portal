@@ -546,6 +546,7 @@ const AUDIT_LABEL: Record<string, string> = {
   "business-pilot-assigned": "סימון כפיילוט",
   "business-pilot-removed": "הסרת פיילוט",
   "business-offer-changed": "שינוי הצעה",
+  "business-billing-test-changed": "בדיקת סליקה (Sandbox)",
 };
 
 function SubscriptionRow({ sub }: { sub: RevenueSubscription }) {

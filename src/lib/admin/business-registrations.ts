@@ -166,6 +166,13 @@ export async function updateRegistrationOffer(id: string, offerCode: OfferCode):
   if (error) throw new Error(error.message);
 }
 
+/** Admin-only switch for sandbox billing tests (see lib/payme/flow-access.ts). Callers: changeBusinessBillingTestAction, which also writes the audit log. */
+export async function updateRegistrationBillingTest(id: string, enabled: boolean): Promise<void> {
+  const supabase = createAdminSupabaseClient();
+  const { error } = await supabase.from("business_registrations").update({ billing_test_enabled: enabled }).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
 /** The raw subscription row for a business (null before a trial was ever activated) — the source of the frozen offer/trial snapshot shown to admins. */
 export async function getRegistrationSubscriptionRow(registrationId: string): Promise<BusinessSubscriptionRow | null> {
   const supabase = createAdminSupabaseClient();

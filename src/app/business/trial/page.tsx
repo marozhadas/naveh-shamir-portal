@@ -11,7 +11,7 @@ import { subscriptionRepository } from "@/repositories/mock-subscription-reposit
 import { businessRepository } from "@/repositories/mock-business-repository";
 import { getBusinessPlan } from "@/data/business-plans";
 import { getTrialDaysForOffer } from "@/data/subscription-offers";
-import { getPayMeConfig } from "@/lib/payme/config";
+import { getPayMeConfigForBusiness } from "@/lib/payme/flow-access";
 import { isSupabaseBusinessId } from "@/utils/business-id";
 import { PaymentMethodTrialForm } from "@/components/business-dashboard/PaymentMethodTrialForm/PaymentMethodTrialForm";
 import { LAUNCH_PRICE_LABEL, formatPriceWithInterval, getCurrentPrice, isBillingInterval } from "@/data/subscription-pricing";
@@ -56,7 +56,8 @@ export default async function BusinessTrialPage() {
   const offer = getCurrentPrice(planTier, interval);
   // With PayMe configured, a real business starts its trial WITH a payment method (card entered in PayMe Hosted
   // Fields); without it, the previous card-less trial remains.
-  const payMeConfig = businessId && isSupabaseBusinessId(businessId) ? getPayMeConfig() : null;
+  // (In sandbox this is null unless an admin enabled billing tests for this business.)
+  const payMeConfig = businessId && isSupabaseBusinessId(businessId) ? await getPayMeConfigForBusiness(businessId) : null;
   const priceLine = `המסלול שבחרתם: ${plan.name}, ${formatPriceWithInterval(offer.amountIls, interval)}${offer.isLaunchPrice ? ` (${LAUNCH_PRICE_LABEL})` : ""}. עדיין לא מתבצע חיוב, וסליקה טרם חוברה.`;
 
   return (

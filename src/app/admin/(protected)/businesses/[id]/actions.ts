@@ -10,6 +10,7 @@ import {
   rotateBusinessManagementToken,
   updateRegistrationActivePlan,
   updateRegistrationOffer,
+  updateRegistrationBillingTest,
   updateRegistrationDashboardAccessConsent,
   updateRegistrationFields,
   updateRegistrationSlug,
@@ -23,6 +24,8 @@ import { businessEditFormSchema, type BusinessEditFormValues } from "./schema";
 import { changeBusinessPlanSchema, type ChangeBusinessPlanInput } from "./change-plan-schema";
 import { changeBusinessSlugSchema, type ChangeBusinessSlugInput } from "./change-slug-schema";
 import { changeBusinessOfferSchema, type ChangeBusinessOfferInput } from "./change-offer-schema";
+import { changeBusinessBillingTestSchema, type ChangeBusinessBillingTestInput } from "./change-billing-test-schema";
+import { getPayMeConfig } from "@/lib/payme/config";
 import { decideOfferChange } from "@/domain/decide-offer-change";
 import { getOffer, type OfferCode } from "@/data/subscription-offers";
 import { isValidBusinessSlug } from "@/utils/business-slug";
@@ -531,5 +534,59 @@ export async function changeBusinessOfferAction(input: ChangeBusinessOfferInput)
   } catch (error) {
     console.error("[changeBusinessOfferAction] failed:", error);
     return { status: "server-error", message: "לא הצלחנו לעדכן את קבוצת ההטבה כרגע. נסו שוב." };
+  }
+}
+
+export type ChangeBusinessBillingTestResult =
+  | { status: "success"; enabled: boolean }
+  | { status: "validation-error" | "not-found" | "server-error"; message: string };
+
+/**
+ * Admin-only switch for sandbox billing tests (business_registrations.billing_test_enabled, default false).
+ * While PAYME_ENV=sandbox only businesses switched on here can start a PayMe flow; with PAYME_ENV=live the switch
+ * has no effect (see lib/payme/flow-access.ts). Every real change is written to the audit log. Owners, anonymous
+ * visitors and registration forms have no way to set it: this is the only writer, and it re-checks the admin
+ * session (a server action is a public endpoint, so the UI alone would not be a guard).
+ */
+export async function changeBusinessBillingTestAction(input: ChangeBusinessBillingTestInput): Promise<ChangeBusinessBillingTestResult> {
+  const adminId = await requireAdmin();
+
+  const parsed = changeBusinessBillingTestSchema.safeParse(input);
+  if (!parsed.success) {
+    return { status: "validation-error", message: parsed.error.issues[0]?.message ?? "קלט לא תקין." };
+  }
+  const { businessId, enabled, reason } = parsed.data;
+
+  const registration = await getRegistrationById(businessId);
+  if (!registration) return { status: "not-found", message: "העסק לא נמצא." };
+  if (registration.plan_tier === "free") {
+    return { status: "validation-error", message: "בדיקת סליקה רלוונטית רק לעסקי Plus ו-Premium." };
+  }
+
+  const previous = registration.billing_test_enabled === true;
+  if (previous === enabled) return { status: "success", enabled };
+
+  try {
+    await updateRegistrationBillingTest(businessId, enabled);
+
+    await recordAuditLog({
+      adminId,
+      action: "business-billing-test-changed",
+      entityType: "business-registration",
+      entityId: businessId,
+      metadata: {
+        businessName: registration.business_name,
+        previousBillingTest: previous ? "מופעל" : "כבוי",
+        newBillingTest: enabled ? "מופעל" : "כבוי",
+        payMeEnv: getPayMeConfig()?.env ?? "not-configured",
+        reason: reason ?? null,
+      },
+    });
+
+    revalidateBusinessViews(businessId);
+    return { status: "success", enabled };
+  } catch (error) {
+    console.error("[changeBusinessBillingTestAction] failed:", error);
+    return { status: "server-error", message: "לא הצלחנו לעדכן את בדיקת הסליקה כרגע. נסו שוב." };
   }
 }

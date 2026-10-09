@@ -86,6 +86,8 @@ export type BusinessRegistrationRow = {
   privacy_consent: boolean;
   privacy_consent_at: string | null;
   privacy_policy_version: string | null;
+  /** Admin-only: lets this business run PayMe flows while PAYME_ENV=sandbox. Never exposed publicly or to the owner. */
+  billing_test_enabled: boolean;
 };
 
 /** Fields the public registration form is allowed to submit — status/featured/verified are never client-supplied (RLS also enforces this server-side). */

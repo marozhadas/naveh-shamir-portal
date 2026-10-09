@@ -36,7 +36,7 @@ export type RevenueData = {
   pilotBusinessCount: number;
 };
 
-const SUBSCRIPTION_AUDIT_ACTIONS = ["business-plan-changed", "business-pilot-assigned", "business-pilot-removed", "business-offer-changed"];
+const SUBSCRIPTION_AUDIT_ACTIONS = ["business-plan-changed", "business-pilot-assigned", "business-pilot-removed", "business-offer-changed", "business-billing-test-changed"];
 
 export async function loadRevenueData(): Promise<RevenueData> {
   const admin = createAdminSupabaseClient();
@@ -133,8 +133,8 @@ export async function loadRevenueData(): Promise<RevenueData> {
       adminId: a.admin_id,
       businessId: a.entity_id,
       businessName: a.entity_id ? (registrationById.get(a.entity_id)?.business_name ?? str("businessName")) : str("businessName"),
-      before: str("previousOffer") ?? str("previousPlan"),
-      after: str("newOffer") ?? str("newPlan"),
+      before: str("previousOffer") ?? str("previousPlan") ?? str("previousBillingTest"),
+      after: str("newOffer") ?? str("newPlan") ?? str("newBillingTest"),
       reason: str("reason"),
     };
   });

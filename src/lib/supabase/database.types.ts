@@ -99,6 +99,7 @@ export type Database = {
           | "privacy_consent"
           | "privacy_consent_at"
           | "privacy_policy_version"
+          | "billing_test_enabled"
         > & {
           id?: string;
           status?: BusinessRegistrationRow["status"];
@@ -134,6 +135,7 @@ export type Database = {
           privacy_consent?: boolean;
           privacy_consent_at?: string | null;
           privacy_policy_version?: string | null;
+          billing_test_enabled?: boolean;
         };
         Update: Partial<BusinessRegistrationRow>;
         Relationships: [];

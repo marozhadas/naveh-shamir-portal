@@ -5,7 +5,7 @@ import { getSubscriptionSummary } from "@/domain/get-subscription-summary";
 import { getBusinessPlan } from "@/data/business-plans";
 import { BILLING_INTERVAL_LABEL, LAUNCH_PRICE_LABEL, formatPriceWithInterval } from "@/data/subscription-pricing";
 import { isSupabaseBusinessId } from "@/utils/business-id";
-import { getPayMeConfig } from "@/lib/payme/config";
+import { getPayMeConfigForBusiness } from "@/lib/payme/flow-access";
 import { getOwnedPaymentMethodMask } from "@/repositories/supabase-subscription-service";
 import { CancelPayMeSubscriptionButton } from "@/components/business-dashboard/CancelPayMeSubscriptionButton/CancelPayMeSubscriptionButton";
 import { PaymentMethodTrialForm } from "@/components/business-dashboard/PaymentMethodTrialForm/PaymentMethodTrialForm";
@@ -30,8 +30,11 @@ export default async function BusinessSubscriptionPage() {
   const renderNow = new Date();
   const summary = getSubscriptionSummary({ business, subscription, access: view.access, selfEditAccess: view.selfEditAccess, now: renderNow });
   const plan = getBusinessPlan(summary.planId === "basic" ? "free" : summary.planId);
-  const payMeConfig = isRealSubscription ? getPayMeConfig() : null;
-  const payment = isRealSubscription && payMeConfig ? await getOwnedPaymentMethodMask(business.id, view.viewer.id) : null;
+  // In sandbox this is null unless an admin enabled billing tests for this business.
+  const payMeConfig = isRealSubscription ? await getPayMeConfigForBusiness(business.id) : null;
+  // An existing PayMe subscription always keeps its billing section (and its cancel button), whatever the switch says.
+  const hasPayMeSubscription = subscription?.paymentProvider === "payme";
+  const payment = isRealSubscription && (payMeConfig || hasPayMeSubscription) ? await getOwnedPaymentMethodMask(business.id, view.viewer.id) : null;
   const graceDaysLeft =
     summary.gracePeriodEndsAt !== null ? Math.max(0, Math.ceil((new Date(summary.gracePeriodEndsAt).getTime() - renderNow.getTime()) / (24 * 60 * 60 * 1000))) : null;
 
@@ -108,7 +111,7 @@ export default async function BusinessSubscriptionPage() {
       </dl>
       <p className={styles.notice}>{summary.editLimit.detail}</p>
 
-      {payMeConfig && summary.planId !== "basic" && (
+      {(payMeConfig || hasPayMeSubscription) && summary.planId !== "basic" && (
         <section className={styles.planCard} aria-labelledby="billing-heading">
           <h2 id="billing-heading" className={styles.statusHeading}>
             אמצעי תשלום וחיוב
@@ -154,7 +157,7 @@ export default async function BusinessSubscriptionPage() {
         </p>
       )}
 
-      {isRealSubscription && summary.planId !== "basic" && (
+      {isRealSubscription && !payMeConfig && !hasPayMeSubscription && summary.planId !== "basic" && (
         <p className={styles.notice} role="status">
           סליקה עדיין לא הופעלה בפורטל: לא מתבצע חיוב, לא נאספים פרטי אשראי, ולא נקבע מועד חיוב. בשלב זה אפשר להפעיל רק את {getTrialDaysForOffer(business.offerCode)} ימי הניסיון החינמיים.
         </p>
