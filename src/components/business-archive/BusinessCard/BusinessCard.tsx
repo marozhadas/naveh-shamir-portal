@@ -81,7 +81,7 @@ export function BusinessCard({ business, access }: BusinessCardProps) {
 
       <div className={styles.body}>
         <div className={styles.tags}>
-          <CategoryTag label={primaryCategoryLabel} category={business.category} />
+          <CategoryTag label={primaryCategoryLabel} category={business.category} className={styles.categoryTag} />
           {extraCategoryCount > 0 && <span className={styles.extraTag}>{`+${extraCategoryCount}`}</span>}
           {!isClickable && <span className={styles.basicTag}>רישום בסיסי</span>}
         </div>

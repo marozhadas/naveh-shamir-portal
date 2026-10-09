@@ -71,6 +71,13 @@
   gap: 6px;
 }
 
+/* The shared tag is heading-sized; on these cards it should read like the card's running text (same size as the
+   description). Two classes so it wins over CategoryTag's own rule regardless of stylesheet order. */
+.tags .categoryTag {
+  font-size: var(--fs-body-sm);
+  padding: 2px 12px;
+}
+
 .extraTag {
   font-size: var(--fs-caption);
   font-weight: var(--fw-demibold);
