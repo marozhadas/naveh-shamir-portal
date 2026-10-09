@@ -8,6 +8,12 @@ import { parsePayMeSubStatus, redactSecrets, type PayMeSubStatus } from "./payme
  *   POST {base}/cancel-subscription     — cancel it
  *   POST {base}/get-subscriptions       — read it back (the source of truth for webhook verification)
  *
+ * Authentication: PayMe's public docs identify the seller by seller_payme_id in the request body ("your private key
+ * in PayMe system") and show no field or header for the seller Secret Key on these endpoints, and this account has no
+ * Partner Key (payme_client_key). So no partner key is sent, and the Secret Key (PAYME_SECRET_KEY) is loaded and
+ * redacted from every error but is NOT yet attached to any request — where PayMe expects it must be confirmed with
+ * PayMe/in the sandbox first (see the open questions), rather than guessed here.
+ *
  * Secrets stay in this module: request bodies and PayMe's error text are never logged raw, and every
  * error that leaves here is passed through redactSecrets() first.
  */
@@ -23,7 +29,7 @@ export class PayMeError extends Error {
 }
 
 function secretsOf(config: PayMeConfig, extra: string[] = []): string[] {
-  return [config.sellerId, config.clientKey, config.hostedFieldsKey, config.webhookSecret, ...extra];
+  return [config.sellerId, config.secretKey, config.hostedFieldsKey, config.webhookSecret, ...extra];
 }
 
 async function post<T>(config: PayMeConfig, path: string, body: Record<string, unknown>, extraSecrets: string[] = []): Promise<T> {
@@ -84,7 +90,6 @@ export async function generatePayMeSubscription(input: GeneratePayMeSubscription
     config,
     "generate-subscription",
     {
-      payme_client_key: config.clientKey,
       seller_payme_id: config.sellerId,
       sub_currency: "ILS",
       sub_price: input.priceAgorot,
@@ -155,7 +160,7 @@ export async function getPayMeSubscription(subPaymeId: string): Promise<PayMeSub
       sub_payment_date?: string;
       sub_error_text?: string;
     }[];
-  }>(config, "get-subscriptions", { payme_client_key: config.clientKey, seller_payme_id: config.sellerId, sub_payme_id: subPaymeId });
+  }>(config, "get-subscriptions", { seller_payme_id: config.sellerId, sub_payme_id: subPaymeId });
 
   const item = result.items?.find((entry) => entry.sub_payme_id === subPaymeId);
   if (!item) return null;

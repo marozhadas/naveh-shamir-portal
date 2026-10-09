@@ -21,11 +21,11 @@ vi.mock("@/lib/supabase/admin-client", () => ({
   }),
 }));
 
-const ENV_KEYS = ["PAYME_ENV", "PAYME_SELLER_ID", "PAYME_CLIENT_KEY", "PAYME_HOSTED_FIELDS_KEY", "PAYME_WEBHOOK_SECRET"] as const;
+const ENV_KEYS = ["PAYME_ENV", "PAYME_SELLER_ID", "PAYME_SECRET_KEY", "PAYME_HOSTED_FIELDS_KEY", "PAYME_WEBHOOK_SECRET"] as const;
 function configure(env: "sandbox" | "live") {
   process.env.PAYME_ENV = env;
   process.env.PAYME_SELLER_ID = "MPL-TEST-SELLER";
-  process.env.PAYME_CLIENT_KEY = "client-key-test";
+  process.env.PAYME_SECRET_KEY = "secret-key-test";
   process.env.PAYME_HOSTED_FIELDS_KEY = "hosted-key-test";
   process.env.PAYME_WEBHOOK_SECRET = "s".repeat(40);
 }
