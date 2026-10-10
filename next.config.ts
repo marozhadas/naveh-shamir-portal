@@ -1,4 +1,6 @@
 import type { NextConfig } from "next";
+import { SITE_CONFIG } from "./src/data/config";
+import { buildLegacyHostRedirects } from "./src/lib/seo/legacy-host-redirect";
 
 const nextConfig: NextConfig = {
   experimental: {
@@ -24,6 +26,9 @@ const nextConfig: NextConfig = {
       { source: "/business/new", destination: "/business/register", permanent: true },
       { source: "/business/add-listing", destination: "/business/register", permanent: true },
       { source: "/add-listing", destination: "/business/register", permanent: true },
+      // naveh-shamir-portal.vercel.app (the exact production Vercel host — never *.vercel.app, so previews keep working)
+      // → the official domain, 308, path and query kept. See src/lib/seo/legacy-host-redirect.ts.
+      ...buildLegacyHostRedirects(SITE_CONFIG.siteUrl),
     ];
   },
 };

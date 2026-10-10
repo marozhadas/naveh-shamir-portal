@@ -2,9 +2,14 @@ import type { Metadata } from "next";
 import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
 import { defaultFooterSettings } from "@/editor/config/editor-defaults";
+import { staticPageMetadata } from "@/lib/seo/site-metadata";
 import styles from "../legal-page.module.css";
 
-export const metadata: Metadata = { title: "מדיניות פרטיות | נווה שמיר" };
+export const metadata: Metadata = staticPageMetadata({
+  title: "מדיניות פרטיות | נווה שמיר - הפורטל של השכונה",
+  description: "מדיניות הפרטיות של פורטל נווה שמיר: איזה מידע נאסף באתר, כיצד נעשה בו שימוש, כמה זמן הוא נשמר וכיצד אפשר לפנות אלינו.",
+  path: "/privacy",
+});
 
 export default function PrivacyPage() {
   return (

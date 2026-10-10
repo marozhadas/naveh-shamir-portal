@@ -45,8 +45,9 @@ describe("createEventJsonLd", () => {
     expect(data).not.toBeNull();
     expect(data!["@type"]).toBe("Event");
     expect(data!.name).toBe("מפגש קהילתי");
-    expect(data!.startDate).toBe("2026-08-10T18:00:00");
-    expect(data!.endDate).toBe("2026-08-10T20:00:00");
+    // August is daylight saving time in Israel: UTC+3
+    expect(data!.startDate).toBe("2026-08-10T18:00:00+03:00");
+    expect(data!.endDate).toBe("2026-08-10T20:00:00+03:00");
     expect(data!.url).toContain("/events/community-meetup");
     expect(data!.eventStatus).toBe("https://schema.org/EventScheduled");
   });
@@ -55,6 +56,24 @@ describe("createEventJsonLd", () => {
     const data = createEventJsonLd(makeEvent({ status: "canceled" }));
     expect(data).not.toBeNull();
     expect(data!.eventStatus).toBe("https://schema.org/EventCancelled");
+  });
+
+  it("winter time gets +02:00, summer time +03:00 (never a fixed offset)", () => {
+    const winter = createEventJsonLd(makeEvent({ event_date: "2026-12-20", start_time: "17:00:00", end_time: "18:30:00" }));
+    expect(winter!.startDate).toBe("2026-12-20T17:00:00+02:00");
+    expect(winter!.endDate).toBe("2026-12-20T18:30:00+02:00");
+    const summer = createEventJsonLd(makeEvent({ event_date: "2026-07-05", start_time: "17:00:00", end_time: null }));
+    expect(summer!.startDate).toBe("2026-07-05T17:00:00+03:00");
+  });
+
+  it("the location address is a PostalAddress built only from data that exists", () => {
+    const withAddress = createEventJsonLd(makeEvent({ address: "רועי קליין 1 נווה שמיר" }));
+    expect((withAddress!.location as { address: unknown }).address).toEqual({ "@type": "PostalAddress", streetAddress: "רועי קליין 1 נווה שמיר" });
+    // no address entered: the venue name stays what it was before (nothing invented), only as a PostalAddress
+    const withoutAddress = createEventJsonLd(makeEvent({ address: null }));
+    expect((withoutAddress!.location as { address: unknown }).address).toEqual({ "@type": "PostalAddress", streetAddress: "מתנ״ס נווה שמיר" });
+    const address = (withAddress!.location as { address: Record<string, unknown> }).address;
+    for (const invented of ["addressLocality", "addressCountry", "postalCode", "streetNumber"]) expect(address).not.toHaveProperty(invented);
   });
 
   it("omits endDate entirely when there is no end time", () => {

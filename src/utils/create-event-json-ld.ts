@@ -1,5 +1,6 @@
 import type { CommunityEventRow } from "@/types/community-event";
 import { getSiteOrigin } from "@/utils/site-origin";
+import { toIsraelIsoDateTime } from "@/utils/israel-time";
 
 const STATUS_SCHEMA: Record<CommunityEventRow["status"], string> = {
   draft: "https://schema.org/EventScheduled",
@@ -13,8 +14,9 @@ export function createEventJsonLd(event: CommunityEventRow): Record<string, unkn
   if (event.status === "draft") return null;
 
   const pageUrl = `${getSiteOrigin()}/events/${event.slug}`;
-  const startDate = `${event.event_date}T${event.start_time}`;
-  const endDate = event.end_time ? `${event.event_date}T${event.end_time}` : undefined;
+  // Stored as Israel local time: state it with the true offset for that date (UTC+2 winter / UTC+3 daylight saving).
+  const startDate = toIsraelIsoDateTime(event.event_date, event.start_time) ?? `${event.event_date}T${event.start_time}`;
+  const endDate = event.end_time ? (toIsraelIsoDateTime(event.event_date, event.end_time) ?? `${event.event_date}T${event.end_time}`) : undefined;
 
   const jsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
@@ -27,7 +29,8 @@ export function createEventJsonLd(event: CommunityEventRow): Record<string, unkn
     location: {
       "@type": "Place",
       name: event.location_name,
-      address: event.address || event.location_name,
+      // Same information as before (the street address, or the venue name when no address was entered), now as a PostalAddress.
+      address: { "@type": "PostalAddress", streetAddress: event.address || event.location_name },
     },
     url: pageUrl,
   };

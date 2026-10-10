@@ -27,6 +27,38 @@ describe("createLocalBusinessStructuredData", () => {
     expect(data.sameAs).toBeUndefined();
   });
 
+  describe("image URL", () => {
+    it("an absolute image URL stays exactly as it is (no origin glued in front)", () => {
+      const url = "https://nzhbwbbxnrcaiubgpjlc.supabase.co/storage/v1/object/public/business-media/registrations/x/cover/y.jpg";
+      const data = createLocalBusinessStructuredData(makeBusiness({ imageUrl: url, imageAlt: "x" }));
+      expect(data.image).toBe(url);
+      expect(data.image).not.toContain("neveshamir.co.ilhttps");
+    });
+
+    it("an http(s) image URL in the business image object is also kept as is", () => {
+      const data = createLocalBusinessStructuredData(makeBusiness({ image: { src: "http://example.com/a.jpg", alt: "" } }));
+      expect(data.image).toBe("http://example.com/a.jpg");
+    });
+
+    it("a root-relative image joins the official domain", () => {
+      const data = createLocalBusinessStructuredData(makeBusiness({ imageUrl: "/images/businesses/studio.jpg" }));
+      expect(data.image).toBe("https://neveshamir.co.il/images/businesses/studio.jpg");
+    });
+
+    it("an empty / blank / unrecognisable image yields no image property at all", () => {
+      for (const imageUrl of ["", "   ", "images/no-leading-slash.jpg", "data:image/png;base64,AAAA"]) {
+        const data = createLocalBusinessStructuredData(makeBusiness({ imageUrl }));
+        expect(data, imageUrl).not.toHaveProperty("image");
+      }
+    });
+  });
+
+  it("never invents address parts: no country, postcode, coordinates", () => {
+    const data = createLocalBusinessStructuredData(makeBusiness({ location: { neighborhood: "נווה שמיר", address: "אנה פרנק" } }));
+    expect(data.address).toEqual({ "@type": "PostalAddress", streetAddress: "אנה פרנק" });
+    expect(data).not.toHaveProperty("geo");
+  });
+
   it("strips the tel: prefix from the phone number", () => {
     const data = createLocalBusinessStructuredData(makeBusiness({ phone: "tel:+972500000001" }));
     expect(data.telephone).toBe("+972500000001");

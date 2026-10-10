@@ -2,9 +2,14 @@ import type { Metadata } from "next";
 import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
 import { defaultFooterSettings } from "@/editor/config/editor-defaults";
+import { staticPageMetadata } from "@/lib/seo/site-metadata";
 import styles from "../legal-page.module.css";
 
-export const metadata: Metadata = { title: "הצהרת נגישות | נווה שמיר" };
+export const metadata: Metadata = staticPageMetadata({
+  title: "הצהרת נגישות | נווה שמיר - הפורטל של השכונה",
+  description: "הצהרת הנגישות של פורטל נווה שמיר: מה נעשה כדי שהאתר יהיה נגיש לכולם, וכיצד לדווח על בעיית נגישות.",
+  path: "/accessibility",
+});
 
 export default function AccessibilityPage() {
   return (

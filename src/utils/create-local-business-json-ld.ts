@@ -1,6 +1,7 @@
 import { SITE_CONFIG } from "@/data/config";
 import type { Business } from "@/types/business";
 import { getBusinessContact, getBusinessHeroImage } from "@/utils/business-profile";
+import { resolveAbsoluteUrl } from "@/lib/seo/site-metadata";
 
 /** A plain object, not a class — this is just the shape we serialize into a <script type="application/ld+json">. */
 export type LocalBusinessStructuredData = {
@@ -49,7 +50,9 @@ export function createLocalBusinessStructuredData(business: Business): LocalBusi
 
   const description = business.fullDescription || business.shortDescription || business.description;
   if (description) data.description = description;
-  if (heroImage.src) data.image = `${SITE_CONFIG.siteUrl}${heroImage.src}`;
+  // An already-absolute image (e.g. a Supabase Storage URL) stays as it is; a root-relative one joins the official origin.
+  const image = resolveAbsoluteUrl(heroImage.src);
+  if (image) data.image = image;
 
   const telephone = contact.phone?.replace(/^tel:/, "");
   if (telephone) data.telephone = telephone;

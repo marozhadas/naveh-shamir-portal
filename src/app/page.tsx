@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+import { BASE_OPEN_GRAPH, SITE_DESCRIPTION, SITE_TITLE } from "@/lib/seo/site-metadata";
+import { createSiteJsonLd, serializeJsonLd } from "@/lib/seo/json-ld";
 import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { ConnectedFooter } from "@/editor/connected/ConnectedFooter";
 import { ConnectedHero } from "@/editor/connected/ConnectedHero";
@@ -21,6 +24,11 @@ import { getListingAccessByBusinessId } from "@/domain/get-business-listing-acce
 import { subscriptionRepository } from "@/repositories/mock-subscription-repository";
 import { mapRegistrationToBusiness } from "@/utils/map-registration-to-business";
 import { toBusinessId } from "@/utils/business-id";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+  openGraph: { ...BASE_OPEN_GRAPH, title: SITE_TITLE, description: SITE_DESCRIPTION, url: "/" },
+};
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +64,11 @@ export default async function Home() {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        // JSON-LD structured data, not HTML — see serializeJsonLd for the </script>-breakout guard.
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(createSiteJsonLd()) }}
+      />
       <a href="#main-content" className="skip-link">
         דלגו לתוכן הראשי
       </a>

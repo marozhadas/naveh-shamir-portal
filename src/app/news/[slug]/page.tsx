@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/shared/PageHeader/PageHeader";
 import { getNewsBySlug } from "@/repositories/community-news-service";
 import { formatNewsDateFull } from "@/utils/format-news-date";
 import { getSiteOrigin } from "@/utils/site-origin";
+import { createArticleJsonLd, serializeJsonLd } from "@/lib/seo/json-ld";
 import styles from "./news-detail.module.css";
 
 type NewsPageProps = { params: Promise<{ slug: string }> };
@@ -61,9 +62,17 @@ export default async function NewsDetailPage({ params }: NewsPageProps) {
   const slug = normalizeSlug(rawSlug);
   const article = await getNewsBySlug(slug);
   if (!article) notFound();
+  const articleJsonLd = createArticleJsonLd(article);
 
   return (
     <>
+      {articleJsonLd && (
+        <script
+          type="application/ld+json"
+          // JSON-LD structured data, not HTML — see serializeJsonLd for the </script>-breakout guard.
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(articleJsonLd) }}
+        />
+      )}
       <a href="#main-content" className="skip-link">
         דלגו לתוכן הראשי
       </a>
@@ -86,7 +95,11 @@ export default async function NewsDetailPage({ params }: NewsPageProps) {
             </div>
           )}
 
-          {article.published_at && <p className={styles.dateLine}>{formatNewsDateFull(article.published_at)}</p>}
+          {article.published_at && (
+            <p className={styles.dateLine}>
+              <time dateTime={article.published_at}>{formatNewsDateFull(article.published_at)}</time>
+            </p>
+          )}
 
           <p className={styles.body}>{article.body}</p>
 
