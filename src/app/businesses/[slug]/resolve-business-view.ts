@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { permanentRedirect } from "next/navigation";
 import { authAdapter } from "@/adapters/mock-auth-adapter";
 import { businessRepository } from "@/repositories/mock-business-repository";
@@ -49,7 +50,7 @@ export function normalizeSlug(slug: string): string {
  *    an admin can still preview it, everyone else gets the same generic "unavailable" message
  *    (never the real reason — no payment status, no expiry date, spec section 9/25).
  */
-export async function resolveBusinessView(rawSlug: string): Promise<BusinessProfileView> {
+async function resolveBusinessViewUncached(rawSlug: string): Promise<BusinessProfileView> {
   const slug = normalizeSlug(rawSlug);
   const published = await businessRepository.getPublishedBySlug(slug);
   if (published) {
@@ -87,3 +88,9 @@ export async function resolveBusinessView(rawSlug: string): Promise<BusinessProf
 
   return { kind: "unavailable" };
 }
+
+/**
+ * The layout (404 before streaming), generateMetadata and the page all ask this same question for the same request;
+ * React's per-request cache makes it run once instead of three times. The result is never shared between requests.
+ */
+export const resolveBusinessView = cache(resolveBusinessViewUncached);

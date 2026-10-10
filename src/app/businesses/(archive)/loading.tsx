@@ -1,5 +1,5 @@
 import { BusinessesGridSkeleton } from "@/components/business-archive/BusinessesGridSkeleton/BusinessesGridSkeleton";
-import styles from "./businesses.module.css";
+import styles from "../businesses.module.css";
 
 /**
  * Next's route-level loading UI — in practice barely visible today since the demo data is

@@ -9,7 +9,7 @@ import { BusinessesGridSkeleton } from "@/components/business-archive/Businesses
 import { businessRepository } from "@/repositories/mock-business-repository";
 import { subscriptionRepository } from "@/repositories/mock-subscription-repository";
 import { getListingAccessByBusinessId } from "@/domain/get-business-listing-access";
-import styles from "./businesses.module.css";
+import styles from "../businesses.module.css";
 
 const PAGE_TITLE = "עסקים בנווה שמיר | הפורטל של השכונה";
 const PAGE_DESCRIPTION =
