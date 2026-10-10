@@ -2,15 +2,10 @@
 
 import { useEffect, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SearchBar } from "@/components/ui/SearchBar";
-import {
-  colorTokenToCssVar,
-  fontWeightTokenToCssVar,
-  radiusTokenToCssVar,
-  shadowTokenToCssVar,
-  spacingTokenToCssVar,
-} from "@/styles/token-to-css-variable";
+import { Search } from "lucide-react";
+import { HERO_SHORTCUTS } from "@/data/hero-shortcuts";
 import type { HeroEditorSettings } from "@/editor/schemas/hero.schema";
 import type { HeroGalleryImage } from "@/types/hero-gallery";
 import styles from "./HeroSection.module.css";
@@ -26,6 +21,19 @@ const MAX_CONTENT_WIDTH_PX: Record<HeroEditorSettings["layout"]["maxContentWidth
 const DEFAULT_BACKGROUND: HeroGalleryImage = { id: "default", url: "/images/hero-background.jpg", alt: "", order: 0 };
 
 const ROTATE_INTERVAL_MS = 3000;
+
+const TONE_CLASS = {
+  slate: styles.toneSlate,
+  yellow: styles.toneYellow,
+  green: styles.toneGreen,
+  sky: styles.toneSky,
+  blue: styles.toneBlue,
+} as const;
+
+/** "בנווה שמיר" must never break across two lines — a non-breaking space joins the neighbourhood name. */
+function keepNeighbourhoodNameTogether(title: string): string {
+  return title.replace(/נווה שמיר/g, "נווה\u00A0שמיר");
+}
 
 function useRotatingIndex(count: number): number {
   const [index, setIndex] = useState(0);
@@ -50,6 +58,11 @@ type HeroSectionProps = {
   galleryImages?: HeroGalleryImage[];
 };
 
+/**
+ * Edge-to-edge hero: the rotating photo runs the full width under the header, with the headline and a pill search bar on
+ * top of it, and the row of shortcut icons right underneath. Text content (title, search placeholder, whether the search
+ * shows) still comes from the editor settings; the look (dark headline on a light veil, full-bleed image) is fixed.
+ */
 export function HeroSection({ settings, galleryImages }: HeroSectionProps) {
   const [query, setQuery] = useState("");
   const [feedback, setFeedback] = useState("");
@@ -68,30 +81,11 @@ export function HeroSection({ settings, galleryImages }: HeroSectionProps) {
     router.push(`/businesses?q=${encodeURIComponent(trimmed)}`);
   }
 
-  const heroStyle = {
-    "--hero-bg": colorTokenToCssVar(settings.appearance.backgroundColorToken),
-    "--hero-padding-block-start": spacingTokenToCssVar(settings.layout.paddingBlockDesktop.start),
-    "--hero-padding-block-end": spacingTokenToCssVar(settings.layout.paddingBlockDesktop.end),
-    "--hero-padding-block-start-mobile": spacingTokenToCssVar(settings.responsive.paddingBlockMobile.start),
-    "--hero-padding-block-end-mobile": spacingTokenToCssVar(settings.responsive.paddingBlockMobile.end),
-    "--hero-max-content-width": MAX_CONTENT_WIDTH_PX[settings.layout.maxContentWidth],
-    "--hero-content-align": settings.appearance.contentAlignment,
-    "--hero-content-align-mobile": settings.responsive.contentAlignmentMobile,
-    "--hero-title-color": colorTokenToCssVar(settings.appearance.titleColorToken),
-    "--hero-title-size": `${settings.appearance.titleSizeToken}px`,
-    "--hero-title-size-mobile": `${settings.responsive.titleSizeMobileToken}px`,
-    "--hero-title-weight": fontWeightTokenToCssVar(settings.appearance.titleWeightToken),
-    "--hero-description-color": colorTokenToCssVar(settings.appearance.descriptionColorToken),
-    "--hero-description-size": `${settings.appearance.descriptionSizeToken}px`,
-    "--hero-title-gap": spacingTokenToCssVar(settings.layout.titleToDescriptionGap),
-    "--hero-search-gap": spacingTokenToCssVar(settings.layout.descriptionToSearchGap),
-    "--search-bar-radius": radiusTokenToCssVar(settings.appearance.searchBarRadiusToken),
-    "--search-bar-shadow": shadowTokenToCssVar(settings.appearance.searchBarShadowToken),
-  } as CSSProperties;
+  const heroStyle = { "--hero-max-content-width": MAX_CONTENT_WIDTH_PX[settings.layout.maxContentWidth] } as CSSProperties;
 
   return (
     <section id="top" className={styles.hero} style={heroStyle}>
-      <div className={styles.card}>
+      <div className={styles.stage}>
         <div className={styles.backgroundLayer} aria-hidden="true">
           {images.map((image, index) => (
             <div
@@ -101,24 +95,30 @@ export function HeroSection({ settings, galleryImages }: HeroSectionProps) {
             />
           ))}
         </div>
-        <div className={styles.overlay} />
+        <div className={styles.veil} aria-hidden="true" />
 
         <div className={styles.content}>
-          <h1 className={styles.title}>{settings.content.title}</h1>
-          {settings.content.description && <p className={styles.subtitle}>{settings.content.description}</p>}
+          <h1 className={styles.title}>{keepNeighbourhoodNameTogether(settings.content.title)}</h1>
 
           {settings.visibility.showSearch && (
             <form role="search" className={styles.searchForm} onSubmit={handleSubmit}>
-              <SearchBar
-                id="hero-search"
-                label="חיפוש בפורטל נווה שמיר"
-                placeholder={settings.content.searchPlaceholder}
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-              />
-              <button type="submit" className="sr-only">
-                חיפוש
-              </button>
+              <div className={styles.searchField}>
+                <label htmlFor="hero-search" className="sr-only">
+                  חיפוש בפורטל נווה שמיר
+                </label>
+                <input
+                  id="hero-search"
+                  type="search"
+                  className={styles.searchInput}
+                  placeholder={settings.content.searchPlaceholder}
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                />
+                <span className={styles.searchDivider} aria-hidden="true" />
+                <button type="submit" className={styles.searchButton} aria-label="חיפוש">
+                  <Search size={22} aria-hidden="true" />
+                </button>
+              </div>
             </form>
           )}
           {settings.visibility.showSearch && (
@@ -128,6 +128,24 @@ export function HeroSection({ settings, galleryImages }: HeroSectionProps) {
           )}
         </div>
       </div>
+
+      <nav aria-label="קישורים מהירים" className={styles.shortcuts}>
+        <ul className={styles.shortcutList}>
+          {HERO_SHORTCUTS.map((shortcut) => {
+            const Icon = shortcut.icon;
+            return (
+              <li key={shortcut.id}>
+                <Link href={shortcut.href} className={styles.shortcut}>
+                  <span className={`${styles.shortcutCircle} ${TONE_CLASS[shortcut.tone]}`}>
+                    <Icon size={28} strokeWidth={2} aria-hidden="true" />
+                  </span>
+                  <span className={styles.shortcutLabel}>{shortcut.label}</span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
     </section>
   );
 }

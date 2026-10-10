@@ -48,6 +48,9 @@ export function ConnectedMovableSections({ upcomingEvents, communityNews, featur
   return (
     <>
       {order.map((sectionId) => {
+        // The shortcut icons now live INSIDE the hero (HeroSection + data/hero-shortcuts.ts), so the old floating
+        // "quick links" card is no longer drawn here — rendering both would show the same row twice.
+        if (sectionId === "quickLinks") return null;
         const entry = SECTION_MAP[sectionId];
         const isHidden = hiddenSet.has(sectionId);
         if (isHidden && !isAuthoringView) return null;
