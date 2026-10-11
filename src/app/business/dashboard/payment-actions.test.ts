@@ -54,4 +54,34 @@ describe("activateTrialWithPaymentMethodAction — sandbox guard", () => {
     expect(flowConfig).toHaveBeenCalledTimes(1);
     expect(flowConfig).toHaveBeenCalledWith(BUSINESS_ID);
   });
+
+  it("a client cannot forge the price, trial days or first-charge date: only token, card mask and consent are used", async () => {
+    flowConfig.mockResolvedValue({ env: "sandbox" });
+    startWithPaymentMethod.mockResolvedValue({ success: true });
+    const { activateTrialWithPaymentMethodAction } = await import("./payment-actions");
+    await activateTrialWithPaymentMethodAction({
+      token: TOKEN,
+      cardMask: "411111******1111",
+      consent: true,
+      price: 1,
+      total: 1,
+      trialDays: 3650,
+      trial_days: 3650,
+      sub_start_date: "01/01/2020",
+      offerCode: "pilot_2026",
+      interval: "yearly",
+    } as never);
+    // The service is called with exactly (business from the session, user, token, card mask) - there is nowhere to pass a price or a date.
+    expect(startWithPaymentMethod).toHaveBeenCalledTimes(1);
+    expect(startWithPaymentMethod.mock.calls[0]).toEqual([BUSINESS_ID, "user-1", TOKEN, "411111******1111"]);
+  });
+
+  it("an invalid plan from the service is reported without a charge", async () => {
+    flowConfig.mockResolvedValue({ env: "sandbox" });
+    startWithPaymentMethod.mockResolvedValue({ success: false, reason: "invalid-plan" });
+    const { activateTrialWithPaymentMethodAction } = await import("./payment-actions");
+    const result = await activateTrialWithPaymentMethodAction({ token: TOKEN, cardMask: null, consent: true });
+    expect(result.status).toBe("error");
+    expect(result.message).toContain("לא בוצע חיוב");
+  });
 });

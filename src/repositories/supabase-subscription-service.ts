@@ -11,7 +11,8 @@ import { getSiteOrigin } from "@/utils/site-origin";
 import { buildPayMeCallbackUrl } from "@/lib/payme/config";
 import { getPayMeConfigForBusiness } from "@/lib/payme/flow-access";
 import { cancelPayMeSubscription, generatePayMeSubscription, parsePayMeDateTime } from "@/lib/payme/client";
-import { agorotFromIls, computeSubscriptionStartDate, formatPayMeDate, paymeIterationType } from "@/lib/payme/payme-helpers";
+import { isValidSubPaymeId, paymeIterationType } from "@/lib/payme/payme-helpers";
+import { buildSubscriptionPlan } from "@/lib/payme/build-subscription-plan";
 
 /**
  * The real, Supabase-backed half of SubscriptionRepository — everything here operates on
@@ -180,18 +181,23 @@ export async function expireDueRealTrials(): Promise<number> {
 
 export type StartTrialWithPaymentMethodResult =
   | { success: true; subscription: BusinessSubscription }
-  | { success: false; reason: "not-eligible" | "already-exists" | "payme-not-configured" | "payme-rejected" | "unknown-error" };
+  | { success: false; reason: "not-eligible" | "already-exists" | "payme-not-configured" | "payme-rejected" | "invalid-plan" | "unknown-error" };
 
 /**
  * The PayMe-backed way to start a trial (used instead of startRealBusinessTrial once PayMe is configured):
- * approved business → payment method tokenized in PayMe Hosted Fields (the card never touches our servers) →
- * token reaches us → PayMe subscription created with its FIRST charge dated exactly at the trial end →
- * trial row written with the full snapshot (offer, trial days, price, interval, PayMe ids).
+ * approved business -> card tokenized in PayMe Hosted Fields (the card never touches our servers; tokenization only
+ * stores it in PayMe's vault and charges nothing) -> the permanent token reaches us and is sent to PayMe as the buyer_key
+ * in generate-subscription, with sub_start_date = today (Israel) + the trial days -> trial row written with the full
+ * snapshot (offer, trial days, interval, price, start date, PayMe subscription id).
+ *
+ * Nothing the browser sends decides money or time: the plan, billing track and offer are re-read from the business row,
+ * the price comes from the price snapshot, the trial length from the offer, sub_start_date is computed here
+ * (buildSubscriptionPlan). If any of them is not valid, or PayMe does not answer with a valid subscription id, no
+ * subscription (and no trial row, no active plan) is created.
  *
  * Order matters and is compensated: the PayMe subscription is created BEFORE the local row, and if the local
- * insert then loses a race (unique constraint — a double click), the PayMe subscription is cancelled again,
- * so a business can never end up charged without a trial row or with two PayMe subscriptions. Trial length
- * comes only from the offer stored on the business (server-side), exactly as in startRealBusinessTrial.
+ * insert then loses a race (unique constraint - a double click), the PayMe subscription is cancelled again,
+ * so a business can never end up charged without a trial row or with two PayMe subscriptions.
  * Nothing here ever logs or returns the token.
  */
 export async function startRealBusinessTrialWithPaymentMethod(
@@ -220,10 +226,13 @@ export async function startRealBusinessTrialWithPaymentMethod(
     .maybeSingle();
   if (!registration) return { success: false, reason: "not-eligible" };
 
-  const planId: "plus" | "premium" = registration.plan_tier === "premium" ? "premium" : "plus";
-  const interval = isBillingInterval(registration.selected_billing_interval) ? registration.selected_billing_interval : "monthly";
-  const snapshot = createPriceSnapshot(planId, interval);
-  const trial = computeTrialWindow(registration.offer_code, new Date());
+  // Plan, price snapshot, trial length and first-charge date - all decided on the server; invalid => nothing is created.
+  const built = buildSubscriptionPlan(registration, new Date());
+  if (!built.ok) {
+    console.error("[startRealBusinessTrialWithPaymentMethod] refusing to create a subscription:", built.reason);
+    return { success: false, reason: "invalid-plan" };
+  }
+  const { plan } = built;
 
   // 1) Keep the reusable token (server-only table; never the card itself).
   const { error: methodError } = await admin.from("billing_payment_methods").upsert(
@@ -232,16 +241,16 @@ export async function startRealBusinessTrialWithPaymentMethod(
   );
   if (methodError) return { success: false, reason: "unknown-error" };
 
-  // 2) Create the PayMe subscription — first charge exactly when the trial ends.
+  // 2) Create the PayMe subscription - the token IS the buyer_key; the first charge is on sub_start_date, not now.
   let created;
   try {
     created = await generatePayMeSubscription({
       buyerKey: paymentToken,
       merchantSubscriptionId: registrationId,
-      priceAgorot: agorotFromIls(snapshot.amountIls),
-      iterationType: paymeIterationType(interval),
-      startDate: formatPayMeDate(computeSubscriptionStartDate(new Date(trial.trialEndsAt), interval)),
-      description: `${planId === "premium" ? "Premium" : "Plus"} — ${interval === "monthly" ? "מנוי חודשי" : "מנוי שנתי"} | פורטל נווה שמיר`,
+      priceAgorot: plan.priceAgorot,
+      iterationType: paymeIterationType(plan.interval),
+      startDate: plan.subStartDate,
+      description: `${plan.planId === "premium" ? "Premium" : "Plus"} - ${plan.interval === "monthly" ? "מנוי חודשי" : "מנוי שנתי"} | פורטל נווה שמיר`,
       callbackUrl: buildPayMeCallbackUrl(getSiteOrigin(), config.webhookSecret),
     });
   } catch (error) {
@@ -250,32 +259,41 @@ export async function startRealBusinessTrialWithPaymentMethod(
     return { success: false, reason: "payme-rejected" };
   }
 
-  // 3) The local trial row, with the full snapshot.
+  // Defence in depth: never activate on anything but a valid PayMe subscription id.
+  if (!isValidSubPaymeId(created?.subPaymeId)) {
+    console.error("[startRealBusinessTrialWithPaymentMethod] PayMe returned no valid subscription id - nothing activated");
+    await admin.from("billing_payment_methods").delete().eq("business_registration_id", registrationId);
+    return { success: false, reason: "payme-rejected" };
+  }
+
+  // 3) The local trial row, with the full snapshot. next_billing_at is PayMe's own next date when it reports one,
+  //    otherwise the first-charge date we asked for (start of that day, Israel time).
+  const nextBillingAt = parsePayMeDateTime(created.nextDate) ?? parseDayMonthYearAsJerusalemMidnight(plan.subStartDate);
   const { data, error } = await admin
     .from("business_subscriptions")
     .insert({
       business_registration_id: registrationId,
       owner_id: ownerId,
-      plan_id: planId,
+      plan_id: plan.planId,
       status: "trialing",
-      trial_started_at: trial.trialStartedAt,
-      trial_ends_at: trial.trialEndsAt,
-      offer_code: trial.offerCode,
-      trial_days: trial.trialDays,
+      trial_started_at: plan.trialStartedAt,
+      trial_ends_at: plan.trialEndsAt,
+      offer_code: plan.offerCode,
+      trial_days: plan.trialDays,
       cancel_at_period_end: false,
-      billing_interval: snapshot.billingInterval,
-      price_amount_ils: snapshot.amountIls,
-      price_version: snapshot.priceVersion,
-      is_launch_price: snapshot.isLaunchPrice,
+      billing_interval: plan.snapshot.billingInterval,
+      price_amount_ils: plan.snapshot.amountIls,
+      price_version: plan.snapshot.priceVersion,
+      is_launch_price: plan.snapshot.isLaunchPrice,
       payment_provider: "payme",
       provider_subscription_id: created.subPaymeId,
-      next_billing_at: parsePayMeDateTime(created.nextDate)?.toISOString() ?? null,
+      next_billing_at: nextBillingAt?.toISOString() ?? null,
     })
     .select()
     .single();
 
   if (error) {
-    // Lost a race or failed to write — undo the PayMe side so nobody is ever charged without a trial row.
+    // Lost a race or failed to write - undo the PayMe side so nobody is ever charged without a trial row.
     try {
       await cancelPayMeSubscription(created.subPaymeId);
     } catch (cancelError) {
@@ -286,18 +304,33 @@ export async function startRealBusinessTrialWithPaymentMethod(
     return { success: false, reason: "unknown-error" };
   }
 
-  await admin.from("business_registrations").update({ active_plan_id: planId }).eq("id", registrationId);
+  await admin.from("business_registrations").update({ active_plan_id: plan.planId }).eq("id", registrationId);
+  // The audit log carries the full snapshot, including sub_start_date and the PayMe id (there is no dedicated column for the
+  // start date; next_billing_at holds the same moment).
+  const snapshotMetadata = {
+    planId: plan.planId,
+    billingInterval: plan.snapshot.billingInterval,
+    priceAmountIls: plan.snapshot.amountIls,
+    priceVersion: plan.snapshot.priceVersion,
+    offerCode: plan.offerCode,
+    trialDays: plan.trialDays,
+    subStartDate: plan.subStartDate,
+    subPaymeId: created.subPaymeId,
+    provider: "payme",
+  };
   await admin.from("business_events_log").insert([
     { business_registration_id: registrationId, event_type: "payment_method_added", actor_id: ownerId, metadata: { provider: "payme" } },
-    {
-      business_registration_id: registrationId,
-      event_type: "trial_started",
-      actor_id: ownerId,
-      metadata: { planId, billingInterval: snapshot.billingInterval, priceVersion: snapshot.priceVersion, offerCode: trial.offerCode, trialDays: trial.trialDays, provider: "payme" },
-    },
+    { business_registration_id: registrationId, event_type: "trial_started", actor_id: ownerId, metadata: snapshotMetadata },
   ]);
 
   return { success: true, subscription: mapSubscriptionRowToBusinessSubscription(data) };
+}
+
+/** "dd/mm/yyyy" (an Israel calendar date) -> that day's 00:00 in Israel time. */
+function parseDayMonthYearAsJerusalemMidnight(value: string): Date | null {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value);
+  if (!match) return null;
+  return parsePayMeDateTime(`${match[3]}-${match[2]}-${match[1]} 00:00:00`);
 }
 
 /** The masked card (never the token) of a business's payment method, for the owner's own "המנוי שלי" screen. Owner-checked. */

@@ -55,7 +55,7 @@ describe("PayMe credential model for a Seller account (Seller ID + Public Key; n
       merchantSubscriptionId: "reg-1",
       priceAgorot: 3900,
       iterationType: 3,
-      startDate: "01/12/2026 10:00",
+      startDate: "01/12/2026",
       description: "Plus",
       callbackUrl: "https://example.test/api/webhooks/payme/x",
     });

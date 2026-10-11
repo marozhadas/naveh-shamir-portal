@@ -5,11 +5,11 @@
  *
  *  - amounts are agorot (sub_price 5075 = 50.75 ₪; PayMe's minimum is 500)
  *  - sub_iteration_type: 1 daily, 2 weekly, 3 monthly, 4 yearly
- *  - sub_start_date for monthly must have a day-of-month between 1 and 28
+ *  - sub_start_date is dd/mm/yyyy; for monthly it must have a day-of-month between 1 and 28
  *  - callback types: sub-create, sub-active, sub-iteration-success, sub-complete, sub-cancel, sub-failure
  */
 import { createHash, timingSafeEqual } from "node:crypto";
-import type { BillingInterval } from "@/data/subscription-pricing";
+import { createPriceSnapshot, type BillingInterval, type PaidPlanId } from "@/data/subscription-pricing";
 
 export const PAYME_MIN_SUB_PRICE_AGOROT = 500;
 
@@ -37,28 +37,52 @@ function jerusalemParts(date: Date): { year: number; month: number; day: number;
   return { year: get("year"), month: get("month"), day: get("day"), hour: get("hour"), minute: get("minute") };
 }
 
-/** "dd/mm/yyyy hh:mm" in Israel time — the format of PayMe's own examples for sub_start_date. */
-export function formatPayMeDate(date: Date): string {
-  const p = jerusalemParts(date);
+/** The format PayMe wants for sub_start_date: dd/mm/yyyy (no time of day). */
+export const PAYME_START_DATE_PATTERN = /^\d{2}\/\d{2}\/\d{4}$/;
+
+function formatDayMonthYear(year: number, month: number, day: number): string {
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(p.day)}/${pad(p.month)}/${p.year} ${pad(p.hour)}:${pad(p.minute)}`;
+  return `${pad(day)}/${pad(month)}/${year}`;
 }
 
 /**
- * When PayMe should take the first charge: exactly when the trial ends — never earlier, so the owner
- * is never billed inside the trial. PayMe only accepts a day-of-month of 1–28 for monthly
- * subscriptions, so a trial ending on the 29th–31st starts billing on the 1st of the NEXT month
- * (a few extra free days, never fewer). trial_ends_at on the subscription stays the trial's truth.
+ * The date of the FIRST charge (sub_start_date), always computed on the server: today's date in Israel (Asia/Jerusalem)
+ * plus the trial length (30 days for the standard offer, 90 for a pilot), as dd/mm/yyyy.
+ *
+ * The addition is done on the calendar date, not on a 24h-multiple instant, so month ends, year ends, leap days and
+ * the two daylight-saving changes cannot shift it by a day. PayMe only accepts a day-of-month of 1-28 for monthly
+ * subscriptions, so a monthly start that would land on the 29th-31st moves to the 1st of the NEXT month (a few extra free
+ * days, never fewer - the owner is never billed inside the trial). Yearly is not constrained.
  */
-export function computeSubscriptionStartDate(trialEndsAt: Date, interval: BillingInterval): Date {
-  if (interval !== "monthly") return trialEndsAt;
-  const p = jerusalemParts(trialEndsAt);
-  if (p.day <= 28) return trialEndsAt;
-  // 1st of next month at 00:05 Israel time — expressed as UTC safely (Israel is UTC+2/+3, so UTC 00:05 is
-  // still the same calendar day there; then PayMe's own minute precision handles the rest).
-  const nextMonth = p.month === 12 ? 1 : p.month + 1;
-  const nextYear = p.month === 12 ? p.year + 1 : p.year;
-  return new Date(Date.UTC(nextYear, nextMonth - 1, 1, 0, 5, 0));
+export function computeSubStartDate(now: Date, trialDays: number, interval: BillingInterval): string {
+  if (!Number.isInteger(trialDays) || trialDays <= 0) throw new Error("trialDays must be a positive integer");
+  const today = jerusalemParts(now);
+  const target = new Date(Date.UTC(today.year, today.month - 1, today.day + trialDays));
+  let year = target.getUTCFullYear();
+  let month = target.getUTCMonth() + 1;
+  let day = target.getUTCDate();
+  if (interval === "monthly" && day > 28) {
+    const nextMonthFirst = new Date(Date.UTC(year, month, 1));
+    year = nextMonthFirst.getUTCFullYear();
+    month = nextMonthFirst.getUTCMonth() + 1;
+    day = 1;
+  }
+  return formatDayMonthYear(year, month, day);
+}
+
+/** A subscription id from PayMe is only trusted when it is a plain, non-empty token (no spaces, bounded length). */
+export function isValidSubPaymeId(value: unknown): value is string {
+  return typeof value === "string" && /^[A-Za-z0-9_-]{4,120}$/.test(value);
+}
+
+/**
+ * The `total` handed to PayMe Hosted Fields when it tokenizes the card: the subscription price of the chosen plan and
+ * billing track, taken from the server-side price snapshot (never from the browser). Tokenization only stores the
+ * card in PayMe's vault; the charge itself is made later by PayMe, on sub_start_date.
+ */
+export function hostedFieldsTotal(planId: PaidPlanId, interval: BillingInterval): { currency: "ILS"; value: string; amountIls: number } {
+  const snapshot = createPriceSnapshot(planId, interval);
+  return { currency: "ILS", value: snapshot.amountIls.toFixed(2), amountIls: snapshot.amountIls };
 }
 
 export const PAYME_NOTIFY_TYPES = ["sub-create", "sub-active", "sub-iteration-success", "sub-complete", "sub-cancel", "sub-failure"] as const;

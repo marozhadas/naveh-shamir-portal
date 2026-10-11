@@ -3,9 +3,11 @@ import {
   PAYME_MIN_SUB_PRICE_AGOROT,
   agorotFromIls,
   computeProviderEventId,
-  computeSubscriptionStartDate,
+  computeSubStartDate,
   constantTimeEquals,
-  formatPayMeDate,
+  hostedFieldsTotal,
+  isValidSubPaymeId,
+  PAYME_START_DATE_PATTERN,
   parsePayMeCallbackBody,
   paymeIterationType,
   redactSecrets,
@@ -31,29 +33,72 @@ describe("amounts and iteration types", () => {
   });
 });
 
-describe("first charge date = trial end", () => {
-  it("yearly: exactly when the trial ends", () => {
-    const end = new Date("2026-12-31T08:00:00.000Z");
-    expect(computeSubscriptionStartDate(end, "yearly").toISOString()).toBe(end.toISOString());
+describe("sub_start_date (dd/mm/yyyy, today in Israel + trial days)", () => {
+  it("regular offer: 30 days ahead", () => {
+    expect(computeSubStartDate(new Date("2026-10-08T10:00:00.000Z"), 30, "monthly")).toBe("07/11/2026");
+    expect(computeSubStartDate(new Date("2026-10-08T10:00:00.000Z"), 30, "yearly")).toBe("07/11/2026");
   });
 
-  it("monthly: exactly when the trial ends when the day is 1–28 (Israel time)", () => {
-    const end = new Date("2026-11-17T08:00:00.000Z");
-    expect(computeSubscriptionStartDate(end, "monthly").toISOString()).toBe(end.toISOString());
+  it("pilot offer: 90 days ahead", () => {
+    expect(computeSubStartDate(new Date("2026-10-08T10:00:00.000Z"), 90, "monthly")).toBe("06/01/2027");
   });
 
-  it("monthly: a trial ending on the 29th–31st starts billing on the 1st of next month — never earlier than the trial end", () => {
-    for (const iso of ["2026-10-29T08:00:00.000Z", "2026-10-31T08:00:00.000Z", "2026-12-30T08:00:00.000Z"]) {
-      const end = new Date(iso);
-      const start = computeSubscriptionStartDate(end, "monthly");
-      expect(start.getTime()).toBeGreaterThan(end.getTime());
-      expect(start.getUTCDate()).toBe(1);
+  it("is always dd/mm/yyyy - zero padded, no time of day", () => {
+    for (const [iso, days] of [["2026-02-01T10:00:00.000Z", 30], ["2026-10-08T10:00:00.000Z", 90], ["2026-05-03T10:00:00.000Z", 30]] as const) {
+      expect(computeSubStartDate(new Date(iso), days, "yearly")).toMatch(PAYME_START_DATE_PATTERN);
     }
-    expect(computeSubscriptionStartDate(new Date("2026-12-30T08:00:00.000Z"), "monthly").toISOString()).toBe("2027-01-01T00:05:00.000Z");
+    expect(computeSubStartDate(new Date("2026-02-01T10:00:00.000Z"), 30, "yearly")).toBe("03/03/2026");
   });
 
-  it("formats dates the way PayMe's examples do (dd/mm/yyyy hh:mm, Israel time)", () => {
-    expect(formatPayMeDate(new Date("2026-10-08T10:15:00.000Z"))).toBe("08/10/2026 13:15");
+  it("uses the date in Israel, not UTC: 01:30 Israel time on the 9th is still the 8th in UTC", () => {
+    expect(computeSubStartDate(new Date("2026-10-08T22:30:00.000Z"), 30, "yearly")).toBe("08/11/2026");
+  });
+
+  it("month and year ends roll over correctly (yearly = no 1-28 rule)", () => {
+    expect(computeSubStartDate(new Date("2026-12-15T10:00:00.000Z"), 30, "yearly")).toBe("14/01/2027");
+    expect(computeSubStartDate(new Date("2026-12-30T10:00:00.000Z"), 30, "yearly")).toBe("29/01/2027");
+    expect(computeSubStartDate(new Date("2026-10-01T10:00:00.000Z"), 30, "yearly")).toBe("31/10/2026");
+  });
+
+  it("leap years and the March daylight-saving change do not move the day", () => {
+    expect(computeSubStartDate(new Date("2028-02-01T10:00:00.000Z"), 30, "yearly")).toBe("02/03/2028");
+    expect(computeSubStartDate(new Date("2026-03-01T22:30:00.000Z"), 30, "yearly")).toBe("01/04/2026");
+  });
+
+  it("monthly: a date that would land on the 29th-31st goes to the 1st of the next month (PayMe accepts only 1-28), also across the year end", () => {
+    expect(computeSubStartDate(new Date("2026-10-01T10:00:00.000Z"), 30, "monthly")).toBe("01/11/2026");
+    expect(computeSubStartDate(new Date("2026-11-30T10:00:00.000Z"), 30, "monthly")).toBe("01/01/2027");
+    expect(computeSubStartDate(new Date("2026-12-30T10:00:00.000Z"), 30, "monthly")).toBe("01/02/2027");
+  });
+
+  it("never lands before today + trial days (the owner is never billed inside the trial)", () => {
+    const now = new Date("2026-10-01T10:00:00.000Z");
+    const [d, m, y] = computeSubStartDate(now, 30, "monthly").split("/").map(Number);
+    expect(Date.UTC(y, m - 1, d)).toBeGreaterThanOrEqual(Date.UTC(2026, 9, 31));
+  });
+
+  it("rejects a non-positive or fractional trial length", () => {
+    expect(() => computeSubStartDate(NOW, 0, "monthly")).toThrow();
+    expect(() => computeSubStartDate(NOW, 1.5, "monthly")).toThrow();
+  });
+});
+
+describe("Hosted Fields total (the server-side price snapshot of the chosen plan and track)", () => {
+  it("monthly", () => {
+    expect(hostedFieldsTotal("plus", "monthly")).toEqual({ currency: "ILS", value: "39.00", amountIls: 39 });
+    expect(hostedFieldsTotal("premium", "monthly")).toEqual({ currency: "ILS", value: "49.00", amountIls: 49 });
+  });
+
+  it("yearly", () => {
+    expect(hostedFieldsTotal("plus", "yearly")).toEqual({ currency: "ILS", value: "390.00", amountIls: 390 });
+    expect(hostedFieldsTotal("premium", "yearly")).toEqual({ currency: "ILS", value: "490.00", amountIls: 490 });
+  });
+});
+
+describe("PayMe subscription id", () => {
+  it("only a plain non-empty token is valid", () => {
+    expect(isValidSubPaymeId("SUB154-0987247Y-MLJ10OI7")).toBe(true);
+    for (const bad of ["", " ", "a b", "abc", undefined, null, 123, {}, "x".repeat(200)]) expect(isValidSubPaymeId(bad)).toBe(false);
   });
 });
 

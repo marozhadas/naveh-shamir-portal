@@ -14,6 +14,7 @@ import { businessRepository } from "@/repositories/mock-business-repository";
 import { getBusinessPlan } from "@/data/business-plans";
 import { getTrialDaysForOffer } from "@/data/subscription-offers";
 import { getPayMeConfigForBusiness } from "@/lib/payme/flow-access";
+import { hostedFieldsTotal } from "@/lib/payme/payme-helpers";
 import { isSupabaseBusinessId } from "@/utils/business-id";
 import { PaymentMethodTrialForm } from "@/components/business-dashboard/PaymentMethodTrialForm/PaymentMethodTrialForm";
 import { LAUNCH_PRICE_LABEL, formatPriceWithInterval, getCurrentPrice, isBillingInterval } from "@/data/subscription-pricing";
@@ -107,7 +108,7 @@ export default async function BusinessTrialPage() {
                   trialDays={trialDays}
                   planName={plan.name}
                   priceLabel={formatPriceWithInterval(offer.amountIls, interval)}
-                  amountValue={offer.amountIls.toFixed(2)}
+                  amountValue={hostedFieldsTotal(planTier, interval).value}
                 />
               ) : (
                 <TrialStartForm trialDays={trialDays} />

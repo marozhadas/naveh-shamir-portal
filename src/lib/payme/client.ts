@@ -1,6 +1,6 @@
 import "server-only";
 import { getPayMeConfig, type PayMeConfig } from "./config";
-import { redactSecrets } from "./payme-helpers";
+import { PAYME_MIN_SUB_PRICE_AGOROT, PAYME_START_DATE_PATTERN, isValidSubPaymeId, redactSecrets } from "./payme-helpers";
 
 /**
  * Thin server-side client for the PayMe endpoints the integration needs (docs.payme.io):
@@ -62,14 +62,14 @@ async function post<T>(config: PayMeConfig, path: string, body: Record<string, u
 }
 
 export type GeneratePayMeSubscriptionInput = {
-  /** Reusable buyer token (buyer_key) obtained through Hosted Fields. */
+  /** The permanent token Hosted Fields returned (tokenIsPermanent: true). PayMe confirmed it IS the buyer_key - sent as-is. */
   buyerKey: string;
   /** Merchant-side unique id (our business registration id), PayMe echoes it back as subscription_id. */
   merchantSubscriptionId: string;
   priceAgorot: number;
   /** 3 monthly / 4 yearly. */
   iterationType: 3 | 4;
-  /** "dd/mm/yyyy hh:mm" — when the first charge happens (the trial end). */
+  /** "dd/mm/yyyy" - the date of the first charge (today + trial days, Israel time). Nothing is charged before it. */
   startDate: string;
   description: string;
   callbackUrl: string;
@@ -85,7 +85,12 @@ export async function generatePayMeSubscription(input: GeneratePayMeSubscription
   const config = getPayMeConfig();
   if (!config) throw new PayMeError("PayMe is not configured", "not-configured");
 
-  const result = await post<{ sub_payme_id?: string; sub_next_date?: string | null }>(
+  // Refuse to create anything from malformed input - a bad date or price must never reach PayMe.
+  if (!PAYME_START_DATE_PATTERN.test(input.startDate)) throw new PayMeError("sub_start_date must be dd/mm/yyyy", "rejected");
+  if (!Number.isInteger(input.priceAgorot) || input.priceAgorot < PAYME_MIN_SUB_PRICE_AGOROT) throw new PayMeError("invalid subscription price", "rejected");
+  if (!input.buyerKey) throw new PayMeError("missing buyer token", "rejected");
+
+  const result = await post<{ sub_payme_id?: unknown; sub_next_date?: string | null }>(
     config,
     "generate-subscription",
     {
@@ -106,7 +111,8 @@ export async function generatePayMeSubscription(input: GeneratePayMeSubscription
     [input.buyerKey],
   );
 
-  if (!result.sub_payme_id) throw new PayMeError("PayMe did not return a subscription id", "invalid-response");
+  // No valid subscription id => nothing was created as far as we are concerned; the caller must not activate anything.
+  if (!isValidSubPaymeId(result.sub_payme_id)) throw new PayMeError("PayMe did not return a valid subscription id", "invalid-response");
   return { subPaymeId: result.sub_payme_id, nextDate: result.sub_next_date ?? null };
 }
 
