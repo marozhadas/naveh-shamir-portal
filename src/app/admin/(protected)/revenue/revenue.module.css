@@ -43,6 +43,11 @@
   line-height: 1.6;
 }
 
+.banner ul {
+  margin: var(--space-2) 0 0;
+  padding-inline-start: var(--space-5);
+}
+
 .banner code {
   display: inline-block;
   margin-inline: 4px;

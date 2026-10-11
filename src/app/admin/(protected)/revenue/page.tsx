@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getMissingPayMeVariables, isPayMeConfigured } from "@/lib/payme/config";
+import { getMissingPayMeVariables, getPayMeConfig, isPayMeConfigured } from "@/lib/payme/config";
+import { getLiveReadinessReport } from "@/lib/admin/live-readiness";
+import { LiveReadinessNotice } from "./LiveReadinessNotice";
 import { loadRevenueData } from "@/lib/admin/revenue-data";
 import {
   PERIOD_PRESETS,
@@ -99,6 +101,7 @@ export default async function AdminRevenuePage({ searchParams }: { searchParams:
   const byPlan = computeRevenueBreakdown(data.transactions, period, "plan");
   const byInterval = computeRevenueBreakdown(data.transactions, period, "interval");
   const payMeReady = isPayMeConfigured();
+  const liveReadiness = await getLiveReadinessReport();
   const missingVars = payMeReady ? [] : getMissingPayMeVariables();
 
   const periodQuery = new URLSearchParams({ period: preset, ...(preset === "custom" ? { from, to } : {}), group: granularity });
@@ -152,6 +155,8 @@ export default async function AdminRevenuePage({ searchParams }: { searchParams:
           <strong>סליקת PayMe עדיין לא פעילה.</strong> {PAYME_EMPTY} כדי להפעיל יש להגדיר ב-Vercel את משתני הסביבה: {missingVars.map((name) => <code key={name}>{name}</code>)}
         </div>
       )}
+
+      <LiveReadinessNotice report={liveReadiness} paymeEnv={getPayMeConfig()?.env ?? null} />
 
       <form method="get" className={styles.filters} aria-label="סינון תקופה">
         <input type="hidden" name="tab" value={tab} />
