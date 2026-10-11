@@ -13,6 +13,7 @@ import { getMarketplaceCategoryLabel } from "@/data/marketplace-categories";
 import { MARKETPLACE_CONDITION_LABEL, MARKETPLACE_STATUS_LABEL } from "@/types/marketplace";
 import { formatListingDate } from "@/utils/format-listing-date";
 import { createWhatsappLink } from "@/utils/create-whatsapp-link";
+import { normalizePhoneForWhatsAppLink } from "@/utils/normalize-phone-for-whatsapp-link";
 import { ReportListingButton } from "./ReportListingButton";
 import styles from "./listing.module.css";
 
@@ -46,7 +47,7 @@ export async function generateMetadata({ params }: ListingPageProps): Promise<Me
 }
 
 function whatsappHref(rawPhone: string): string {
-  const digits = rawPhone.replace(/[^0-9]/g, "");
+  const digits = normalizePhoneForWhatsAppLink(rawPhone);
   if (!digits) return "";
   return createWhatsappLink(`https://wa.me/${digits}`);
 }

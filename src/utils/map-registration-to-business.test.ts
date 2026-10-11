@@ -74,6 +74,11 @@ describe("mapRegistrationToBusiness", () => {
     expect(business.whatsappUrl).toBe("https://wa.me/972500000101");
   });
 
+  it("normalizes a local 05X number (0545218644 -> https://wa.me/972545218644)", () => {
+    const business = mapRegistrationToBusiness(makeRow({ whatsapp_phone: "0545218644" }));
+    expect(business.whatsappUrl).toBe("https://wa.me/972545218644");
+  });
+
   it("leaves whatsappUrl undefined when there's no whatsapp phone", () => {
     const business = mapRegistrationToBusiness(makeRow({ whatsapp_phone: null }));
     expect(business.whatsappUrl).toBeUndefined();

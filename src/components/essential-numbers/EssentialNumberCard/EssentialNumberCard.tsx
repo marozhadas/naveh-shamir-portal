@@ -7,6 +7,7 @@ import { ESSENTIAL_NUMBER_ICON_MAP } from "@/data/essential-number-icons";
 import { ICON_TONE_VARS } from "@/utils/essential-number-icon-tone";
 import { normalizePhoneForTelLink } from "@/utils/normalize-phone-for-tel-link";
 import { createWhatsappLink } from "@/utils/create-whatsapp-link";
+import { normalizePhoneForWhatsAppLink } from "@/utils/normalize-phone-for-whatsapp-link";
 import { isSafeHref } from "@/utils/validate-href";
 import type { EssentialNumberRow } from "@/types/essential-number";
 import styles from "./EssentialNumberCard.module.css";
@@ -16,7 +17,7 @@ type EssentialNumberCardProps = {
 };
 
 function whatsappHref(rawPhone: string): string {
-  const digits = rawPhone.replace(/[^0-9]/g, "");
+  const digits = normalizePhoneForWhatsAppLink(rawPhone);
   if (!digits) return "";
   return createWhatsappLink(`https://wa.me/${digits}`);
 }

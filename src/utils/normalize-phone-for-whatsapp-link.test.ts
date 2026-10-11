@@ -6,6 +6,16 @@ describe("normalizePhoneForWhatsAppLink", () => {
     expect(normalizePhoneForWhatsAppLink("054-521-8644")).toBe("972545218644");
   });
 
+  it("turns the portal's own main number 0545218644 into 972545218644", () => {
+    expect(normalizePhoneForWhatsAppLink("0545218644")).toBe("972545218644");
+  });
+
+  it("normalizes every Israeli mobile prefix (05X...) the same way", () => {
+    for (const prefix of ["050", "051", "052", "053", "054", "055", "056", "058"]) {
+      expect(normalizePhoneForWhatsAppLink(`${prefix}1234567`)).toBe(`972${prefix.slice(1)}1234567`);
+    }
+  });
+
   it("strips spaces and parentheses", () => {
     expect(normalizePhoneForWhatsAppLink("(054) 521 8644")).toBe("972545218644");
   });

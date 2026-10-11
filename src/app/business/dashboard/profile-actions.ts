@@ -7,6 +7,7 @@ import { subscriptionRepository } from "@/repositories/mock-subscription-reposit
 import { getSubscriptionAccess } from "@/domain/get-subscription-access";
 import { getBusinessSelfEditAccess } from "@/domain/get-business-self-edit-access";
 import { isSafeHrefOrEmpty } from "@/utils/validate-href";
+import { normalizePhoneForWhatsAppLink } from "@/utils/normalize-phone-for-whatsapp-link";
 import type { BusinessSelfEditAccess } from "@/domain/get-business-self-edit-access";
 
 export type UpdateProfileActionState = { error: string | null; success: boolean };
@@ -79,7 +80,7 @@ export async function updateProfileAction(_prevState: UpdateProfileActionState, 
     shortDescription,
     fullDescription,
     phone: phoneDigits ? `tel:${phoneDigits.replace(/[^0-9+]/g, "")}` : "",
-    whatsappUrl: whatsappDigits ? `https://wa.me/${whatsappDigits.replace(/[^0-9]/g, "")}` : "",
+    whatsappUrl: whatsappDigits ? `https://wa.me/${normalizePhoneForWhatsAppLink(whatsappDigits)}` : "",
     websiteUrl,
     address,
     serviceArea,

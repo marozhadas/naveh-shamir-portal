@@ -1,5 +1,5 @@
 import { toLegacyCategory } from "./map-registration-to-business";
-import { createWhatsappLink } from "./create-whatsapp-link";
+import { normalizePhoneForWhatsAppLink } from "./normalize-phone-for-whatsapp-link";
 import { CONTENT_LIMITS } from "@/editor/schemas/content-limits";
 import type { PublicBusinessRow } from "@/lib/supabase/public-columns";
 import type { BusinessCardContentSettings } from "@/editor/schemas/businesses.schema";
@@ -16,9 +16,10 @@ function toTelHref(phone: string | null): string {
 
 function toWhatsappHref(phone: string | null): string {
   if (!phone) return "";
-  const digits = phone.replace(/[^0-9]/g, "");
+  const digits = normalizePhoneForWhatsAppLink(phone);
   if (!digits) return "";
-  return createWhatsappLink(`https://wa.me/${digits}`);
+  // Plain wa.me URL: FeaturedBusinessesSection/BusinessCard.tsx adds the pre-filled message exactly once.
+  return `https://wa.me/${digits}`;
 }
 
 /**

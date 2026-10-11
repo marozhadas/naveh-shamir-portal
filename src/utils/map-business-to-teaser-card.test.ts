@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { mapBusinessToTeaserCard } from "./map-business-to-teaser-card";
+import { createWhatsappLink } from "./create-whatsapp-link";
 import type { BusinessRegistrationRow } from "@/types/business-registration";
 
 function makeRow(overrides: Partial<BusinessRegistrationRow> = {}): BusinessRegistrationRow {
@@ -84,6 +85,19 @@ describe("mapBusinessToTeaserCard", () => {
   it("includes whatsappUrl for a plus/premium business (canOpenProfile true)", () => {
     const card = mapBusinessToTeaserCard(makeRow({ public_whatsapp: "+972500000101" }), true);
     expect(card.whatsappUrl).toContain("https://wa.me/972500000101");
+  });
+
+  it("normalizes a local 05X number to the international wa.me form (0545218644 -> 972545218644)", () => {
+    const card = mapBusinessToTeaserCard(makeRow({ public_whatsapp: "0545218644" }), true);
+    expect(card.whatsappUrl).toBe("https://wa.me/972545218644");
+  });
+
+  it("leaves the pre-filled message to the card, so rendering it yields exactly one text= parameter", () => {
+    const card = mapBusinessToTeaserCard(makeRow({ public_whatsapp: "0545218644" }), true);
+    expect(card.whatsappUrl).not.toContain("text=");
+    const rendered = createWhatsappLink(card.whatsappUrl);
+    expect(rendered.startsWith("https://wa.me/972545218644?text=")).toBe(true);
+    expect(rendered.match(/text=/g)).toHaveLength(1);
   });
 
   it("never falls back to the internal contact person's phone / whatsapp — only the public_* fields are used", () => {

@@ -1,4 +1,5 @@
 import type { Business, BusinessCategory } from "@/types/business";
+import { normalizePhoneForWhatsAppLink } from "@/utils/normalize-phone-for-whatsapp-link";
 import type { BusinessPublicationStatus } from "@/types/business-status";
 import type { BusinessRegistrationRow, BusinessRegistrationStatus } from "@/types/business-registration";
 import type { PublicBusinessRow } from "@/lib/supabase/public-columns";
@@ -30,7 +31,7 @@ export function toLegacyCategory(categoryId: string): BusinessCategory {
 
 function buildWhatsappUrl(phone: string | null | undefined): string | undefined {
   if (!phone) return undefined;
-  const digits = phone.replace(/[^0-9]/g, "");
+  const digits = normalizePhoneForWhatsAppLink(phone);
   return digits ? `https://wa.me/${digits}` : undefined;
 }
 

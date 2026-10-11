@@ -12,6 +12,7 @@ import { getEventBySlug } from "@/repositories/community-events-service";
 import { EVENT_AUDIENCE_LABEL } from "@/types/community-event";
 import { formatEventDateFull, formatEventTimeRange, formatEventWeekday } from "@/utils/format-event-date";
 import { createWhatsappLink } from "@/utils/create-whatsapp-link";
+import { normalizePhoneForWhatsAppLink } from "@/utils/normalize-phone-for-whatsapp-link";
 import { createEventJsonLd } from "@/utils/create-event-json-ld";
 import { getSiteOrigin } from "@/utils/site-origin";
 import { AddToCalendarButton } from "./AddToCalendarButton";
@@ -38,7 +39,7 @@ function serializeJsonLd(data: unknown): string {
 }
 
 function whatsappHref(rawPhone: string): string {
-  const digits = rawPhone.replace(/[^0-9]/g, "");
+  const digits = normalizePhoneForWhatsAppLink(rawPhone);
   if (!digits) return "";
   return createWhatsappLink(`https://wa.me/${digits}`);
 }
