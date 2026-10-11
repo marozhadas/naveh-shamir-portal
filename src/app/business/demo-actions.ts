@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { DEMO_VIEWER_COOKIE } from "@/adapters/mock-auth-adapter";
+import { isDemoModeEnabled } from "@/lib/demo-mode";
 
 /**
  * Demo-only (spec section 48): flips who the mock auth adapter reports as "signed in" by setting
@@ -10,6 +11,9 @@ import { DEMO_VIEWER_COOKIE } from "@/adapters/mock-auth-adapter";
  * there is no password, no session, no real account — and it must never be mistaken for one.
  */
 export async function setDemoViewerAction(formData: FormData): Promise<void> {
+  // Public endpoint: in production it must not set (or even accept) a demo identity.
+  if (!isDemoModeEnabled()) return;
+
   const key = formData.get("viewer");
   const store = await cookies();
 

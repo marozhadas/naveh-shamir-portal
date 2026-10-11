@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getAnalyticsSummary } from "@/repositories/analytics-service";
+import { getAnalyticsSummary } from "@/repositories/analytics-reports";
 import styles from "./analytics.module.css";
 
 export const metadata: Metadata = { title: "אנליטיקה | ניהול הפורטל", robots: { index: false, follow: false } };

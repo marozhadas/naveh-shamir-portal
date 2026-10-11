@@ -1,8 +1,11 @@
 import type { NextConfig } from "next";
 import { SITE_CONFIG } from "./src/data/config";
 import { buildLegacyHostRedirects } from "./src/lib/seo/legacy-host-redirect";
+import { SECURITY_HEADERS } from "./src/lib/security-headers";
 
 const nextConfig: NextConfig = {
+  // Don't advertise the framework (X-Powered-By: Next.js).
+  poweredByHeader: false,
   experimental: {
     serverActions: {
       // Next's own default is 1MB, well under a modern phone camera JPEG (routinely 3-10MB) —
@@ -18,6 +21,9 @@ const nextConfig: NextConfig = {
     // Storage bucket (hero-gallery, business-media, marketplace-media, ...) serves from this
     // one project host, so a single wildcard-pathname entry covers all of them.
     remotePatterns: [{ protocol: "https", hostname: "nzhbwbbxnrcaiubgpjlc.supabase.co", pathname: "/storage/v1/object/public/**" }],
+  },
+  async headers() {
+    return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },
   async redirects() {
     return [

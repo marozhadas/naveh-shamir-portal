@@ -3,6 +3,7 @@ import { DEMO_USERS } from "@/data/demo-users";
 import { getSupabaseSessionUser } from "@/lib/supabase/server-client";
 import { createAdminSupabaseClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin-client";
 import { toBusinessId } from "@/utils/business-id";
+import { isDemoModeEnabled } from "@/lib/demo-mode";
 import type { AuthenticatedUser, UserRole } from "@/types/auth";
 import type { AuthAdapter } from "./auth-adapter";
 
@@ -40,6 +41,9 @@ export class MockAuthAdapter implements AuthAdapter {
   async getCurrentUser(): Promise<AuthenticatedUser | null> {
     const realOwner = await resolveRealBusinessOwner();
     if (realOwner) return realOwner;
+
+    // Production: no real session means no identity. The demo cookie is never trusted there.
+    if (!isDemoModeEnabled()) return null;
 
     const store = await cookies();
     const key = store.get(DEMO_VIEWER_COOKIE)?.value;

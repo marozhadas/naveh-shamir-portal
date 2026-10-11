@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getBusinessAnalyticsForOwner } from "@/repositories/analytics-service";
+import { getBusinessAnalyticsForOwner } from "@/repositories/analytics-reports";
 import { isBusinessAnalyticsWindow, BUSINESS_ANALYTICS_WINDOWS, BUSINESS_ANALYTICS_WINDOW_LABEL } from "@/utils/business-analytics-window";
 import { isSupabaseBusinessId, toRegistrationId } from "@/utils/business-id";
 import { resolveDashboardViewer } from "../../resolve-dashboard-viewer";

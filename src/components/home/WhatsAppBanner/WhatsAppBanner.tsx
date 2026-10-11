@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/Button";
 import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 import { colorTokenToCssVar, containerWidthTokenToCssValue, radiusTokenToCssVar, shadowTokenToCssVar, spacingTokenToCssVar } from "@/styles/token-to-css-variable";
 import { ICON_TOKEN_COMPONENT } from "@/styles/icon-token-map";
+import { isPlaceholderWhatsAppUrl } from "@/utils/validate-whatsapp-group-url";
 import type { WhatsAppBannerEditorSettings } from "@/editor/schemas/whatsapp.schema";
 import styles from "./WhatsAppBanner.module.css";
 
@@ -51,7 +52,8 @@ export function WhatsAppBanner({ settings }: WhatsAppBannerProps) {
           )}
           {settings.content.description && <p className={styles.subtitle}>{settings.content.description}</p>}
         </div>
-        {settings.content.buttonLabel && (
+        {/* The join button is not rendered while the link is still the default placeholder (nothing is deleted - set a real link in the editor/config and it appears). */}
+        {settings.content.buttonLabel && !isPlaceholderWhatsAppUrl(settings.content.whatsappUrl) && (
           <Button
             href={settings.content.whatsappUrl}
             variant={settings.appearance.buttonVariant}
