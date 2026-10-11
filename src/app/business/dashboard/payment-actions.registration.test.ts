@@ -15,12 +15,12 @@ vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: async () => true }));
 
 const complete = vi.fn();
 vi.mock("@/repositories/supabase-subscription-service", () => ({
-  completeRegistrationWithPayment: (...args: unknown[]) => complete(...args),
+  savePaymentMethodForRegistration: (...args: unknown[]) => complete(...args),
   startRealBusinessTrialWithPaymentMethod: vi.fn(),
   cancelOwnedPayMeSubscription: vi.fn(),
 }));
 
-describe("completeRegistrationWithPaymentAction (step 6 of the registration)", () => {
+describe("savePaymentMethodForRegistrationAction (step 6 of the registration: tokenization only)", () => {
   beforeEach(() => {
     sessionUser.mockReset();
     complete.mockReset();
@@ -29,8 +29,8 @@ describe("completeRegistrationWithPaymentAction (step 6 of the registration)", (
   });
 
   async function run(input: Record<string, unknown>) {
-    const { completeRegistrationWithPaymentAction } = await import("./payment-actions");
-    return completeRegistrationWithPaymentAction(input as never);
+    const { savePaymentMethodForRegistrationAction } = await import("./payment-actions");
+    return savePaymentMethodForRegistrationAction(input as never);
   }
 
   it("requires a real signed-in owner", async () => {
@@ -46,9 +46,10 @@ describe("completeRegistrationWithPaymentAction (step 6 of the registration)", (
     expect(complete).not.toHaveBeenCalled();
   });
 
-  it("passes only the verified session identity, the token and the card mask to the service", async () => {
+  it("passes only the verified session identity, the token and the card mask to the service - and returns nothing but a status", async () => {
     const result = await run({ registrationId: REGISTRATION_ID, token: TOKEN, cardMask: "411111******1111", consent: true });
-    expect(result.status).toBe("success");
+    expect(result).toEqual({ status: "success" });
+    expect(JSON.stringify(result)).not.toContain(TOKEN);
     expect(complete).toHaveBeenCalledWith(REGISTRATION_ID, "user-1", "owner@example.com", TOKEN, "411111******1111");
   });
 

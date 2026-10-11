@@ -13,6 +13,8 @@ import { BusinessPlanControl } from "./BusinessPlanControl";
 import { BusinessOfferControl } from "./BusinessOfferControl";
 import { BusinessBillingTestControl } from "./BusinessBillingTestControl";
 import { getPayMeConfig } from "@/lib/payme/config";
+import { getSavedPaymentMethodInfo } from "@/repositories/supabase-subscription-service";
+import { getOffer } from "@/data/subscription-offers";
 import { BusinessSlugControl } from "./BusinessSlugControl";
 import { BusinessManagementLinkControl } from "./BusinessManagementLinkControl";
 import { retryNotificationEmailAction } from "./actions";
@@ -55,6 +57,8 @@ export default async function AdminBusinessDetailPage({ params }: BusinessDetail
 
   const notification = await getNotificationForEntity("business-registration", id);
   const subscriptionRow = registration.plan_tier !== "free" ? await getRegistrationSubscriptionRow(registration.id) : null;
+  // Only whether a card was saved in registration step 6, and its mask. The token itself is never read on this page.
+  const savedMethod = registration.plan_tier !== "free" ? await getSavedPaymentMethodInfo(registration.id) : null;
   const subscriptionSummary = registration.status === "approved" ? await getAdminSubscriptionSummary(registration, new Date()) : null;
 
   return (
@@ -123,6 +127,19 @@ export default async function AdminBusinessDetailPage({ params }: BusinessDetail
           )}
         </dl>
       </section>
+
+      {registration.plan_tier !== "free" && savedMethod && (
+        <section className={styles.section} aria-labelledby="payment-method-heading">
+          <h2 id="payment-method-heading" className={styles.sectionTitle}>
+            אמצעי תשלום
+          </h2>
+          <p className={styles.description}>
+            {savedMethod.hasPaymentMethod
+              ? `נשמר אמצעי תשלום (${savedMethod.cardMask ?? "כרטיס"}). לא בוצע חיוב. הוא ישמש ליצירת המנוי ברגע שתאשרו את העסק.`
+              : "לא נשמר אמצעי תשלום לעסק הזה."}
+          </p>
+        </section>
+      )}
 
       <BusinessPlanControl
         businessId={registration.id}
@@ -311,7 +328,17 @@ export default async function AdminBusinessDetailPage({ params }: BusinessDetail
         </section>
       )}
 
-      {registration.status === "pending" && <ApproveRejectPanel registrationId={registration.id} businessName={registration.business_name} />}
+      {registration.status === "pending" && (
+        <ApproveRejectPanel
+          registrationId={registration.id}
+          businessName={registration.business_name}
+          activation={
+            registration.plan_tier !== "free" && savedMethod
+              ? { hasPaymentMethod: savedMethod.hasPaymentMethod, cardMask: savedMethod.cardMask, offerLabel: getOffer(registration.offer_code).groupLabel, trialDays: getOffer(registration.offer_code).trialDays }
+              : null
+          }
+        />
+      )}
     </div>
   );
 }

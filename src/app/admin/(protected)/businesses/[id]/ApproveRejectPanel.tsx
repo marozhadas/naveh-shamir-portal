@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { approveRegistrationAction, rejectRegistrationAction, type RejectActionState } from "./actions";
@@ -11,12 +11,15 @@ const INITIAL_REJECT_STATE: RejectActionState = { error: null, success: false };
 type ApproveRejectPanelProps = {
   registrationId: string;
   businessName: string;
+  /** Present for a paid business: approving it starts the trial. Null for a free registration (approving only publishes). */
+  activation: { hasPaymentMethod: boolean; cardMask: string | null; offerLabel: string; trialDays: number } | null;
 };
 
-export function ApproveRejectPanel({ registrationId, businessName }: ApproveRejectPanelProps) {
+export function ApproveRejectPanel({ registrationId, businessName, activation }: ApproveRejectPanelProps) {
   const approveDialogRef = useRef<HTMLDialogElement>(null);
   const rejectDialogRef = useRef<HTMLDialogElement>(null);
   const [isApproving, startApproveTransition] = useTransition();
+  const [approveError, setApproveError] = useState<string | null>(null);
   const [rejectState, rejectFormAction, isRejecting] = useActionState(
     rejectRegistrationAction.bind(null, registrationId),
     INITIAL_REJECT_STATE,
@@ -27,8 +30,14 @@ export function ApproveRejectPanel({ registrationId, businessName }: ApproveReje
   }, [rejectState.success]);
 
   function handleApprove() {
+    setApproveError(null);
     startApproveTransition(async () => {
-      await approveRegistrationAction(registrationId);
+      const result = await approveRegistrationAction(registrationId);
+      if (result.status === "error") {
+        // Stays open: the business is still pending and nothing was started.
+        setApproveError(result.message);
+        return;
+      }
       approveDialogRef.current?.close();
     });
   }
@@ -36,7 +45,14 @@ export function ApproveRejectPanel({ registrationId, businessName }: ApproveReje
   return (
     <>
       <div className={styles.actions}>
-        <Button variant="accent" icon={<Check size={16} aria-hidden="true" />} onClick={() => approveDialogRef.current?.showModal()}>
+        <Button
+          variant="accent"
+          icon={<Check size={16} aria-hidden="true" />}
+          onClick={() => {
+            setApproveError(null);
+            approveDialogRef.current?.showModal();
+          }}
+        >
           אישור
         </Button>
         <Button variant="secondary" icon={<X size={16} aria-hidden="true" />} onClick={() => rejectDialogRef.current?.showModal()}>
@@ -52,12 +68,24 @@ export function ApproveRejectPanel({ registrationId, businessName }: ApproveReje
           <p className={styles.dialogText}>
             העסק &quot;{businessName}&quot; יפורסם מיידית בארכיון העסקים הציבורי באתר. ניתן יהיה לשנות סטטוס זה גם בהמשך.
           </p>
+          {activation && (
+            <p className={styles.dialogText}>
+              {activation.hasPaymentMethod
+                ? `האישור מפעיל גם את תקופת הניסיון: ייווצר מנוי ב-PayMe (${activation.offerLabel}, ${activation.trialDays} ימים), והחיוב הראשון יתבצע בסיומה. אמצעי התשלום השמור: ${activation.cardMask ?? "כרטיס שמור"}. ההטבה (רגיל או פיילוט) נעולה מרגע האישור.`
+                : "לעסק אין אמצעי תשלום שמור. אם הסליקה פעילה, האישור יידחה."}
+            </p>
+          )}
+          {approveError && (
+            <p className={styles.error} role="alert">
+              {approveError}
+            </p>
+          )}
           <div className={styles.dialogActions}>
             <Button variant="secondary" size="compact" onClick={() => approveDialogRef.current?.close()} disabled={isApproving}>
               ביטול
             </Button>
             <Button variant="accent" size="compact" onClick={handleApprove} disabled={isApproving}>
-              {isApproving ? "מאשר…" : "אישור ופרסום"}
+              {isApproving ? "מאשר…" : activation?.hasPaymentMethod ? "אישור, הפעלת ניסיון ופרסום" : "אישור ופרסום"}
             </Button>
           </div>
         </div>

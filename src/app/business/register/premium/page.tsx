@@ -28,7 +28,7 @@ export default async function RegisterPremiumPage({ searchParams }: RegisterPrem
   // only mounted once there is a session, so nothing a visitor typed can be lost to a login redirect;
   // the plan and billing interval live in this URL and ride through login as the return path.
   const sessionUser = await getSupabaseSessionUser();
-  // Step 6 (card entry, the business goes online on payment) exists only when PayMe is open for THIS owner: live for everyone,
+  // Step 6 (card entry; only saves the card, the business stays pending until an admin approves it) exists only when PayMe is open for THIS owner: live for everyone,
   // sandbox only for the test emails. The public key is handed to this signed-in owner only.
   const payMeConfig = sessionUser ? await getPayMeConfigForRegistrant(sessionUser.email) : null;
   const payment = payMeConfig ? { hostedFieldsKey: payMeConfig.hostedFieldsKey, testMode: payMeConfig.env === "sandbox" } : null;
@@ -65,7 +65,7 @@ export default async function RegisterPremiumPage({ searchParams }: RegisterPrem
             <p className={styles.priceLine}>30 ימי ניסיון חינם. מחירי Premium הם מחירי השקה.</p>
             <p className={styles.disclaimer}>
               {payment
-                ? "בשלב האחרון של ההרשמה תזינו אמצעי תשלום. הניסיון מתחיל והעמוד עולה לאוויר מיד, ולא מתבצע חיוב במהלך הניסיון."
+                ? "בשלב האחרון של ההרשמה תזינו אמצעי תשלום. לא מתבצע חיוב עכשיו, והניסיון מתחיל רק לאחר אישור העסק."
                 : "בשלב זה לא נדרש אמצעי תשלום ולא מתבצע חיוב. הניסיון מתחיל רק לאחר אישור העסק והפעלה מפורשת."}
             </p>
           </div>

@@ -29,7 +29,8 @@ import { getPayMeConfig } from "@/lib/payme/config";
 import { decideOfferChange } from "@/domain/decide-offer-change";
 import { getOffer, type OfferCode } from "@/data/subscription-offers";
 import { isValidBusinessSlug } from "@/utils/business-slug";
-import { cancelPayMeSubscriptionForRejection } from "@/repositories/supabase-subscription-service";
+import { activateRegistrationOnApproval, cancelPayMeSubscriptionForRejection, getSavedPaymentMethodInfo } from "@/repositories/supabase-subscription-service";
+import { decideApprovalPath } from "@/domain/decide-registration-approval";
 import { recordSlugRedirect } from "@/repositories/business-slug-redirect-repository";
 import { checkBusinessManagementEligibility, BUSINESS_MANAGEMENT_INELIGIBILITY_MESSAGE } from "@/utils/business-management-access";
 import { buildBusinessManagementUrl } from "@/utils/business-management-token";
@@ -59,22 +60,68 @@ function revalidateBusinessViews(registrationId: string): void {
  * reverting — a half-applied approval is a worse outcome than a notification staying open one
  * extra beat, and the error still surfaces to the admin either way.
  */
-export async function approveRegistrationAction(registrationId: string): Promise<void> {
+export type ApproveRegistrationResult = { status: "success"; trialStarted: boolean; trialDays: number | null } | { status: "error"; message: string };
+
+const ACTIVATION_FAILURE_MESSAGE: Record<string, string> = {
+  "not-found": "ההרשמה לא נמצאה.",
+  "not-pending": "העסק כבר אינו ממתין לאישור.",
+  "no-owner": "לעסק אין בעלים תקין, ולכן לא ניתן ליצור מנוי. העסק נשאר ממתין.",
+  "invalid-slug": "לפני האישור יש להגדיר לעסק כתובת URL באנגלית (בקטע כתובת העסק). העסק נשאר ממתין ולא פורסם.",
+  "no-payment-method": "לא נמצא אמצעי תשלום שמור לעסק. העסק נשאר ממתין ולא פורסם.",
+  "payme-not-configured": "הסליקה אינה מוגדרת, ולכן לא ניתן ליצור מנוי. העסק נשאר ממתין ולא פורסם.",
+  "already-exists": "כבר קיים מנוי לעסק הזה. העסק נשאר ממתין.",
+  "invalid-plan": "החבילה, מסלול החיוב או קבוצת ההטבה של העסק אינם תקינים. העסק נשאר ממתין ולא פורסם.",
+  "payme-rejected": "יצירת המנוי ב-PayMe נכשלה. העסק נשאר ממתין, לא פורסם, לא התחילה תקופת ניסיון ולא נרשמה הכנסה. אפשר לנסות שוב.",
+  "approve-failed": "האישור לא הושלם: המנוי בוטל והעסק נשאר ממתין ולא פורסם. אפשר לנסות שוב.",
+  "unknown-error": "האישור נכשל. העסק נשאר ממתין ולא פורסם. אפשר לנסות שוב.",
+};
+
+const APPROVAL_BLOCKED_MESSAGE = {
+  "blocked-no-payment-method": "הסליקה פעילה, ולעסק הזה אין אמצעי תשלום שמור (שלב 6 בהרשמה לא הושלם). לא ניתן לאשר אותו. העסק נשאר ממתין.",
+  "blocked-payme-not-configured": "נשמר אמצעי תשלום לעסק, אבל הסליקה אינה מוגדרת כרגע, ולכן לא ניתן ליצור מנוי. העסק נשאר ממתין.",
+} as const;
+
+/**
+ * The admin's approval. For a paid business that saved a card in registration step 6, approving IS the activation (the owner
+ * does nothing afterwards): the server validates, creates the PayMe subscription from the database-stored plan and the offer the
+ * admin set (launch_standard = 30 days, pilot_2026 = 90), validates the sub_payme_id, writes the trial, and only then approves
+ * and publishes - activateRegistrationOnApproval. If any step fails the business stays pending and the admin gets a clear message.
+ * Anything else (free plan, or PayMe not live and no card) keeps the earlier behaviour: status only.
+ *
+ * The status change is the load-bearing write; the notification / audit entries that follow cannot undo an approval that
+ * already stands (a half-applied approval is worse than a notification staying open one extra beat).
+ */
+export async function approveRegistrationAction(registrationId: string): Promise<ApproveRegistrationResult> {
   const adminId = await requireAdmin();
   const registration = await getRegistrationById(registrationId);
   if (!registration) throw new Error("ההרשמה לא נמצאה.");
 
-  await updateRegistrationStatus(registrationId, "approved");
+  const savedMethod = await getSavedPaymentMethodInfo(registrationId);
+  const path = decideApprovalPath({ planTier: registration.plan_tier, hasPaymentMethod: savedMethod.hasPaymentMethod, paymeEnv: getPayMeConfig()?.env ?? null });
+  if (path === "blocked-no-payment-method" || path === "blocked-payme-not-configured") return { status: "error", message: APPROVAL_BLOCKED_MESSAGE[path] };
+
+  let trialDays: number | null = null;
+  let offerCode: string | null = null;
+  if (path === "activate") {
+    const activation = await activateRegistrationOnApproval(registrationId, adminId);
+    if (!activation.success) return { status: "error", message: ACTIVATION_FAILURE_MESSAGE[activation.reason] ?? ACTIVATION_FAILURE_MESSAGE["unknown-error"] };
+    trialDays = activation.trialDays;
+    offerCode = activation.offerCode;
+  } else {
+    await updateRegistrationStatus(registrationId, "approved");
+  }
+
   await resolveNotificationForEntity("business-registration", registrationId, adminId);
   await recordAuditLog({
     adminId,
     action: "business-approved",
     entityType: "business-registration",
     entityId: registrationId,
-    metadata: { businessName: registration.business_name },
+    metadata: { businessName: registration.business_name, ...(trialDays !== null ? { trialStarted: true, trialDays, offerCode } : {}) },
   });
 
   revalidateBusinessViews(registrationId);
+  return { status: "success", trialStarted: trialDays !== null, trialDays };
 }
 
 export type RejectActionState = { error: string | null; success: boolean };

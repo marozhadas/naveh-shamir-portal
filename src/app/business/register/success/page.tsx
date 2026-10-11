@@ -9,7 +9,7 @@ import styles from "./success.module.css";
 const PLAN_NAME: Record<string, string> = { plus: "Plus", premium: "Premium", free: "חינמי" };
 
 type SuccessPageProps = {
-  searchParams: Promise<{ plan?: string; live?: string }>;
+  searchParams: Promise<{ plan?: string; payment?: string }>;
 };
 
 export async function generateMetadata({ searchParams }: SuccessPageProps): Promise<Metadata> {
@@ -21,9 +21,9 @@ export async function generateMetadata({ searchParams }: SuccessPageProps): Prom
 }
 
 export default async function RegisterSuccessPage({ searchParams }: SuccessPageProps) {
-  const { plan, live } = await searchParams;
-  // live=1: the business just went online through the registration's payment step (no admin approval).
-  const isLive = live === "1" && (plan === "plus" || plan === "premium");
+  const { plan, payment } = await searchParams;
+  // payment=saved: the card was saved in registration step 6. Nothing is charged or started yet - the business waits for approval.
+  const paymentSaved = payment === "saved" && (plan === "plus" || plan === "premium");
   const planName = plan ? (PLAN_NAME[plan] ?? plan) : null;
   const isPremium = plan === "premium";
   // Plus/Premium registration requires a signed-in account, so the business is already in that account's personal area (as pending).
@@ -37,18 +37,16 @@ export default async function RegisterSuccessPage({ searchParams }: SuccessPageP
       <ConnectedHeader />
       <main id="main-content">
         <div className={styles.container}>
-          <h1 className={styles.title}>{isLive ? "העמוד שלכם באוויר" : isPremium ? "ההרשמה לחבילת Premium התקבלה" : "ההרשמה התקבלה בהצלחה"}</h1>
+          <h1 className={styles.title}>{isPremium ? "ההרשמה לחבילת Premium התקבלה" : "ההרשמה התקבלה בהצלחה"}</h1>
           <p className={styles.description}>
-            {isLive
-              ? "אמצעי התשלום הוגדר, ימי הניסיון התחילו ועמוד העסק שלכם פעיל בפורטל. לא בוצע חיוב, והחיוב הראשון יתבצע רק בסיום הניסיון, אלא אם תבטלו קודם."
-              : isPremium
+            {isPremium
               ? "קיבלנו את פרטי העסק שלכם. לאחר בדיקה ואישור נעדכן אתכם בהמשך תהליך הפעלת החבילה."
               : "קיבלנו את פרטי העסק שלכם. הצוות שלנו יעבור על ההרשמה ויעדכן אתכם לאחר הבדיקה."}
           </p>
           {planName && !isPremium && <p className={styles.planLine}>מסלול: {planName}</p>}
           <p className={styles.disclaimer}>
-            {isLive
-              ? "אפשר לערוך את העסק ולנהל את המנוי באזור האישי. אם נצטרך לבדוק משהו בעמוד, נפנה אליכם אישית."
+            {paymentSaved
+              ? "אמצעי התשלום נשמר ולא בוצע חיוב. העסק ממתין לאישור הצוות. לאחר האישור תתחיל תקופת הניסיון באופן אוטומטי (30 ימים, או 90 ימים בהטבת פיילוט), ולא תצטרכו לבצע שום פעולה נוספת."
               : isPremium
               ? "העסק כבר מופיע באזור האישי שלכם כממתין לאישור. הפעלת חבילת Premium תתבצע לאחר אישור העסק."
               : hasAccount

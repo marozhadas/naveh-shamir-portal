@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { activateTrialWithPaymentMethodAction, completeRegistrationWithPaymentAction } from "@/app/business/dashboard/payment-actions";
+import { activateTrialWithPaymentMethodAction, savePaymentMethodForRegistrationAction } from "@/app/business/dashboard/payment-actions";
 import styles from "./PaymentMethodTrialForm.module.css";
 
 /** The slice of PayMe's Hosted Fields (JSAPI) this form uses — https://github.com/PayMeService/payme-jsapi */
@@ -57,12 +57,13 @@ type PaymentMethodTrialFormProps = {
   priceLabel: string;
   amountValue: string;
   /**
-   * Set when the form is step 6 of the registration wizard: the pending registration this payment completes (the server checks
-   * it belongs to the signed-in owner). Without it the form is the post-approval trial start on /business/trial.
+   * Set when the form is step 6 of the registration wizard: the pending registration whose card is being saved (the server checks
+   * it belongs to the signed-in owner). In that mode nothing is charged or started: the card is only kept until an admin approves
+   * the business. Without it the form is the post-approval trial start on /business/trial.
    */
   registrationId?: string;
-  /** Called after a successful activation instead of the default redirect to the dashboard. */
-  onActivated?: () => void;
+  /** Called after a successful save instead of the default redirect to the dashboard. */
+  onCompleted?: () => void;
 };
 
 /**
@@ -70,7 +71,7 @@ type PaymentMethodTrialFormProps = {
  * they never touch our page's DOM, our JavaScript or our server. Only PayMe's opaque token (+ the masked card)
  * is sent to our server action, which validates everything again.
  */
-export function PaymentMethodTrialForm({ hostedFieldsKey, testMode, trialDays, planName, priceLabel, amountValue, registrationId, onActivated }: PaymentMethodTrialFormProps) {
+export function PaymentMethodTrialForm({ hostedFieldsKey, testMode, trialDays, planName, priceLabel, amountValue, registrationId, onCompleted }: PaymentMethodTrialFormProps) {
   const router = useRouter();
   const uid = useId();
   const instanceRef = useRef<PayMeInstance | null>(null);
@@ -140,11 +141,11 @@ export function PaymentMethodTrialForm({ hostedFieldsKey, testMode, trialDays, p
       }
 
       const outcome = registrationId
-        ? await completeRegistrationWithPaymentAction({ registrationId, token: result.token, cardMask: result.card?.cardMask ?? null, consent })
+        ? await savePaymentMethodForRegistrationAction({ registrationId, token: result.token, cardMask: result.card?.cardMask ?? null, consent })
         : await activateTrialWithPaymentMethodAction({ token: result.token, cardMask: result.card?.cardMask ?? null, consent });
       if (outcome.status === "success") {
-        if (onActivated) {
-          onActivated();
+        if (onCompleted) {
+          onCompleted();
           return;
         }
         router.push("/business/dashboard");
@@ -159,7 +160,7 @@ export function PaymentMethodTrialForm({ hostedFieldsKey, testMode, trialDays, p
     } finally {
       setBusy(false);
     }
-  }, [amountValue, consent, onActivated, payer, planName, registrationId, router]);
+  }, [amountValue, consent, onCompleted, payer, planName, registrationId, router]);
 
   if (loadError) {
     return (
@@ -171,9 +172,15 @@ export function PaymentMethodTrialForm({ hostedFieldsKey, testMode, trialDays, p
 
   return (
     <div className={styles.form}>
-      <p className={styles.lead}>
-        {registrationId ? `כדי להפעיל את ${trialDays} ימי הניסיון ולהעלות את העמוד שלכם לאוויר יש להזין אמצעי תשלום.` : `כדי להפעיל את ${trialDays} ימי הניסיון יש להזין אמצעי תשלום.`} <strong>לא יבוצע חיוב במהלך תקופת הניסיון</strong> — החיוב הראשון ({priceLabel}, מחיר השקה) יתבצע רק בסיומה, אלא אם תבטלו קודם.
-      </p>
+      {registrationId ? (
+        <p className={styles.lead}>
+          הזינו אמצעי תשלום כדי להשלים את ההרשמה. <strong>לא מתבצע חיוב עכשיו.</strong> לאחר שהצוות יאשר את העסק תתחיל תקופת ניסיון (30 ימים, או 90 ימים בהטבת פיילוט), ולאחריה יתבצע חיוב לפי המסלול שנבחר ({priceLabel}, מחיר השקה), בהתאם לתנאים.
+        </p>
+      ) : (
+        <p className={styles.lead}>
+          כדי להפעיל את {trialDays} ימי הניסיון יש להזין אמצעי תשלום. <strong>לא יבוצע חיוב במהלך תקופת הניסיון</strong> — החיוב הראשון ({priceLabel}, מחיר השקה) יתבצע רק בסיומה, אלא אם תבטלו קודם.
+        </p>
+      )}
 
       <div className={styles.grid}>
         <div className={styles.field}>
@@ -214,7 +221,11 @@ export function PaymentMethodTrialForm({ hostedFieldsKey, testMode, trialDays, p
 
       <label className={styles.consent}>
         <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-        <span>קראתי ואני מאשר/ת את תנאי השימוש ואת תנאי תקופת הניסיון והחיוב שלאחריה.</span>
+        <span>
+          {registrationId
+            ? "אני מאשר/ת: לא מתבצע חיוב עכשיו; לאחר אישור העסק תתחיל תקופת ניסיון (30 ימים, או 90 ימים בהטבת פיילוט); ולאחר תקופת הניסיון יתבצע חיוב לפי המסלול שנבחר, בהתאם לתנאי השימוש."
+            : "קראתי ואני מאשר/ת את תנאי השימוש ואת תנאי תקופת הניסיון והחיוב שלאחריה."}
+        </span>
       </label>
 
       {error && (
@@ -224,7 +235,7 @@ export function PaymentMethodTrialForm({ hostedFieldsKey, testMode, trialDays, p
       )}
 
       <Button type="button" variant="accent" fullWidth disabled={!ready || busy} onClick={handleSubmit}>
-        {busy ? "מפעילים…" : registrationId ? "הפעלת הניסיון והעלאת העמוד לאוויר" : `הפעלת ${trialDays} ימי ניסיון`}
+        {busy ? "מפעילים…" : registrationId ? "שמירת אמצעי התשלום והשלמת ההרשמה" : `הפעלת ${trialDays} ימי ניסיון`}
       </Button>
     </div>
   );

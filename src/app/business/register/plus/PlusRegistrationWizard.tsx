@@ -206,8 +206,9 @@ type PlusRegistrationWizardProps = {
   /** Reports the selected billing track (the value that will be submitted) whenever it changes, so the plan summary card can mirror it. */
   onBillingIntervalChange?: (interval: BillingInterval) => void;
   /**
-   * Present only when the server decided PayMe is open for this signed-in owner: adds step 6 (card entry), which completes the
-   * registration and puts the business online without an admin approval. Absent = registration ends at step 5 as before.
+   * Present only when the server decided PayMe is open for this signed-in owner: adds step 6 (card entry). That step only saves the
+   * tokenized card - the business stays pending until an admin approves it, and the approval starts the trial. Absent = the
+   * registration ends at step 5 as before.
    */
   payment?: { hostedFieldsKey: string; testMode: boolean } | null;
 };
@@ -1449,7 +1450,7 @@ export function PlusRegistrationWizard({ planId, initialBillingInterval = "month
               אמצעי תשלום והפעלה
             </h2>
             <p className={styles.stepIntro}>
-              העסק נשמר. כדי להפעיל את {TRIAL_DAYS} ימי הניסיון ולהעלות את העמוד לאוויר, הזינו אמצעי תשלום. לא יבוצע חיוב במהלך הניסיון.
+              פרטי העסק נשמרו וההרשמה ממתינה לאישור הצוות. כדי להשלים אותה, הזינו אמצעי תשלום. לא מתבצע חיוב עכשיו.
             </p>
             <PaymentMethodTrialForm
               hostedFieldsKey={payment.hostedFieldsKey}
@@ -1459,13 +1460,13 @@ export function PlusRegistrationWizard({ planId, initialBillingInterval = "month
               priceLabel={formatPriceWithInterval(getCurrentPrice(planId, values.billingInterval).amountIls, values.billingInterval)}
               amountValue={getCurrentPrice(planId, values.billingInterval).amountIls.toFixed(2)}
               registrationId={submittedId}
-              onActivated={() => {
+              onCompleted={() => {
                 try {
                   sessionStorage.removeItem(submittedKey);
                 } catch {
                   // Nothing to do if storage is unavailable.
                 }
-                router.push(`/business/register/success?plan=${planId}&live=1`);
+                router.push(`/business/register/success?plan=${planId}&payment=saved`);
               }}
             />
           </>
@@ -1508,7 +1509,7 @@ type ReviewStepProps = {
   errors: WizardErrors;
   onEdit: (step: number) => void;
   onChangeConsent: <K extends keyof WizardValues>(key: K, value: WizardValues[K]) => void;
-  /** True when step 6 (card entry) follows: the trial starts and the page goes online with it, no admin approval. */
+  /** True when step 6 (card entry) follows: the card is only saved; the trial starts after the admin approves the business. */
   paymentEnabled: boolean;
 };
 
@@ -1625,7 +1626,7 @@ function ReviewStep({ values, planId, errors, onEdit, onChangeConsent, paymentEn
         </fieldset>
         <p className={styles.reviewLabel}>
           {paymentEnabled
-            ? "בשלב הבא תזינו אמצעי תשלום. הניסיון מתחיל ברגע ההפעלה והעמוד שלכם עולה לאוויר מיד. לא מתבצע חיוב במהלך הניסיון; החיוב הראשון יתבצע רק בסיומו, אלא אם תבטלו קודם."
+            ? "בשלב הבא תזינו אמצעי תשלום. לא מתבצע חיוב עכשיו. לאחר אישור העסק על ידי הצוות תתחיל תקופת ניסיון (30 ימים, או 90 ימים בהטבת פיילוט), ולאחריה יתבצע חיוב לפי המסלול שנבחר, בהתאם לתנאים."
             : "הניסיון מתחיל רק לאחר אישור העסק והפעלה מפורשת. בשלב זה לא נדרש אמצעי תשלום ולא מתבצע חיוב."}
         </p>
       </div>
@@ -1649,7 +1650,7 @@ function ReviewStep({ values, planId, errors, onEdit, onChangeConsent, paymentEn
             aria-invalid={Boolean(errors.publicationConsent)}
             aria-describedby={errors.publicationConsent ? "publicationConsent-error" : undefined}
           />
-          {paymentEnabled ? "אני מאשר/ת שהפרטים שמסרתי נכונים ושניתן לפרסם אותם בפורטל עם הפעלת הניסיון." : "אני מאשר/ת שהפרטים שמסרתי נכונים ושניתן לפרסם אותם בפורטל לאחר אישור."}
+          אני מאשר/ת שהפרטים שמסרתי נכונים ושניתן לפרסם אותם בפורטל לאחר אישור.
         </label>
         {errors.publicationConsent && (
           <p id="publicationConsent-error" className={styles.fieldErrorMessage} role="alert">
@@ -1695,7 +1696,7 @@ function ReviewStep({ values, planId, errors, onEdit, onChangeConsent, paymentEn
               aria-invalid={Boolean(errors.trialConsent)}
               aria-describedby={errors.trialConsent ? "trialConsent-error" : undefined}
             />
-            {paymentEnabled ? "אני מאשר/ת להפעיל את 30 ימי הניסיון עם הזנת אמצעי התשלום בשלב הבא. החיוב הראשון יתבצע בסיום הניסיון, אלא אם אבטל קודם." : "אני מאשר/ת להפעיל את 30 ימי הניסיון לאחר אישור העסק."}
+            {paymentEnabled ? "אני מאשר/ת להפעיל את תקופת הניסיון לאחר אישור העסק (30 ימים, או 90 ימים בהטבת פיילוט)." : "אני מאשר/ת להפעיל את 30 ימי הניסיון לאחר אישור העסק."}
           </label>
           {errors.trialConsent && (
             <p id="trialConsent-error" className={styles.fieldErrorMessage} role="alert">
