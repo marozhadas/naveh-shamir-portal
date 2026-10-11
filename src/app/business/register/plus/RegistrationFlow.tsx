@@ -18,6 +18,8 @@ type RegistrationFlowProps = {
   /** Server-verified: only then is the wizard mounted; otherwise `gate` (the sign-in screen) is shown. */
   authenticated: boolean;
   gate: ReactNode;
+  /** Passed by the server only when PayMe is open for this signed-in owner - adds the card-entry step (6) to the wizard. */
+  payment?: { hostedFieldsKey: string; testMode: boolean } | null;
 };
 
 /**
@@ -36,6 +38,7 @@ export function RegistrationFlow({
   billingIntervalFromUrl,
   authenticated,
   gate,
+  payment = null,
 }: RegistrationFlowProps) {
   const [interval, setInterval] = useState<BillingInterval>(initialBillingInterval);
   const price = pricing[interval];
@@ -63,6 +66,7 @@ export function RegistrationFlow({
           initialBillingInterval={initialBillingInterval}
           billingIntervalFromUrl={billingIntervalFromUrl}
           onBillingIntervalChange={handleIntervalChange}
+          payment={payment}
         />
       ) : (
         gate

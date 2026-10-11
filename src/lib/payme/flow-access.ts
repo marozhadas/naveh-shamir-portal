@@ -43,3 +43,34 @@ export async function getPayMeConfigForBusiness(businessId: string): Promise<Pay
   const flag = config.env === "live" ? false : await readBillingTestFlag(businessId);
   return decideBillingFlowAccess(config.env, flag).allowed ? config : null;
 }
+
+/**
+ * Who may see/complete the PAYMENT STEP OF REGISTRATION (step 6 of the Plus/Premium wizard). The business does not exist yet
+ * when the step is drawn, so the per-business billing_test_enabled switch cannot apply; instead:
+ *
+ *  - PAYME_ENV=live    -> every registrant;
+ *  - PAYME_ENV=sandbox -> only an owner whose sign-in email is on PAYME_SANDBOX_TEST_EMAILS (comma separated, server-only,
+ *                         case-insensitive), so a real owner can never meet a test payment form;
+ *  - not configured    -> nobody (registration then ends at step 5 exactly as before).
+ *
+ * The email is the one of the verified Supabase session, read on the server - never anything the browser sends.
+ */
+export function parseSandboxTestEmails(raw: string | undefined): string[] {
+  return (raw ?? "")
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter((entry) => entry.length > 3 && entry.includes("@"));
+}
+
+export function decideRegistrationPaymentAccess(env: PayMeEnvironment | null, email: string | null | undefined, sandboxTestEmails: string[]): BillingFlowDecision {
+  if (env === null) return { allowed: false, reason: "not-configured" };
+  if (env === "live") return { allowed: true };
+  const normalized = (email ?? "").trim().toLowerCase();
+  return normalized && sandboxTestEmails.includes(normalized) ? { allowed: true } : { allowed: false, reason: "sandbox-not-enabled" };
+}
+
+export async function getPayMeConfigForRegistrant(email: string | null | undefined): Promise<PayMeConfig | null> {
+  const config = getPayMeConfig();
+  if (!config) return null;
+  return decideRegistrationPaymentAccess(config.env, email, parseSandboxTestEmails(process.env.PAYME_SANDBOX_TEST_EMAILS)).allowed ? config : null;
+}

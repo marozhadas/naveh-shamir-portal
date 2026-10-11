@@ -16,6 +16,8 @@ import "server-only";
  *                              at request time (a server prop), never bundled, never NEXT_PUBLIC_.
  *   PAYME_WEBHOOK_SECRET       a long random string (≥ 32 chars) that is embedded in the callback URL we give
  *                              PayMe; only callers that know it are accepted
+ *   PAYME_SANDBOX_TEST_EMAILS  (optional) comma-separated sign-in emails that may see the payment step of registration while
+ *                              PAYME_ENV=sandbox. Ignored in live. Not one of the four required variables.
  *
  * The integration is OFF until every variable is present — the rest of the app keeps working exactly as it
  * did before PayMe (trial without a card, no billing).

@@ -6,6 +6,7 @@ import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { BUSINESS_PLANS } from "@/data/business-plans";
 import { isBillingInterval } from "@/data/subscription-pricing";
 import { getSupabaseSessionUser } from "@/lib/supabase/server-client";
+import { getPayMeConfigForRegistrant } from "@/lib/payme/flow-access";
 import { registrationReturnPath } from "@/utils/safe-return-path";
 import { OwnerAuthGate } from "@/components/auth/OwnerAuthGate/OwnerAuthGate";
 import { RegistrationFlow } from "./RegistrationFlow";
@@ -27,6 +28,10 @@ export default async function RegisterPlusPage({ searchParams }: RegisterPlusPag
   // only mounted once there is a session, so nothing a visitor typed can be lost to a login redirect;
   // the plan and billing interval live in this URL and ride through login as the return path.
   const sessionUser = await getSupabaseSessionUser();
+  // Step 6 (card entry, the business goes online on payment) exists only when PayMe is open for THIS owner: live for everyone,
+  // sandbox only for the test emails. The public key is handed to this signed-in owner only.
+  const payMeConfig = sessionUser ? await getPayMeConfigForRegistrant(sessionUser.email) : null;
+  const payment = payMeConfig ? { hostedFieldsKey: payMeConfig.hostedFieldsKey, testMode: payMeConfig.env === "sandbox" } : null;
 
   return (
     <>
@@ -57,7 +62,11 @@ export default async function RegisterPlusPage({ searchParams }: RegisterPlusPag
               מלאו את פרטי העסק, הוסיפו תמונות ושירותים, ואנחנו נכין את העמוד שלכם לאישור ולפרסום.
             </p>
             <p className={styles.priceLine}>30 ימי ניסיון חינם. מחירי Plus הם מחירי השקה.</p>
-            <p className={styles.disclaimer}>בשלב זה לא נדרש אמצעי תשלום ולא מתבצע חיוב. הניסיון מתחיל רק לאחר אישור העסק והפעלה מפורשת.</p>
+            <p className={styles.disclaimer}>
+              {payment
+                ? "בשלב האחרון של ההרשמה תזינו אמצעי תשלום. הניסיון מתחיל והעמוד עולה לאוויר מיד, ולא מתבצע חיוב במהלך הניסיון."
+                : "בשלב זה לא נדרש אמצעי תשלום ולא מתבצע חיוב. הניסיון מתחיל רק לאחר אישור העסק והפעלה מפורשת."}
+            </p>
           </div>
 
           <RegistrationFlow
@@ -67,6 +76,7 @@ export default async function RegisterPlusPage({ searchParams }: RegisterPlusPag
             initialBillingInterval={initialBillingInterval}
             billingIntervalFromUrl={isBillingInterval(interval)}
             authenticated={Boolean(sessionUser)}
+            payment={payment}
             gate={
               <OwnerAuthGate
                 planName="Plus"

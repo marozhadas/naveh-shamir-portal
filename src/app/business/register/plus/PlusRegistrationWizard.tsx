@@ -19,10 +19,17 @@ import {
   type WizardErrors,
 } from "./validation";
 import type { PlusBusinessRegistrationInput } from "@/types/business-plus-registration";
+import { PaymentMethodTrialForm } from "@/components/business-dashboard/PaymentMethodTrialForm/PaymentMethodTrialForm";
 import { BILLING_INTERVALS, BILLING_INTERVAL_LABEL, LAUNCH_PRICE_LABEL, TRIAL_DAYS, formatPriceWithInterval, getCurrentPrice, type BillingInterval } from "@/data/subscription-pricing";
 import styles from "./plus-wizard.module.css";
 
 const CATEGORIES = getVisibleBusinessCategories();
+/** The one extra step (shown only when PayMe is open for this owner): card entry, after the business was saved. */
+const PAYMENT_STEP_LABEL = "תשלום";
+const SUBMITTED_KEY_BY_PLAN = {
+  plus: "naveh-shamir-plus-registration-submitted-v1",
+  premium: "naveh-shamir-premium-registration-submitted-v1",
+} as const;
 const DRAFT_KEY_BY_PLAN = {
   plus: "naveh-shamir-plus-registration-draft-v1",
   premium: "naveh-shamir-premium-registration-draft-v1",
@@ -198,13 +205,23 @@ type PlusRegistrationWizardProps = {
   billingIntervalFromUrl?: boolean;
   /** Reports the selected billing track (the value that will be submitted) whenever it changes, so the plan summary card can mirror it. */
   onBillingIntervalChange?: (interval: BillingInterval) => void;
+  /**
+   * Present only when the server decided PayMe is open for this signed-in owner: adds step 6 (card entry), which completes the
+   * registration and puts the business online without an admin approval. Absent = registration ends at step 5 as before.
+   */
+  payment?: { hostedFieldsKey: string; testMode: boolean } | null;
 };
 
-export function PlusRegistrationWizard({ planId, initialBillingInterval = "monthly", billingIntervalFromUrl = false, onBillingIntervalChange }: PlusRegistrationWizardProps) {
+export function PlusRegistrationWizard({ planId, initialBillingInterval = "monthly", billingIntervalFromUrl = false, onBillingIntervalChange, payment = null }: PlusRegistrationWizardProps) {
   const router = useRouter();
   const draftKey = DRAFT_KEY_BY_PLAN[planId];
+  const submittedKey = SUBMITTED_KEY_BY_PLAN[planId];
+  const paymentEnabled = payment !== null;
+  const stepLabels = paymentEnabled ? [...STEP_LABELS, PAYMENT_STEP_LABEL] : STEP_LABELS;
   const registrationIdRef = useRef<string>(crypto.randomUUID());
   const [step, setStep] = useState(1);
+  // The pending registration the payment step completes (set once the business is saved, or restored after a reload).
+  const [submittedId, setSubmittedId] = useState<string | null>(null);
   const [values, setValues] = useState<WizardValues>(() => createEmptyValues(initialBillingInterval));
   const [errors, setErrors] = useState<WizardErrors>({});
   const [attemptedSteps, setAttemptedSteps] = useState<Set<number>>(new Set());
@@ -222,13 +239,20 @@ export function PlusRegistrationWizard({ planId, initialBillingInterval = "month
     if (hasLoadedDraftRef.current) return;
     hasLoadedDraftRef.current = true;
     try {
+      const storedId = sessionStorage.getItem(submittedKey);
+      if (paymentEnabled && storedId) {
+        registrationIdRef.current = storedId;
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time read from sessionStorage on mount, not a prop/state sync
+        setSubmittedId(storedId);
+        setStep(6);
+        return;
+      }
       const raw = sessionStorage.getItem(draftKey);
       if (!raw) return;
       const parsed = JSON.parse(raw) as { step: number; values: WizardValues };
       // A consent is a fresh, explicit act every time — a saved draft never pre-ticks the privacy checkbox.
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time read from sessionStorage on mount, not a prop/state sync
       setValues((current) => ({ ...current, ...parsed.values, privacyConsent: false, ...(billingIntervalFromUrl ? { billingInterval: initialBillingInterval } : {}) }));
-      setStep(parsed.step ?? 1);
+      setStep(Math.min(parsed.step ?? 1, 5));
       setDraftRestored(true);
     } catch {
       // Corrupt/unavailable storage — start fresh.
@@ -237,6 +261,7 @@ export function PlusRegistrationWizard({ planId, initialBillingInterval = "month
   }, []);
 
   useEffect(() => {
+    if (step > 5) return; // the payment step has nothing to restore (the business is already saved)
     const timeout = setTimeout(() => {
       try {
         sessionStorage.setItem(draftKey, JSON.stringify({ step, values }));
@@ -570,6 +595,18 @@ export function PlusRegistrationWizard({ planId, initialBillingInterval = "month
 
     if (result.status === "success") {
       clearDraft();
+      if (paymentEnabled) {
+        // The business is saved (pending). Remember it so a reload returns to the payment step instead of starting over.
+        try {
+          sessionStorage.setItem(submittedKey, registrationIdRef.current);
+        } catch {
+          // Storage unavailable - only the reload convenience is lost.
+        }
+        setSubmittedId(registrationIdRef.current);
+        setStep(6);
+        setTimeout(() => focusAndReveal("wizard-step-heading"), 0);
+        return;
+      }
       router.push(`/business/register/success?plan=${planId}`);
       return;
     }
@@ -601,7 +638,7 @@ export function PlusRegistrationWizard({ planId, initialBillingInterval = "month
       {draftRestored && step === 1 && <p className={styles.draftNotice}>שחזרנו את הפרטים שמילאתם</p>}
 
       <ol className={styles.progress}>
-        {STEP_LABELS.map((label, index) => {
+        {stepLabels.map((label, index) => {
           const stepNumber = index + 1;
           const hasError = stepHasError(errors, stepNumber);
           const stateClass = hasError ? styles.error : stepNumber === step ? styles.active : stepNumber < step ? styles.done : "";
@@ -1402,9 +1439,39 @@ export function PlusRegistrationWizard({ planId, initialBillingInterval = "month
             errors={errors}
             onEdit={goToStep}
             onChangeConsent={update}
+            paymentEnabled={paymentEnabled}
           />
         )}
 
+        {step === 6 && payment && submittedId && (
+          <>
+            <h2 id="wizard-step-heading" tabIndex={-1} className={styles.stepTitle}>
+              אמצעי תשלום והפעלה
+            </h2>
+            <p className={styles.stepIntro}>
+              העסק נשמר. כדי להפעיל את {TRIAL_DAYS} ימי הניסיון ולהעלות את העמוד לאוויר, הזינו אמצעי תשלום. לא יבוצע חיוב במהלך הניסיון.
+            </p>
+            <PaymentMethodTrialForm
+              hostedFieldsKey={payment.hostedFieldsKey}
+              testMode={payment.testMode}
+              trialDays={TRIAL_DAYS}
+              planName={planId === "premium" ? "Premium" : "Plus"}
+              priceLabel={formatPriceWithInterval(getCurrentPrice(planId, values.billingInterval).amountIls, values.billingInterval)}
+              amountValue={getCurrentPrice(planId, values.billingInterval).amountIls.toFixed(2)}
+              registrationId={submittedId}
+              onActivated={() => {
+                try {
+                  sessionStorage.removeItem(submittedKey);
+                } catch {
+                  // Nothing to do if storage is unavailable.
+                }
+                router.push(`/business/register/success?plan=${planId}&live=1`);
+              }}
+            />
+          </>
+        )}
+
+        {step < 6 && (
         <div className={styles.stepActions}>
           {step > 1 ? (
             <Button variant="secondary" type="button" onClick={goBack}>
@@ -1419,10 +1486,11 @@ export function PlusRegistrationWizard({ planId, initialBillingInterval = "month
             </Button>
           ) : (
             <Button variant="accent" type="button" disabled={submitting} onClick={handleSubmit}>
-              {submitting ? "בודקים…" : "שליחת העסק לבדיקה"}
+              {submitting ? "בודקים…" : paymentEnabled ? "המשך לתשלום" : "שליחת העסק לבדיקה"}
             </Button>
           )}
         </div>
+        )}
       </div>
 
       {/* Honeypot — hidden from real visitors via CSS, never via type="hidden" (some bots skip those). */}
@@ -1440,9 +1508,11 @@ type ReviewStepProps = {
   errors: WizardErrors;
   onEdit: (step: number) => void;
   onChangeConsent: <K extends keyof WizardValues>(key: K, value: WizardValues[K]) => void;
+  /** True when step 6 (card entry) follows: the trial starts and the page goes online with it, no admin approval. */
+  paymentEnabled: boolean;
 };
 
-function ReviewStep({ values, planId, errors, onEdit, onChangeConsent }: ReviewStepProps) {
+function ReviewStep({ values, planId, errors, onEdit, onChangeConsent, paymentEnabled }: ReviewStepProps) {
   const categoryLabels = useMemo(
     () => CATEGORIES.filter((c) => values.categoryIds.includes(c.id)).map((c) => c.label).join(", "),
     [values.categoryIds],
@@ -1553,7 +1623,11 @@ function ReviewStep({ values, planId, errors, onEdit, onChangeConsent }: ReviewS
             );
           })}
         </fieldset>
-        <p className={styles.reviewLabel}>הניסיון מתחיל רק לאחר אישור העסק והפעלה מפורשת. בשלב זה לא נדרש אמצעי תשלום ולא מתבצע חיוב.</p>
+        <p className={styles.reviewLabel}>
+          {paymentEnabled
+            ? "בשלב הבא תזינו אמצעי תשלום. הניסיון מתחיל ברגע ההפעלה והעמוד שלכם עולה לאוויר מיד. לא מתבצע חיוב במהלך הניסיון; החיוב הראשון יתבצע רק בסיומו, אלא אם תבטלו קודם."
+            : "הניסיון מתחיל רק לאחר אישור העסק והפעלה מפורשת. בשלב זה לא נדרש אמצעי תשלום ולא מתבצע חיוב."}
+        </p>
       </div>
 
       {planId === "premium" && (
@@ -1575,7 +1649,7 @@ function ReviewStep({ values, planId, errors, onEdit, onChangeConsent }: ReviewS
             aria-invalid={Boolean(errors.publicationConsent)}
             aria-describedby={errors.publicationConsent ? "publicationConsent-error" : undefined}
           />
-          אני מאשר/ת שהפרטים שמסרתי נכונים ושניתן לפרסם אותם בפורטל לאחר אישור.
+          {paymentEnabled ? "אני מאשר/ת שהפרטים שמסרתי נכונים ושניתן לפרסם אותם בפורטל עם הפעלת הניסיון." : "אני מאשר/ת שהפרטים שמסרתי נכונים ושניתן לפרסם אותם בפורטל לאחר אישור."}
         </label>
         {errors.publicationConsent && (
           <p id="publicationConsent-error" className={styles.fieldErrorMessage} role="alert">
@@ -1621,7 +1695,7 @@ function ReviewStep({ values, planId, errors, onEdit, onChangeConsent }: ReviewS
               aria-invalid={Boolean(errors.trialConsent)}
               aria-describedby={errors.trialConsent ? "trialConsent-error" : undefined}
             />
-            אני מאשר/ת להפעיל את 30 ימי הניסיון לאחר אישור העסק.
+            {paymentEnabled ? "אני מאשר/ת להפעיל את 30 ימי הניסיון עם הזנת אמצעי התשלום בשלב הבא. החיוב הראשון יתבצע בסיום הניסיון, אלא אם אבטל קודם." : "אני מאשר/ת להפעיל את 30 ימי הניסיון לאחר אישור העסק."}
           </label>
           {errors.trialConsent && (
             <p id="trialConsent-error" className={styles.fieldErrorMessage} role="alert">

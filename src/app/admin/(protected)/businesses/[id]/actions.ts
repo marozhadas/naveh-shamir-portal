@@ -29,6 +29,7 @@ import { getPayMeConfig } from "@/lib/payme/config";
 import { decideOfferChange } from "@/domain/decide-offer-change";
 import { getOffer, type OfferCode } from "@/data/subscription-offers";
 import { isValidBusinessSlug } from "@/utils/business-slug";
+import { cancelPayMeSubscriptionForRejection } from "@/repositories/supabase-subscription-service";
 import { recordSlugRedirect } from "@/repositories/business-slug-redirect-repository";
 import { checkBusinessManagementEligibility, BUSINESS_MANAGEMENT_INELIGIBILITY_MESSAGE } from "@/utils/business-management-access";
 import { buildBusinessManagementUrl } from "@/utils/business-management-token";
@@ -92,6 +93,13 @@ export async function rejectRegistrationAction(
   const adminId = await requireAdmin();
   const registration = await getRegistrationById(registrationId);
   if (!registration) return { error: "ההרשמה לא נמצאה.", success: false };
+
+  // A business can be live already (registration step 6 puts it online on payment): stop its PayMe subscription BEFORE the
+  // status changes, so a PayMe failure never leaves a rejected business that is still being billed.
+  const cancelled = await cancelPayMeSubscriptionForRejection(registrationId, adminId);
+  if (!cancelled.success) {
+    return { error: "לא הצלחנו לבטל את המנוי ב-PayMe, ולכן הדחייה לא בוצעה. נסו שוב בעוד רגע, או בטלו את המנוי ב-PayMe ידנית.", success: false };
+  }
 
   await updateRegistrationStatus(registrationId, "rejected", { rejection_reason: reason });
   await resolveNotificationForEntity("business-registration", registrationId, adminId);

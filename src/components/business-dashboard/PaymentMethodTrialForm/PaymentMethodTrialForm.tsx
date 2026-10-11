@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { activateTrialWithPaymentMethodAction } from "@/app/business/dashboard/payment-actions";
+import { activateTrialWithPaymentMethodAction, completeRegistrationWithPaymentAction } from "@/app/business/dashboard/payment-actions";
 import styles from "./PaymentMethodTrialForm.module.css";
 
 /** The slice of PayMe's Hosted Fields (JSAPI) this form uses — https://github.com/PayMeService/payme-jsapi */
@@ -56,6 +56,13 @@ type PaymentMethodTrialFormProps = {
   /** e.g. "49 ₪ לחודש" — display only; the server decides the real price from the stored plan + interval. */
   priceLabel: string;
   amountValue: string;
+  /**
+   * Set when the form is step 6 of the registration wizard: the pending registration this payment completes (the server checks
+   * it belongs to the signed-in owner). Without it the form is the post-approval trial start on /business/trial.
+   */
+  registrationId?: string;
+  /** Called after a successful activation instead of the default redirect to the dashboard. */
+  onActivated?: () => void;
 };
 
 /**
@@ -63,7 +70,7 @@ type PaymentMethodTrialFormProps = {
  * they never touch our page's DOM, our JavaScript or our server. Only PayMe's opaque token (+ the masked card)
  * is sent to our server action, which validates everything again.
  */
-export function PaymentMethodTrialForm({ hostedFieldsKey, testMode, trialDays, planName, priceLabel, amountValue }: PaymentMethodTrialFormProps) {
+export function PaymentMethodTrialForm({ hostedFieldsKey, testMode, trialDays, planName, priceLabel, amountValue, registrationId, onActivated }: PaymentMethodTrialFormProps) {
   const router = useRouter();
   const uid = useId();
   const instanceRef = useRef<PayMeInstance | null>(null);
@@ -132,8 +139,14 @@ export function PaymentMethodTrialForm({ hostedFieldsKey, testMode, trialDays, p
         return;
       }
 
-      const outcome = await activateTrialWithPaymentMethodAction({ token: result.token, cardMask: result.card?.cardMask ?? null, consent });
+      const outcome = registrationId
+        ? await completeRegistrationWithPaymentAction({ registrationId, token: result.token, cardMask: result.card?.cardMask ?? null, consent })
+        : await activateTrialWithPaymentMethodAction({ token: result.token, cardMask: result.card?.cardMask ?? null, consent });
       if (outcome.status === "success") {
+        if (onActivated) {
+          onActivated();
+          return;
+        }
         router.push("/business/dashboard");
         router.refresh();
         return;
@@ -146,7 +159,7 @@ export function PaymentMethodTrialForm({ hostedFieldsKey, testMode, trialDays, p
     } finally {
       setBusy(false);
     }
-  }, [amountValue, consent, payer, planName, router]);
+  }, [amountValue, consent, onActivated, payer, planName, registrationId, router]);
 
   if (loadError) {
     return (
@@ -159,7 +172,7 @@ export function PaymentMethodTrialForm({ hostedFieldsKey, testMode, trialDays, p
   return (
     <div className={styles.form}>
       <p className={styles.lead}>
-        כדי להפעיל את {trialDays} ימי הניסיון יש להזין אמצעי תשלום. <strong>לא יבוצע חיוב במהלך תקופת הניסיון</strong> — החיוב הראשון ({priceLabel}, מחיר השקה) יתבצע רק בסיומה, אלא אם תבטלו קודם.
+        {registrationId ? `כדי להפעיל את ${trialDays} ימי הניסיון ולהעלות את העמוד שלכם לאוויר יש להזין אמצעי תשלום.` : `כדי להפעיל את ${trialDays} ימי הניסיון יש להזין אמצעי תשלום.`} <strong>לא יבוצע חיוב במהלך תקופת הניסיון</strong> — החיוב הראשון ({priceLabel}, מחיר השקה) יתבצע רק בסיומה, אלא אם תבטלו קודם.
       </p>
 
       <div className={styles.grid}>
@@ -211,7 +224,7 @@ export function PaymentMethodTrialForm({ hostedFieldsKey, testMode, trialDays, p
       )}
 
       <Button type="button" variant="accent" fullWidth disabled={!ready || busy} onClick={handleSubmit}>
-        {busy ? "מפעילים…" : `הפעלת ${trialDays} ימי ניסיון`}
+        {busy ? "מפעילים…" : registrationId ? "הפעלת הניסיון והעלאת העמוד לאוויר" : `הפעלת ${trialDays} ימי ניסיון`}
       </Button>
     </div>
   );

@@ -39,6 +39,8 @@ export type SubmitPlusRegistrationState = {
   status: "idle" | "validation-error" | "server-error" | "auth-required" | "success";
   message?: string;
   fieldErrors?: Record<string, string[]>;
+  /** Set on success: the id of the pending registration just created (the payment step points at it; the server re-checks ownership). */
+  registrationId?: string;
 };
 
 const AUTH_REQUIRED_MESSAGE = "ההתחברות פגה. יש להתחבר מחדש — מומלץ בלשונית חדשה, כדי שהפרטים שמילאתם לא יאבדו — ואז לשלוח שוב.";
@@ -159,7 +161,7 @@ async function submitExtendedBusinessRegistration(
       ...buildPrivacyConsentRecord(),
     });
 
-    if (!error) return { status: "success" };
+    if (!error) return { status: "success", registrationId: values.registrationId };
 
     if (error.code === "23505") continue; // slug collision — retry with a suffixed slug
     console.error("[submitExtendedBusinessRegistration] insert failed:", error.code, error.message);

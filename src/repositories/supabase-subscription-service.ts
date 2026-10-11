@@ -9,10 +9,12 @@ import { createPriceSnapshot, isBillingInterval } from "@/data/subscription-pric
 import { computeTrialWindow } from "@/data/subscription-offers";
 import { getSiteOrigin } from "@/utils/site-origin";
 import { buildPayMeCallbackUrl } from "@/lib/payme/config";
-import { getPayMeConfigForBusiness } from "@/lib/payme/flow-access";
+import { getPayMeConfigForBusiness, getPayMeConfigForRegistrant } from "@/lib/payme/flow-access";
+import type { PayMeConfig } from "@/lib/payme/config";
+import type { BusinessRegistrationRow } from "@/types/business-registration";
 import { cancelPayMeSubscription, generatePayMeSubscription, parsePayMeDateTime } from "@/lib/payme/client";
 import { isValidSubPaymeId, paymeIterationType } from "@/lib/payme/payme-helpers";
-import { buildSubscriptionPlan } from "@/lib/payme/build-subscription-plan";
+import { buildSubscriptionPlan, type SubscriptionPlan } from "@/lib/payme/build-subscription-plan";
 
 /**
  * The real, Supabase-backed half of SubscriptionRepository — everything here operates on
@@ -232,7 +234,83 @@ export async function startRealBusinessTrialWithPaymentMethod(
     console.error("[startRealBusinessTrialWithPaymentMethod] refusing to create a subscription:", built.reason);
     return { success: false, reason: "invalid-plan" };
   }
-  const { plan } = built;
+
+  return activatePayMeSubscription({ config, registrationId, ownerId, plan: built.plan, paymentToken, cardMask, registrationUpdate: { active_plan_id: built.plan.planId }, autoApproved: false });
+}
+
+/**
+ * Step 6 of the Plus/Premium REGISTRATION: the owner has just submitted the business (row exists, status "pending") and now
+ * enters the card. On success the PayMe subscription is created (token = buyer_key, first charge on sub_start_date) AND the
+ * business goes live immediately - no admin approval is waited for (owner decision: an admin contacts the owner personally
+ * if something is wrong; rejecting a live business cancels its PayMe subscription, see cancelPayMeSubscriptionForRejection).
+ *
+ * Same guarantees as startRealBusinessTrialWithPaymentMethod: the business is the signed-in owner's own row (owner_id
+ * checked), the plan / price / offer / dates come only from that row, an invalid plan or a missing sub_payme_id creates and
+ * activates nothing, and the sandbox is limited to the test-email list. Sandbox rule: getPayMeConfigForRegistrant.
+ */
+export async function completeRegistrationWithPayment(
+  registrationId: string,
+  ownerId: string,
+  registrantEmail: string | null | undefined,
+  paymentToken: string,
+  cardMask: string | null,
+): Promise<StartTrialWithPaymentMethodResult> {
+  const config = await getPayMeConfigForRegistrant(registrantEmail);
+  if (!config || !isSupabaseAdminConfigured()) return { success: false, reason: "payme-not-configured" };
+
+  const admin = createAdminSupabaseClient();
+  const { data: registration } = await admin
+    .from("business_registrations")
+    .select("id, status, slug, plan_tier, selected_billing_interval, offer_code")
+    .eq("id", registrationId)
+    .eq("owner_id", ownerId)
+    .maybeSingle();
+  // Only the owner's own registration, and only one that is still waiting (or was already approved) - never a rejected,
+  // suspended or archived business.
+  if (!registration || (registration.status !== "pending" && registration.status !== "approved")) return { success: false, reason: "not-eligible" };
+
+  const { data: existing, error: existingError } = await admin.from("business_subscriptions").select("id").eq("business_registration_id", registrationId).maybeSingle();
+  if (existingError) return { success: false, reason: "unknown-error" };
+  if (existing) return { success: false, reason: "already-exists" };
+
+  const built = buildSubscriptionPlan(registration, new Date());
+  if (!built.ok) {
+    console.error("[completeRegistrationWithPayment] refusing to create a subscription:", built.reason);
+    return { success: false, reason: "invalid-plan" };
+  }
+
+  // Going live needs a clean English slug (spec: never publish a Hebrew URL). A registration slug is auto-generated from the
+  // business name and is usually Hebrew, so a stable English one is derived from the id; an admin can still change it later
+  // (changeBusinessSlugAction records a redirect from the old address).
+  const slug = isValidBusinessSlug(registration.slug) ? registration.slug : `business-${registrationId.slice(0, 8)}`;
+  return activatePayMeSubscription({
+    config,
+    registrationId,
+    ownerId,
+    plan: built.plan,
+    paymentToken,
+    cardMask,
+    registrationUpdate: { active_plan_id: built.plan.planId, status: "approved", reviewed_at: new Date().toISOString(), rejection_reason: null, slug },
+    autoApproved: true,
+  });
+}
+
+type ActivatePayMeSubscriptionInput = {
+  config: PayMeConfig;
+  registrationId: string;
+  ownerId: string;
+  plan: SubscriptionPlan;
+  paymentToken: string;
+  cardMask: string | null;
+  /** Written to business_registrations only after the subscription row exists. */
+  registrationUpdate: Partial<BusinessRegistrationRow>;
+  autoApproved: boolean;
+};
+
+/** The shared PayMe sequence: keep the token, create the subscription (first charge on sub_start_date), write the trial row with its snapshot, then update the business. Compensated at every step. */
+async function activatePayMeSubscription(input: ActivatePayMeSubscriptionInput): Promise<StartTrialWithPaymentMethodResult> {
+  const { config, registrationId, ownerId, plan, paymentToken, cardMask } = input;
+  const admin = createAdminSupabaseClient();
 
   // 1) Keep the reusable token (server-only table; never the card itself).
   const { error: methodError } = await admin.from("billing_payment_methods").upsert(
@@ -254,14 +332,14 @@ export async function startRealBusinessTrialWithPaymentMethod(
       callbackUrl: buildPayMeCallbackUrl(getSiteOrigin(), config.webhookSecret),
     });
   } catch (error) {
-    console.error("[startRealBusinessTrialWithPaymentMethod] PayMe subscription failed:", error instanceof Error ? error.message : "unknown");
+    console.error("[activatePayMeSubscription] PayMe subscription failed:", error instanceof Error ? error.message : "unknown");
     await admin.from("billing_payment_methods").delete().eq("business_registration_id", registrationId);
     return { success: false, reason: "payme-rejected" };
   }
 
   // Defence in depth: never activate on anything but a valid PayMe subscription id.
   if (!isValidSubPaymeId(created?.subPaymeId)) {
-    console.error("[startRealBusinessTrialWithPaymentMethod] PayMe returned no valid subscription id - nothing activated");
+    console.error("[activatePayMeSubscription] PayMe returned no valid subscription id - nothing activated");
     await admin.from("billing_payment_methods").delete().eq("business_registration_id", registrationId);
     return { success: false, reason: "payme-rejected" };
   }
@@ -297,14 +375,16 @@ export async function startRealBusinessTrialWithPaymentMethod(
     try {
       await cancelPayMeSubscription(created.subPaymeId);
     } catch (cancelError) {
-      console.error("[startRealBusinessTrialWithPaymentMethod] could not cancel orphaned PayMe subscription:", cancelError instanceof Error ? cancelError.message : "unknown");
+      console.error("[activatePayMeSubscription] could not cancel orphaned PayMe subscription:", cancelError instanceof Error ? cancelError.message : "unknown");
     }
     if (error.code === "23505") return { success: false, reason: "already-exists" };
-    console.error("[startRealBusinessTrialWithPaymentMethod] insert failed:", error.code, error.message);
+    console.error("[activatePayMeSubscription] insert failed:", error.code, error.message);
     return { success: false, reason: "unknown-error" };
   }
 
-  await admin.from("business_registrations").update({ active_plan_id: plan.planId }).eq("id", registrationId);
+  const { error: registrationError } = await admin.from("business_registrations").update(input.registrationUpdate).eq("id", registrationId);
+  if (registrationError) console.error("[activatePayMeSubscription] could not update the business row:", registrationError.message);
+
   // The audit log carries the full snapshot, including sub_start_date and the PayMe id (there is no dedicated column for the
   // start date; next_billing_at holds the same moment).
   const snapshotMetadata = {
@@ -317,6 +397,7 @@ export async function startRealBusinessTrialWithPaymentMethod(
     subStartDate: plan.subStartDate,
     subPaymeId: created.subPaymeId,
     provider: "payme",
+    ...(input.autoApproved ? { autoApproved: true } : {}),
   };
   await admin.from("business_events_log").insert([
     { business_registration_id: registrationId, event_type: "payment_method_added", actor_id: ownerId, metadata: { provider: "payme" } },
@@ -324,6 +405,39 @@ export async function startRealBusinessTrialWithPaymentMethod(
   ]);
 
   return { success: true, subscription: mapSubscriptionRowToBusinessSubscription(data) };
+}
+
+export type CancelForRejectionResult = { success: true; hadSubscription: boolean } | { success: false; reason: "payme-error" };
+
+/**
+ * Admin rejected (or otherwise removed) a business that may already be live through the step-6 payment: its PayMe
+ * subscription must stop, otherwise the owner would still be charged for a page that is no longer shown. No subscription
+ * (or one that already ended) is fine. Called BEFORE the status change, so a PayMe failure never leaves a rejected business
+ * that is still being billed.
+ */
+export async function cancelPayMeSubscriptionForRejection(registrationId: string, adminId: string): Promise<CancelForRejectionResult> {
+  if (!isSupabaseAdminConfigured()) return { success: true, hadSubscription: false };
+  const admin = createAdminSupabaseClient();
+  const { data: sub } = await admin.from("business_subscriptions").select("*").eq("business_registration_id", registrationId).eq("payment_provider", "payme").maybeSingle();
+  if (!sub || !sub.provider_subscription_id || sub.status === "canceled" || sub.status === "expired") return { success: true, hadSubscription: false };
+
+  try {
+    await cancelPayMeSubscription(sub.provider_subscription_id);
+  } catch (error) {
+    console.error("[cancelPayMeSubscriptionForRejection] PayMe cancel failed:", error instanceof Error ? error.message : "unknown");
+    return { success: false, reason: "payme-error" };
+  }
+
+  const nowIso = new Date().toISOString();
+  const { error } = await admin.from("business_subscriptions").update({ status: "canceled", cancel_at_period_end: false, canceled_at: nowIso }).eq("id", sub.id);
+  if (error) return { success: false, reason: "payme-error" };
+  await admin.from("business_events_log").insert({
+    business_registration_id: registrationId,
+    event_type: "subscription_canceled",
+    actor_id: adminId,
+    metadata: { provider: "payme", initiatedBy: "admin-rejection" },
+  });
+  return { success: true, hadSubscription: true };
 }
 
 /** "dd/mm/yyyy" (an Israel calendar date) -> that day's 00:00 in Israel time. */

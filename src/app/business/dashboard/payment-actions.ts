@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { authAdapter } from "@/adapters/mock-auth-adapter";
-import { cancelOwnedPayMeSubscription, startRealBusinessTrialWithPaymentMethod } from "@/repositories/supabase-subscription-service";
+import { getSupabaseSessionUser } from "@/lib/supabase/server-client";
+import { cancelOwnedPayMeSubscription, completeRegistrationWithPayment, startRealBusinessTrialWithPaymentMethod } from "@/repositories/supabase-subscription-service";
 import { isPayMeConfigured } from "@/lib/payme/config";
 import { getPayMeConfigForBusiness } from "@/lib/payme/flow-access";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -52,6 +53,44 @@ export async function activateTrialWithPaymentMethodAction(input: { token: strin
   const result = await startRealBusinessTrialWithPaymentMethod(businessId, user.id, input.token, cardMask);
   if (!result.success) return { status: "error", message: ERROR_MESSAGE[result.reason] ?? ERROR_MESSAGE["unknown-error"] };
 
+  revalidatePath("/business/dashboard");
+  revalidatePath("/business/dashboard/subscription");
+  return { status: "success" };
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const REGISTRATION_ERROR_MESSAGE: Record<string, string> = {
+  ...ERROR_MESSAGE,
+  "not-eligible": "לא ניתן להשלים את התשלום להרשמה הזו. אם כבר שילמתם או שההרשמה נדחתה, פנו אלינו.",
+  "already-exists": "אמצעי התשלום כבר הוגדר והעמוד כבר הופעל.",
+};
+
+/**
+ * Step 6 of the Plus/Premium registration. Same contract as activateTrialWithPaymentMethodAction - only PayMe's opaque
+ * token, the masked card and the consent come from the browser; the registration id is only a pointer that the server
+ * verifies belongs to the signed-in owner. Price, trial length, offer and sub_start_date are all re-derived server-side.
+ * On success the business goes live right away (no admin approval) - see completeRegistrationWithPayment.
+ */
+export async function completeRegistrationWithPaymentAction(input: { registrationId: string; token: string; cardMask?: string | null; consent: boolean }): Promise<ActivateTrialState> {
+  if (!isPayMeConfigured()) return { status: "error", message: ERROR_MESSAGE["payme-not-configured"] };
+
+  const sessionUser = await getSupabaseSessionUser();
+  if (!sessionUser) return { status: "error", message: "ההתחברות פגה. יש להתחבר מחדש כדי להשלים את ההרשמה." };
+  if (input.consent !== true) return { status: "error", message: "יש לאשר את תנאי השימוש ותנאי תקופת הניסיון כדי להמשיך." };
+  if (typeof input.registrationId !== "string" || !UUID_PATTERN.test(input.registrationId)) return { status: "error", message: REGISTRATION_ERROR_MESSAGE["not-eligible"] };
+  if (typeof input.token !== "string" || !TOKEN_PATTERN.test(input.token)) return { status: "error", message: ERROR_MESSAGE["payme-rejected"] };
+  const cardMask = typeof input.cardMask === "string" && CARD_MASK_PATTERN.test(input.cardMask) ? input.cardMask : null;
+
+  if (!(await checkRateLimit(`payment-method:${sessionUser.id}`, 8, 3600))) {
+    return { status: "error", message: "בוצעו יותר מדי ניסיונות. נסו שוב בעוד כמה דקות." };
+  }
+
+  const result = await completeRegistrationWithPayment(input.registrationId, sessionUser.id, sessionUser.email, input.token, cardMask);
+  if (!result.success) return { status: "error", message: REGISTRATION_ERROR_MESSAGE[result.reason] ?? ERROR_MESSAGE["unknown-error"] };
+
+  revalidatePath("/");
+  revalidatePath("/businesses");
   revalidatePath("/business/dashboard");
   revalidatePath("/business/dashboard/subscription");
   return { status: "success" };
