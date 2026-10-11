@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { activateTrialWithPaymentMethodAction, savePaymentMethodForRegistrationAction } from "@/app/business/dashboard/payment-actions";
+import { CardTrustBadges } from "./CardTrustBadges";
 import styles from "./PaymentMethodTrialForm.module.css";
 
 /** The slice of PayMe's Hosted Fields (JSAPI) this form uses — https://github.com/PayMeService/payme-jsapi */
@@ -217,6 +218,7 @@ export function PaymentMethodTrialForm({ hostedFieldsKey, testMode, trialDays, p
           </div>
         </div>
         <p className={styles.secure}>פרטי הכרטיס מוזנים ישירות בטופס המאובטח של PayMe ואינם נשמרים או עוברים בשרתי הפורטל.</p>
+        <CardTrustBadges />
       </div>
 
       <label className={styles.consent}>
