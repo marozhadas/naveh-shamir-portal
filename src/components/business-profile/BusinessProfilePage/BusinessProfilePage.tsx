@@ -60,6 +60,9 @@ export function BusinessProfilePage({
 
   return (
     <>
+      <a href="#main-content" className="skip-link">
+        דלגו לתוכן הראשי
+      </a>
       <ConnectedHeader />
       {isPreview && (
         <div className={styles.previewBanner} role="status">

@@ -12,6 +12,9 @@ export const metadata: Metadata = { title: "חבילות לעסקים | נווה
 export default function BusinessPlansPage() {
   return (
     <>
+      <a href="#main-content" className="skip-link">
+        דלגו לתוכן הראשי
+      </a>
       <ConnectedHeader />
       <main id="main-content">
         <div className={styles.container}>

@@ -66,6 +66,9 @@ export default async function BusinessTrialPage() {
 
   return (
     <>
+      <a href="#main-content" className="skip-link">
+        דלגו לתוכן הראשי
+      </a>
       <ConnectedHeader />
       {isDemoModeEnabled() && !isRealSession && <ViewerSwitcher currentViewerId={viewer?.id ?? null} />}
       <main id="main-content">

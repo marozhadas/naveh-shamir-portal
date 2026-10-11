@@ -7,7 +7,7 @@
   --yellow-300: #fcd671;
   --yellow-100: #fef1d2;
   --green-600: #98cc1d;
-  --green-700: #3d8828;
+  --green-700: #357a22; /* was #3d8828 (4.42:1 on white, 3.85:1 on green-100) - darkened just enough for WCAG AA text contrast */
   --green-100: #e4f4de;
   --slate-50: #f8fafc;
   --slate-100: #f1f5f9;

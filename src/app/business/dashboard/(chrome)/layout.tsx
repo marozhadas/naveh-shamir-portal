@@ -16,6 +16,9 @@ export default async function BusinessDashboardLayout({ children }: { children: 
 
   return (
     <>
+      <a href="#main-content" className="skip-link">
+        דלגו לתוכן הראשי
+      </a>
       <ConnectedHeader />
       {isDemoModeEnabled() && !isRealSession && <ViewerSwitcher currentViewerId={viewer?.id ?? null} />}
       <DashboardNav />

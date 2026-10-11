@@ -82,6 +82,7 @@
 .searchInput {
   flex: 1;
   min-width: 0;
+  min-height: 40px;
   border: none;
   outline: none;
   background: transparent;

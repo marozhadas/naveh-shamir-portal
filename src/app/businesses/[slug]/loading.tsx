@@ -7,6 +7,9 @@ import styles from "./business-not-found.module.css";
 export default function BusinessPageLoading() {
   return (
     <>
+      <a href="#main-content" className="skip-link">
+        דלגו לתוכן הראשי
+      </a>
       <ConnectedHeader />
       <main id="main-content">
         <div className={styles.container}>

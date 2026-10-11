@@ -7,7 +7,7 @@ import { SITE_CONFIG } from "@/data/config";
  * which host served the page.
  */
 
-export const SITE_TITLE = "נווה שמיר — הפורטל של השכונה";
+export const SITE_TITLE = "נווה שמיר - הפורטל של השכונה";
 export const SITE_DESCRIPTION = "כל המידע המקומי של נווה שמיר במקום אחד: עסקים, אירועים, לוחות קהילה, גמ״חים ומידע שימושי לתושבי השכונה.";
 
 /** Next.js resolves every relative canonical / Open Graph URL against this. */

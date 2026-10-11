@@ -30,6 +30,9 @@ export default async function RegisterPlusPage({ searchParams }: RegisterPlusPag
 
   return (
     <>
+      <a href="#main-content" className="skip-link">
+        דלגו לתוכן הראשי
+      </a>
       <ConnectedHeader />
       <main id="main-content">
         <div className={styles.page}>

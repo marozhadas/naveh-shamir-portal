@@ -14,6 +14,9 @@ export const metadata: Metadata = staticPageMetadata({
 export default function AccessibilityPage() {
   return (
     <>
+      <a href="#main-content" className="skip-link">
+        דלגו לתוכן הראשי
+      </a>
       <ConnectedHeader />
       <main id="main-content">
         <div className={styles.container}>

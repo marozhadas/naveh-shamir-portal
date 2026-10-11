@@ -1,7 +1,8 @@
 .footer {
   background: var(--footer-bg, var(--color-bg-inverse));
   color: var(--footer-text-color, #fff);
-  padding: var(--footer-padding-block-start, var(--space-12)) 24px 28px;
+  /* bottom padding clears the floating feedback button (44px + its 16px offset), so it never covers the copyright line */
+  padding: var(--footer-padding-block-start, var(--space-12)) 24px 72px;
 }
 
 .grid {
@@ -37,11 +38,15 @@
 .linkList {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
   font-size: 14px;
 }
 
 .linkList a {
+  display: inline-flex;
+  align-items: center;
+  min-width: 24px;
+  min-height: 24px;
   color: var(--footer-link-color, var(--slate-200));
   transition: color var(--duration-fast) var(--ease-standard);
 }
@@ -53,7 +58,7 @@
 .essentialList {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
   font-size: 14px;
   color: var(--slate-200);
 }
@@ -65,7 +70,16 @@
   max-width: 220px;
 }
 
+.essentialItem {
+  align-items: center;
+}
+
 .essentialItem a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
   color: var(--slate-200);
   font-weight: var(--fw-demibold);
 }
@@ -90,6 +104,9 @@
 }
 
 .legalLinks a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
   color: var(--slate-400);
 }
 

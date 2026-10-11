@@ -11,7 +11,7 @@ import { getActiveListings } from "@/repositories/marketplace-service";
 import styles from "./marketplace.module.css";
 
 const PAGE_TITLE = "לוח מסירה ומכירה בנווה שמיר | הפורטל של השכונה";
-const PAGE_DESCRIPTION = "מוצרים, ריהוט, ציוד ופריטים מתושבי נווה שמיר — למסירה או למכירה.";
+const PAGE_DESCRIPTION = "מוצרים, ריהוט, ציוד ופריטים מתושבי נווה שמיר - למסירה או למכירה.";
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,

@@ -70,6 +70,9 @@ export default async function BusinessPage({ params }: BusinessPageProps) {
   if (view.kind === "unavailable") {
     return (
       <>
+        <a href="#main-content" className="skip-link">
+          דלגו לתוכן הראשי
+        </a>
         <ConnectedHeader />
         <main id="main-content">
           <BusinessUnavailableState />

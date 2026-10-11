@@ -1,5 +1,5 @@
 export const SITE_CONFIG = {
-  name: "נווה שמיר — הפורטל של השכונה",
+  name: "נווה שמיר - הפורטל של השכונה",
   whatsappCommunityUrl: "https://chat.whatsapp.com/nevesh-community-placeholder",
   designCredit: "עיצוב ופיתוח: הדס מרוז",
   designCreditUrl: "https://www.hadasdesign.co.il/",

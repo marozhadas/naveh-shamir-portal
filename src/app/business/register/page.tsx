@@ -10,6 +10,9 @@ export const metadata: Metadata = { title: "רישום עסק | נווה שמי�
 export default function BusinessRegisterPage() {
   return (
     <>
+      <a href="#main-content" className="skip-link">
+        דלגו לתוכן הראשי
+      </a>
       <ConnectedHeader />
       <main id="main-content">
         <div className={styles.container}>

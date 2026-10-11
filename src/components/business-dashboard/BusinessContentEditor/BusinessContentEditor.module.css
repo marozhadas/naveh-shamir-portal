@@ -13,7 +13,7 @@
   align-self: flex-start;
   font-size: var(--fs-body-sm);
   font-weight: var(--fw-demibold);
-  color: var(--color-brand-accent);
+  color: var(--green-700);
   text-decoration: none;
 }
 

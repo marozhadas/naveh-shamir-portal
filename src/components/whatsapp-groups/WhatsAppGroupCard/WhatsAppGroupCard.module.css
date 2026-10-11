@@ -58,7 +58,7 @@
 .featuredBadge {
   display: inline-block;
   font-size: var(--fs-caption);
-  color: var(--yellow-500);
+  color: var(--color-text-primary);
   margin-inline-start: 6px;
   vertical-align: middle;
 }

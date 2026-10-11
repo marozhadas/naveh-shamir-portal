@@ -15,6 +15,9 @@ export const metadata: Metadata = { title: "הדף לא נמצא | נווה שמ
 export default function NotFound() {
   return (
     <>
+      <a href="#main-content" className="skip-link">
+        דלגו לתוכן הראשי
+      </a>
       <ConnectedHeader />
       <main id="main-content">
         <div className={styles.container}>

@@ -15,6 +15,9 @@ export default async function OwnerLoginPage({ searchParams }: OwnerLoginPagePro
   const returnTo = safeReturnPath(next) ?? undefined;
   return (
     <>
+      <a href="#main-content" className="skip-link">
+        דלגו לתוכן הראשי
+      </a>
       <ConnectedHeader />
       <main id="main-content">
         <div className={styles.container}>
