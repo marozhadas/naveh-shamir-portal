@@ -4,6 +4,7 @@ import { getTrialDaysForOffer } from "@/data/subscription-offers";
 import { SubscriptionStatusCard } from "@/components/business-dashboard/SubscriptionStatusCard/SubscriptionStatusCard";
 import { isSupabaseBusinessId } from "@/utils/business-id";
 import { getLatestUnreadTrialNotification } from "@/repositories/business-notifications";
+import { getPaymentResume, PAYMENT_METHOD_ROUTE } from "@/lib/business-owner/payment-resume";
 import { resolveDashboardViewer } from "../resolve-dashboard-viewer";
 import { submitForReviewAction } from "../actions";
 import styles from "./dashboard.module.css";
@@ -33,6 +34,8 @@ export default async function BusinessDashboardPage() {
   const canSubmitForReview = business.status === "draft" && access?.canPublish === true;
   const isRealBusiness = isSupabaseBusinessId(business.id);
   const trialNotification = isRealBusiness ? await getLatestUnreadTrialNotification(view.viewer.id) : null;
+  // A paid registration that never completed step 6 gets a clear way back, instead of a trial button that leads to a dead end.
+  const paymentResume = isRealBusiness ? await getPaymentResume() : null;
 
   return (
     <div className={styles.wrap}>
@@ -57,6 +60,7 @@ export default async function BusinessDashboardPage() {
         isRealSubscription={isRealBusiness}
         businessSlug={business.slug}
         trialDays={getTrialDaysForOffer(business.offerCode)}
+        paymentResumeHref={paymentResume ? PAYMENT_METHOD_ROUTE : null}
       />
 
       <div className={styles.actions}>

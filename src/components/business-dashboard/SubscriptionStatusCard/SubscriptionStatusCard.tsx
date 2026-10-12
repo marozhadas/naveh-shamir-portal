@@ -25,6 +25,8 @@ type SubscriptionStatusCardProps = {
   blockedReason?: "awaiting-approval" | null;
   /** Trial length of THIS business's offer (30 standard / 90 pilot) — shown before a trial exists; once it exists the subscription's own snapshot is used. */
   trialDays?: number;
+  /** Set (to the payment-method route) when the owner's registration still needs step 6: shown instead of any trial / approval text. */
+  paymentResumeHref?: string | null;
 };
 
 function formatDate(iso: string): string {
@@ -39,8 +41,21 @@ export function SubscriptionStatusCard({
   businessSlug = null,
   blockedReason = null,
   trialDays = TRIAL_DAYS,
+  paymentResumeHref = null,
 }: SubscriptionStatusCardProps) {
   if (!subscription || !access) {
+    if (paymentResumeHref) {
+      return (
+        <div className={`${styles.card} ${styles.neutral}`}>
+          <p className={styles.title}>נשאר שלב אחד להשלמת ההרשמה: הוספת אמצעי תשלום</p>
+          <p className={styles.description}>לא יתבצע חיוב כעת. לאחר שהצוות יאשר את העסק תתחיל תקופת הניסיון באופן אוטומטי.</p>
+          <Button href={paymentResumeHref} variant="accent">
+            השלמת אמצעי תשלום
+          </Button>
+        </div>
+      );
+    }
+
     if (blockedReason === "awaiting-approval") {
       return (
         <div className={`${styles.card} ${styles.neutral}`}>

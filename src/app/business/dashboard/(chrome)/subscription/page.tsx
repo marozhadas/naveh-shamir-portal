@@ -9,6 +9,7 @@ import { getPayMeConfigForBusiness } from "@/lib/payme/flow-access";
 import { getOwnedPaymentMethodMask } from "@/repositories/supabase-subscription-service";
 import { CancelPayMeSubscriptionButton } from "@/components/business-dashboard/CancelPayMeSubscriptionButton/CancelPayMeSubscriptionButton";
 import { PaymentMethodTrialForm } from "@/components/business-dashboard/PaymentMethodTrialForm/PaymentMethodTrialForm";
+import { getPaymentResume, PAYMENT_METHOD_ROUTE } from "@/lib/business-owner/payment-resume";
 import { resolveDashboardViewer } from "../../resolve-dashboard-viewer";
 import styles from "./subscription.module.css";
 
@@ -171,6 +172,7 @@ export default async function BusinessSubscriptionPage() {
         businessSlug={business.slug}
         blockedReason={summary.stage === "awaiting-approval" ? "awaiting-approval" : null}
         trialDays={getTrialDaysForOffer(business.offerCode)}
+        paymentResumeHref={isRealSubscription && (await getPaymentResume()) ? PAYMENT_METHOD_ROUTE : null}
       />
 
       <div className={styles.planCard}>

@@ -9,6 +9,8 @@ import { TrialStartForm } from "./TrialStartForm";
 import { authAdapter, isRealBusinessOwnerSession } from "@/adapters/mock-auth-adapter";
 import { isDemoModeEnabled } from "@/lib/demo-mode";
 import { redirectGuestToLoginInProduction } from "@/app/business/redirect-guest-to-login";
+import { getPaymentResume, PAYMENT_METHOD_ROUTE } from "@/lib/business-owner/payment-resume";
+import { Button } from "@/components/ui/Button";
 import { subscriptionRepository } from "@/repositories/mock-subscription-repository";
 import { businessRepository } from "@/repositories/mock-business-repository";
 import { getBusinessPlan } from "@/data/business-plans";
@@ -41,6 +43,33 @@ export default async function BusinessTrialPage() {
   const [viewer, isRealSession] = await Promise.all([authAdapter.getCurrentUser(), isRealBusinessOwnerSession()]);
   redirectGuestToLoginInProduction(viewer, "/business/trial");
   const businessId = viewer?.ownedBusinessIds[0];
+
+  // A paid registration that never completed step 6: do not say "after approval you can start the trial" - one step is missing.
+  const paymentResume = isRealSession ? await getPaymentResume() : null;
+  if (paymentResume) {
+    return (
+      <>
+        <a href="#main-content" className="skip-link">
+          דלגו לתוכן הראשי
+        </a>
+        <ConnectedHeader />
+        <main id="main-content">
+          <div className={styles.container}>
+            <h1 className={styles.title}>נשאר שלב אחד להשלמת ההרשמה</h1>
+            <p className={styles.notice} role="status">
+              נשאר שלב אחד להשלמת ההרשמה: הוספת אמצעי תשלום. לא יתבצע חיוב כעת.
+            </p>
+            <div className={styles.actionBox}>
+              <Button href={PAYMENT_METHOD_ROUTE} variant="accent">
+                להשלמת אמצעי התשלום
+              </Button>
+            </div>
+          </div>
+        </main>
+        <Footer settings={defaultFooterSettings} />
+      </>
+    );
+  }
 
   let eligibility: TrialEligibility;
   if (!viewer) {
