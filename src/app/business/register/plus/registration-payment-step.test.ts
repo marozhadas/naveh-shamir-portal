@@ -67,7 +67,7 @@ describe("Plus / Premium pages hand the browser only the public key", () => {
 
 describe("the payment form in registration mode only SAVES the card", () => {
   it("calls the save action (not the trial action) and never the subscription path", () => {
-    expect(form).toMatch(/registrationId\s*\?\s*await savePaymentMethodForRegistrationAction\(\{ registrationId, token: result\.token, cardMask: [^,]+, consent \}\)\s*:\s*await activateTrialWithPaymentMethodAction\(/);
+    expect(form).toMatch(/registrationId\s*\?\s*await savePaymentMethodForRegistrationAction\(\{ registrationId, token: tokenized\.token, cardMask: tokenized\.cardMask, consent \}\)\s*:\s*await activateTrialWithPaymentMethodAction\(/);
     expect(form).not.toMatch(/generate-subscription|generatePayMeSubscription/);
   });
 

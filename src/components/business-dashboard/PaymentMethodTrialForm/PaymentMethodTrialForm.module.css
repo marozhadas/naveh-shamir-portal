@@ -40,6 +40,16 @@
   min-width: 0;
 }
 
+.fieldError {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--color-error, #b3261e);
+}
+
+.field input[aria-invalid="true"] {
+  border-color: var(--color-error, #b3261e);
+}
+
 .cardBox {
   display: flex;
   flex-direction: column;

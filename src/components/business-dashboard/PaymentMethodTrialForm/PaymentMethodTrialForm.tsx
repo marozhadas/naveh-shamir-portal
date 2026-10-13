@@ -5,20 +5,14 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { activateTrialWithPaymentMethodAction, savePaymentMethodForRegistrationAction } from "@/app/business/dashboard/payment-actions";
 import { CardTrustBadges } from "./CardTrustBadges";
+import { COMMUNICATION_ERROR_MESSAGE, tokenizeWithPayer, type PayerFieldErrors, type TokenizeResult } from "./tokenize-payer";
 import styles from "./PaymentMethodTrialForm.module.css";
 
 /** The slice of PayMe's Hosted Fields (JSAPI) this form uses — https://github.com/PayMeService/payme-jsapi */
 type PayMeHostedField = { mount: (selector: string) => Promise<unknown> };
 type PayMeInstance = {
   hostedFields: () => { create: (type: string, options?: Record<string, unknown>) => PayMeHostedField };
-  tokenize: (saleData: Record<string, unknown>) => Promise<{
-    type?: string;
-    token?: string;
-    card?: { cardMask?: string };
-    errors?: Record<string, { message?: string } | string>;
-    message?: string;
-    statusCode?: number;
-  }>;
+  tokenize: (saleData: Record<string, unknown>) => Promise<TokenizeResult>;
   teardown?: () => void;
 };
 type PayMeGlobal = {
@@ -30,6 +24,8 @@ declare global {
     PayMe?: PayMeGlobal;
   }
 }
+
+const PAYER_INPUT_SUFFIX = { firstName: "fn", lastName: "ln", email: "em", phone: "ph" } as const;
 
 const HOSTED_FIELDS_SCRIPT = "https://cdn.payme.io/hf/v1/hostedfields.js";
 
@@ -83,6 +79,7 @@ export function PaymentMethodTrialForm({ hostedFieldsKey, testMode, trialDays, p
   const [error, setError] = useState<string | null>(null);
   const [consent, setConsent] = useState(false);
   const [payer, setPayer] = useState({ firstName: "", lastName: "", email: "", phone: "" });
+  const [fieldErrors, setFieldErrors] = useState<PayerFieldErrors>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -122,28 +119,29 @@ export function PaymentMethodTrialForm({ hostedFieldsKey, testMode, trialDays, p
     }
     const instance = instanceRef.current;
     if (!instance) return;
+    setFieldErrors({});
     setBusy(true);
     try {
-      const result = await instance.tokenize({
-        payerFirstName: payer.firstName.trim(),
-        payerLastName: payer.lastName.trim(),
-        payerEmail: payer.email.trim(),
-        payerPhone: payer.phone.trim(),
-        total: { label: `${planName} — נווה שמיר`, amount: { currency: "ILS", value: amountValue } },
-      });
-
-      if (result.type !== "tokenize-success" || !result.token) {
-        const first = result.errors ? Object.values(result.errors)[0] : null;
-        const detail = typeof first === "string" ? first : first?.message;
-        setError(detail ?? "פרטי הכרטיס אינם תקינים. בדקו ונסו שוב.");
-        // A tokenize attempt consumes the PayMe session — start a fresh one for the next try.
-        setSessionKey((value) => value + 1);
+      // Validate the payer fields first (PayMe's SDK rejects empty / malformed ones), tokenize with the normalized phone, and
+      // turn any refusal into a Hebrew message. Nothing is sent to PayMe when a payer field is invalid, and the card fields stay.
+      const tokenized = await tokenizeWithPayer(instance.tokenize, payer, { label: `${planName} — נווה שמיר`, amount: { currency: "ILS", value: amountValue } });
+      if (tokenized.status === "invalid") {
+        setFieldErrors(tokenized.fieldErrors);
+        const first = (["firstName", "lastName", "email", "phone"] as const).find((key) => tokenized.fieldErrors[key]);
+        setError(first ? tokenized.fieldErrors[first]! : null);
+        if (first) document.getElementById(`${uid}-${PAYER_INPUT_SUFFIX[first]}`)?.focus();
+        return;
+      }
+      if (tokenized.status === "failed") {
+        setError(tokenized.message);
+        // A tokenize attempt that PayMe actually processed consumes its session - start a fresh one for the next try.
+        if (tokenized.restartSession) setSessionKey((value) => value + 1);
         return;
       }
 
       const outcome = registrationId
-        ? await savePaymentMethodForRegistrationAction({ registrationId, token: result.token, cardMask: result.card?.cardMask ?? null, consent })
-        : await activateTrialWithPaymentMethodAction({ token: result.token, cardMask: result.card?.cardMask ?? null, consent });
+        ? await savePaymentMethodForRegistrationAction({ registrationId, token: tokenized.token, cardMask: tokenized.cardMask, consent })
+        : await activateTrialWithPaymentMethodAction({ token: tokenized.token, cardMask: tokenized.cardMask, consent });
       if (outcome.status === "success") {
         if (onCompleted) {
           onCompleted();
@@ -156,12 +154,13 @@ export function PaymentMethodTrialForm({ hostedFieldsKey, testMode, trialDays, p
       setError(outcome.message ?? "אירעה תקלה. לא בוצע חיוב.");
       setSessionKey((value) => value + 1);
     } catch {
-      setError("אירעה תקלה בתקשורת. לא בוצע חיוב. נסו שוב.");
+      // Reached only by a real communication / server failure (the server action or the network) - tokenization problems are handled above.
+      setError(COMMUNICATION_ERROR_MESSAGE);
       setSessionKey((value) => value + 1);
     } finally {
       setBusy(false);
     }
-  }, [amountValue, consent, onCompleted, payer, planName, registrationId, router]);
+  }, [amountValue, consent, onCompleted, payer, planName, registrationId, router, uid]);
 
   if (loadError) {
     return (
@@ -185,20 +184,81 @@ export function PaymentMethodTrialForm({ hostedFieldsKey, testMode, trialDays, p
 
       <div className={styles.grid}>
         <div className={styles.field}>
-          <label htmlFor={`${uid}-fn`}>שם פרטי</label>
-          <input id={`${uid}-fn`} autoComplete="given-name" value={payer.firstName} onChange={(e) => setPayer((p) => ({ ...p, firstName: e.target.value }))} />
+          <label htmlFor={`${uid}-fn`}>שם פרטי *</label>
+          <input
+            id={`${uid}-fn`}
+            autoComplete="given-name"
+            required
+            aria-required="true"
+            aria-invalid={Boolean(fieldErrors.firstName)}
+            aria-describedby={fieldErrors.firstName ? `${uid}-fn-error` : undefined}
+            value={payer.firstName}
+            onChange={(e) => setPayer((p) => ({ ...p, firstName: e.target.value }))}
+          />
+          {fieldErrors.firstName && (
+            <p id={`${uid}-fn-error`} className={styles.fieldError}>
+              {fieldErrors.firstName}
+            </p>
+          )}
         </div>
         <div className={styles.field}>
-          <label htmlFor={`${uid}-ln`}>שם משפחה</label>
-          <input id={`${uid}-ln`} autoComplete="family-name" value={payer.lastName} onChange={(e) => setPayer((p) => ({ ...p, lastName: e.target.value }))} />
+          <label htmlFor={`${uid}-ln`}>שם משפחה *</label>
+          <input
+            id={`${uid}-ln`}
+            autoComplete="family-name"
+            required
+            aria-required="true"
+            aria-invalid={Boolean(fieldErrors.lastName)}
+            aria-describedby={fieldErrors.lastName ? `${uid}-ln-error` : undefined}
+            value={payer.lastName}
+            onChange={(e) => setPayer((p) => ({ ...p, lastName: e.target.value }))}
+          />
+          {fieldErrors.lastName && (
+            <p id={`${uid}-ln-error`} className={styles.fieldError}>
+              {fieldErrors.lastName}
+            </p>
+          )}
         </div>
         <div className={styles.field}>
-          <label htmlFor={`${uid}-em`}>אימייל</label>
-          <input id={`${uid}-em`} type="email" dir="ltr" autoComplete="email" value={payer.email} onChange={(e) => setPayer((p) => ({ ...p, email: e.target.value }))} />
+          <label htmlFor={`${uid}-em`}>אימייל *</label>
+          <input
+            id={`${uid}-em`}
+            type="email"
+            dir="ltr"
+            autoComplete="email"
+            required
+            aria-required="true"
+            aria-invalid={Boolean(fieldErrors.email)}
+            aria-describedby={fieldErrors.email ? `${uid}-em-error` : undefined}
+            value={payer.email}
+            onChange={(e) => setPayer((p) => ({ ...p, email: e.target.value }))}
+          />
+          {fieldErrors.email && (
+            <p id={`${uid}-em-error`} className={styles.fieldError}>
+              {fieldErrors.email}
+            </p>
+          )}
         </div>
         <div className={styles.field}>
-          <label htmlFor={`${uid}-ph`}>טלפון</label>
-          <input id={`${uid}-ph`} type="tel" dir="ltr" autoComplete="tel" value={payer.phone} onChange={(e) => setPayer((p) => ({ ...p, phone: e.target.value }))} />
+          <label htmlFor={`${uid}-ph`}>טלפון *</label>
+          <input
+            id={`${uid}-ph`}
+            type="tel"
+            dir="ltr"
+            autoComplete="tel"
+            inputMode="tel"
+            required
+            aria-required="true"
+            aria-invalid={Boolean(fieldErrors.phone)}
+            aria-describedby={fieldErrors.phone ? `${uid}-ph-error` : undefined}
+            value={payer.phone}
+            onChange={(e) => setPayer((p) => ({ ...p, phone: e.target.value }))}
+          />
+          {fieldErrors.phone && (
+            <p id={`${uid}-ph-error`} className={styles.fieldError}>
+              {fieldErrors.phone}
+            </p>
+          )}
         </div>
       </div>
 
