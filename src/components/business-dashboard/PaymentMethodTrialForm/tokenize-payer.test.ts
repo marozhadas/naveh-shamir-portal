@@ -5,6 +5,8 @@ import {
   CARD_ERROR_MESSAGE,
   COMMUNICATION_ERROR_MESSAGE,
   PAYER_ERROR,
+  PAYMENT_CONFIG_ERROR_MESSAGE,
+  SESSION_EXPIRED_MESSAGE,
   UNKNOWN_PAYMENT_ERROR_MESSAGE,
   isValidIsraeliPhone,
   mapPaymeFailureToHebrew,
@@ -156,6 +158,49 @@ describe("tokenizeWithPayer", () => {
     const outcome = await tokenizeWithPayer(vi.fn(async () => ({ type: "tokenize-error", token: TOKEN, card: { cardMask: "411111******1111" }, errors: { number: "x" } })), payer(), TOTAL);
     expect(JSON.stringify(outcome)).not.toContain(TOKEN);
     expect(JSON.stringify(outcome)).not.toContain("411111");
+  });
+});
+
+describe("PayMe's real rejection shape: a plain object, not an Error", () => {
+  const reject = (payload: unknown) => tokenizeWithPayer(vi.fn(async () => Promise.reject(payload)), payer(), TOTAL);
+
+  it("card field errors: a card message and a code that names the fields (never values)", async () => {
+    const outcome = await reject({ type: "tokenize-error", validationError: true, errors: { cardNumber: "invalid", cvc: "required" } });
+    expect(outcome).toMatchObject({ status: "failed", message: CARD_ERROR_MESSAGE, code: "fields:cardNumber+cvc", restartSession: true });
+  });
+
+  it("payer field errors from the iframe: the matching payer message, card fields kept", async () => {
+    expect(await reject({ type: "tokenize-error", errors: { payerEmail: "invalid" } })).toMatchObject({ message: PAYER_ERROR.email, code: "fields:payerEmail", restartSession: false });
+    expect(await reject({ type: "tokenize-error", errors: { payerPhone: "invalid" } })).toMatchObject({ message: PAYER_ERROR.phone, restartSession: false });
+  });
+
+  it("Bad session: a fresh session with its own Hebrew message", async () => {
+    const outcome = await reject({ type: "tokenize-error", error: "Bad session", message: "Session expired or deleted", statusCode: 400 });
+    expect(outcome).toMatchObject({ status: "failed", message: SESSION_EXPIRED_MESSAGE, code: "bad-session", restartSession: true });
+  });
+
+  it("401 / 403 (wrong or mismatched key): a configuration message with the status in the code", async () => {
+    expect(await reject({ type: "tokenize-error", statusCode: 401 })).toMatchObject({ message: PAYMENT_CONFIG_ERROR_MESSAGE, code: "status-401" });
+    expect(await reject({ type: "tokenize-error", statusCode: 403, message: "Forbidden" })).toMatchObject({ message: PAYMENT_CONFIG_ERROR_MESSAGE, code: "status-403" });
+  });
+
+  it("5xx: the communication message; anything else unknown keeps the generic message and a status code", async () => {
+    expect(await reject({ type: "tokenize-error", statusCode: 503 })).toMatchObject({ message: COMMUNICATION_ERROR_MESSAGE, code: "status-503" });
+    expect(await reject({ type: "tokenize-error", statusCode: 400, message: "Declined" })).toMatchObject({ message: UNKNOWN_PAYMENT_ERROR_MESSAGE, code: "status-400" });
+    expect(await reject({ weird: "payload" })).toMatchObject({ message: UNKNOWN_PAYMENT_ERROR_MESSAGE, code: "unknown" });
+  });
+
+  it("the code and message never carry the token, card data, field values or the raw payload", async () => {
+    const outcome = await reject({ type: "tokenize-error", token: TOKEN, card: { cardMask: "411111******1111" }, errors: { "cardNumber 4111 1111 1111 1111": "x" }, message: "secret-detail" });
+    const text = JSON.stringify(outcome);
+    for (const forbidden of [TOKEN, "411111", "4111", "secret-detail"]) expect(text).not.toContain(forbidden);
+    expect(outcome.status === "failed" && outcome.code).toMatch(/^[A-Za-z0-9:+_-]+$/);
+  });
+
+  it("the form shows the code next to the message", () => {
+    const form = readFileSync(path.resolve(__dirname, "PaymentMethodTrialForm.tsx"), "utf8");
+    expect(form).toMatch(/setErrorCode\(tokenized\.code\)/);
+    expect(form).toContain("(קוד: {errorCode})");
   });
 });
 

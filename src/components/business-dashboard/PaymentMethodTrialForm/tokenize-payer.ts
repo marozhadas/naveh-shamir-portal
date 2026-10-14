@@ -80,20 +80,89 @@ export type TokenizeResult = {
   card?: { cardMask?: string };
   errors?: Record<string, { message?: string } | string>;
   message?: string;
+  error?: string;
   statusCode?: number;
+  validationError?: boolean;
 };
 export type TokenizeFn = (saleData: Record<string, unknown>) => Promise<TokenizeResult>;
+
+export const SESSION_EXPIRED_MESSAGE = "טופס התשלום פג תוקף ונטען מחדש. הזינו שוב את פרטי הכרטיס. לא בוצע חיוב.";
+export const PAYMENT_CONFIG_ERROR_MESSAGE = "אירעה תקלה בהגדרות התשלום. לא בוצע חיוב. אנא פנו אלינו ונטפל בכך.";
 
 export type TokenizeOutcome =
   /** The browser-side check failed: nothing was sent to PayMe, the card fields are untouched. */
   | { status: "invalid"; fieldErrors: PayerFieldErrors }
-  /** PayMe refused (rejection or error result): a Hebrew message; `restartSession` when the card session may be spent. */
-  | { status: "failed"; message: string; restartSession: boolean }
+  /**
+   * PayMe refused (rejection or error result): a Hebrew message; `restartSession` when the card session may be spent.
+   * `code` is a short, safe diagnostic (error kind, HTTP status, NAMES of the fields PayMe complained about - never values,
+   * the token, card data or the raw payload) that the user can quote to support.
+   */
+  | { status: "failed"; message: string; restartSession: boolean; code: string }
   | { status: "ok"; token: string; cardMask: string | null };
+
+type FailureShape = { text: string; statusCode: number | null; fieldKeys: string[]; isObject: boolean };
+
+function describeFailure(value: unknown): FailureShape {
+  if (value && typeof value === "object" && !(value instanceof Error)) {
+    // PayMe's SDK REJECTS a tokenize-error with a plain object: { type, error, message, statusCode, validationError, errors: { <field>: message } }.
+    const raw = value as Record<string, unknown>;
+    const errors = raw.errors && typeof raw.errors === "object" ? (raw.errors as Record<string, unknown>) : {};
+    const fieldKeys = Object.keys(errors);
+    const text = [textOf(raw), typeof raw.error === "string" ? raw.error : "", ...fieldKeys.map((key) => `${key} ${textOf(errors[key])}`)].join(" ");
+    return { text, statusCode: typeof raw.statusCode === "number" ? raw.statusCode : null, fieldKeys, isObject: true };
+  }
+  return { text: textOf(value), statusCode: null, fieldKeys: [], isObject: false };
+}
+
+/** Field NAMES only: a plain letters-only name (cardNumber, payerEmail...) passes, anything else (digits, spaces) becomes "field". Values never reach the code. */
+function safeKey(key: string): string {
+  return /^[A-Za-z]{1,24}$/.test(key) ? key : "field";
+}
+
+function messageForFieldKey(key: string): string | null {
+  const k = key.toLowerCase();
+  if (k.includes("email")) return PAYER_ERROR.email;
+  if (k.includes("phone")) return PAYER_ERROR.phone;
+  if (k.includes("firstname") || k.includes("lastname")) return PAYER_ERROR.name;
+  if (/number|expir|cvc|cvv|card/.test(k)) return CARD_ERROR_MESSAGE;
+  return null;
+}
+
+type Classified = { message: string; code: string };
+
+function classifyFailure(failure: FailureShape): Classified {
+  const { text, statusCode, fieldKeys } = failure;
+  const lower = text.toLowerCase();
+  const statusCode_ = statusCode === null ? "" : `status-${statusCode}`;
+
+  if (/bad session|session expired|session.*deleted/.test(lower)) return { message: SESSION_EXPIRED_MESSAGE, code: "bad-session" };
+
+  if (fieldKeys.length > 0) {
+    const keys = fieldKeys.map(safeKey).filter(Boolean).slice(0, 4);
+    const payerMessage = fieldKeys.map(messageForFieldKey).find((m) => m && m !== CARD_ERROR_MESSAGE);
+    const message = payerMessage ?? (fieldKeys.some((key) => messageForFieldKey(key) === CARD_ERROR_MESSAGE) ? CARD_ERROR_MESSAGE : UNKNOWN_PAYMENT_ERROR_MESSAGE);
+    return { message, code: `fields:${keys.join("+")}` };
+  }
+
+  if (statusCode === 401 || statusCode === 403 || /unauthori[sz]ed|forbidden|api key|public key|invalid key/.test(lower)) {
+    return { message: PAYMENT_CONFIG_ERROR_MESSAGE, code: statusCode_ || "config" };
+  }
+  if (statusCode !== null && statusCode >= 500) return { message: COMMUNICATION_ERROR_MESSAGE, code: statusCode_ };
+
+  const message = mapPaymeFailureToHebrew(text);
+  let code = statusCode_ || "unknown";
+  if (message === COMMUNICATION_ERROR_MESSAGE) code = "network";
+  else if (message === CARD_ERROR_MESSAGE) code = "card";
+  else if (message === PAYER_ERROR.email) code = "payer-email";
+  else if (message === PAYER_ERROR.phone) code = "payer-phone";
+  else if (message === PAYER_ERROR.name) code = "payer-name";
+  return { message, code };
+}
 
 /**
  * The whole tokenization step: validate the payer fields, call tokenize() with the normalized phone, and turn every way it can
- * go wrong into a Hebrew outcome. A thrown / rejected tokenize() is caught here explicitly.
+ * go wrong into a Hebrew outcome. A thrown / rejected tokenize() is caught here explicitly - including the plain-object
+ * rejection PayMe's SDK uses for its own tokenize-error results.
  */
 export async function tokenizeWithPayer(tokenize: TokenizeFn, payer: PayerInput, total: { label: string; amount: { currency: string; value: string } }): Promise<TokenizeOutcome> {
   const fieldErrors = validatePayer(payer);
@@ -103,19 +172,17 @@ export async function tokenizeWithPayer(tokenize: TokenizeFn, payer: PayerInput,
   try {
     result = await tokenize({ ...toSdkPayer(payer), total });
   } catch (rejection) {
-    const message = mapPaymeFailureToHebrew(rejection);
-    // The SDK rejects payer-field problems before it sends anything, so the card session is still good; anything else may have consumed it.
+    const { message, code } = classifyFailure(describeFailure(rejection));
+    // A payer-field problem is refused before the card is used, so the card session is still good; anything else may have consumed it.
     const payerProblem = message === PAYER_ERROR.name || message === PAYER_ERROR.email || message === PAYER_ERROR.phone;
-    return { status: "failed", message, restartSession: !payerProblem };
+    return { status: "failed", message, restartSession: !payerProblem, code };
   }
 
   if (result?.type === "tokenize-success" && typeof result.token === "string" && result.token) {
     return { status: "ok", token: result.token, cardMask: result.card?.cardMask ?? null };
   }
 
-  // An error RESULT from PayMe: map its text / field keys, never show it as it came.
-  const parts = [textOf(result), ...Object.entries(result?.errors ?? {}).map(([key, value]) => `${key} ${textOf(value)}`)].join(" ");
-  const hasFieldErrors = Object.keys(result?.errors ?? {}).length > 0;
-  const mapped = mapPaymeFailureToHebrew(parts);
-  return { status: "failed", message: mapped === UNKNOWN_PAYMENT_ERROR_MESSAGE && hasFieldErrors ? CARD_ERROR_MESSAGE : mapped, restartSession: true };
+  // An error RESULT: map its text / field keys, never show it as it came.
+  const { message, code } = classifyFailure(describeFailure(result));
+  return { status: "failed", message, restartSession: true, code };
 }

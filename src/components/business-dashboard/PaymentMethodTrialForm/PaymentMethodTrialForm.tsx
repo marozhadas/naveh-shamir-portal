@@ -77,6 +77,8 @@ export function PaymentMethodTrialForm({ hostedFieldsKey, testMode, trialDays, p
   const [loadError, setLoadError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Short, safe diagnostic from a PayMe refusal (error kind / status / field names - never values), shown so it can be quoted to support.
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [consent, setConsent] = useState(false);
   const [payer, setPayer] = useState({ firstName: "", lastName: "", email: "", phone: "" });
   const [fieldErrors, setFieldErrors] = useState<PayerFieldErrors>({});
@@ -113,6 +115,7 @@ export function PaymentMethodTrialForm({ hostedFieldsKey, testMode, trialDays, p
 
   const handleSubmit = useCallback(async () => {
     setError(null);
+    setErrorCode(null);
     if (!consent) {
       setError("יש לאשר את תנאי השימוש ותנאי תקופת הניסיון כדי להמשיך.");
       return;
@@ -134,6 +137,7 @@ export function PaymentMethodTrialForm({ hostedFieldsKey, testMode, trialDays, p
       }
       if (tokenized.status === "failed") {
         setError(tokenized.message);
+        setErrorCode(tokenized.code);
         // A tokenize attempt that PayMe actually processed consumes its session - start a fresh one for the next try.
         if (tokenized.restartSession) setSessionKey((value) => value + 1);
         return;
@@ -293,6 +297,12 @@ export function PaymentMethodTrialForm({ hostedFieldsKey, testMode, trialDays, p
       {error && (
         <p className={styles.error} role="alert">
           {error}
+          {errorCode && (
+            <>
+              {" "}
+              <span dir="ltr">(קוד: {errorCode})</span>
+            </>
+          )}
         </p>
       )}
 
