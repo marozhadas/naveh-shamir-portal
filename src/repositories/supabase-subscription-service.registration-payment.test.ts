@@ -83,8 +83,19 @@ function from(table: string) {
       return { eq: async () => ({ error: table === "business_registrations" ? db.registrationUpdateError : null }) };
     },
     delete() {
-      log.push({ table, op: "delete" });
-      return { eq: async () => ({ error: null }) };
+      // chainable (.eq().eq()) and awaitable, recording its filters so a test can see WHICH rows a delete targets
+      const filters: Array<[string, unknown]> = [];
+      log.push({ table, op: "delete", filters } as never);
+      const chain = {
+        eq(column: string, value: unknown) {
+          filters.push([column, value]);
+          return chain;
+        },
+        then(resolve: (value: { error: null }) => unknown) {
+          return Promise.resolve({ error: null }).then(resolve);
+        },
+      };
+      return chain;
     },
   };
   return q;
@@ -122,6 +133,12 @@ function resetAll() {
 
 describe("registration step 6 - savePaymentMethodForRegistration: tokenization only", () => {
   beforeEach(resetAll);
+
+  it("PayMe keeps working after the SUMIT columns appeared: the row states provider payme, the token, and null SUMIT fields", async () => {
+    const { savePaymentMethodForRegistration } = await import("./supabase-subscription-service");
+    expect(await savePaymentMethodForRegistration(REGISTRATION_ID, OWNER, "noa@example.com", TOKEN, "411111******1111")).toEqual({ success: true });
+    expect(ops("billing_payment_methods", "upsert")[0].payload).toMatchObject({ provider: "payme", provider_token: TOKEN, provider_customer_id: null, provider_payment_method_id: null });
+  });
   afterEach(() => vi.useRealTimers());
 
   async function save(email: string | null = "owner@example.com") {

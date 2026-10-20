@@ -18,9 +18,33 @@ const read = (file: string) => readFileSync(file, "utf8");
 const rel = (file: string) => path.relative(SRC, file).replace(/\\/g, "/");
 
 describe("the buyer_key (the saved Hosted Fields token) stays server-side", () => {
-  it("is read from the database in exactly one module: the subscription service (plus the row type in types/billing.ts)", () => {
+  it("is read from the database in exactly one module: the subscription service (plus the row type in types/billing.ts; the SUMIT save flow only ever WRITES null there)", () => {
     const readers = files.filter((file) => read(file).includes("provider_token")).map(rel).sort();
-    expect(readers).toEqual(["repositories/supabase-subscription-service.ts", "types/billing.ts"]);
+    expect(readers).toEqual(["repositories/sumit-payment-method-service.ts", "repositories/supabase-subscription-service.ts", "types/billing.ts"]);
+  });
+
+  it("the SUMIT save flow never reads the column and writes only null into it", () => {
+    const source = read(path.join(SRC, "repositories/sumit-payment-method-service.ts")).replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    const mentions = (source.match(/provider_token[^\n]*/g) ?? []).map((line) => line.trim());
+    expect(mentions).toEqual(["provider_token: null,"]);
+    expect(source).not.toMatch(/select\([^)]*provider_token/);
+  });
+
+  it("every PayMe read of the token names the provider explicitly, so a SUMIT row can never be mistaken for a buyer_key", () => {
+    const service = read(path.join(SRC, "repositories/supabase-subscription-service.ts"));
+    const reads = service.match(/\.select\("provider_token"\)[^;]*;/g) ?? [];
+    expect(reads.length).toBeGreaterThan(0);
+    for (const statement of reads) expect(statement).toContain('.eq("provider", "payme")');
+  });
+
+  it("PayMe code deletes only PayMe rows and states the SUMIT-only columns as null when it writes", () => {
+    const service = read(path.join(SRC, "repositories/supabase-subscription-service.ts"));
+    const deletes = service.match(/from\("billing_payment_methods"\)\.delete\(\)[^;]*;/g) ?? [];
+    expect(deletes.length).toBe(2);
+    for (const statement of deletes) expect(statement).toContain('.eq("provider", "payme")');
+    const upserts = service.match(/provider: "payme", provider_token: paymentToken[^}]*}/g) ?? [];
+    expect(upserts.length).toBe(2);
+    for (const payload of upserts) expect(payload).toContain("provider_customer_id: null, provider_payment_method_id: null");
   });
 
   it("is never selected for the admin: the admin helper selects only the card mask", () => {

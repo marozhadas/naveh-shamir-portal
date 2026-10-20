@@ -1,13 +1,22 @@
-export type BillingProvider = "payme";
+export type BillingProvider = "payme" | "sumit";
 
-/** Mirrors public.billing_payment_methods (service-role only — holds PayMe's opaque token, never card data). */
+/**
+ * Mirrors public.billing_payment_methods (service-role only - never card data). Two shapes, enforced by the database
+ * (billing_payment_methods_provider_shape_check):
+ *   payme: provider_token is PayMe's buyer_key; provider_customer_id / provider_payment_method_id are null
+ *   sumit: provider_token is ALWAYS null; provider_customer_id is the SUMIT CustomerID (the card itself lives at SUMIT)
+ */
 export type BillingPaymentMethodRow = {
   id: string;
   business_registration_id: string;
   owner_id: string;
   provider: BillingProvider;
-  /** PayMe's reusable buyer token (buyer_key). Server-only; never logged, exported or sent to a browser. */
-  provider_token: string;
+  /** PayMe's reusable buyer token (buyer_key); null for every non-PayMe row. Server-only; never logged, exported or sent to a browser. */
+  provider_token: string | null;
+  /** SUMIT CustomerID (digits). Null for PayMe rows. Not a secret and not card data. */
+  provider_customer_id: string | null;
+  /** SUMIT's id of the saved payment method, when it reports one. Null for PayMe rows. */
+  provider_payment_method_id: string | null;
   /** Masked card (e.g. "458045******4580") as returned by PayMe — the only card detail kept. */
   card_mask: string | null;
   created_at: string;
@@ -55,5 +64,7 @@ export type BillingTransactionRow = {
   occurred_at: string;
   failure_reason: string | null;
   provider_status: string | null;
+  /** The provider's own payment id (SUMIT Payment.ID) once a charge answered; provider_transaction_id stays OUR idempotency key. Null for PayMe rows. */
+  provider_payment_id: string | null;
   created_at: string;
 };

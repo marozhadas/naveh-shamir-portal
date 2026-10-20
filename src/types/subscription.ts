@@ -34,8 +34,8 @@ export type BusinessSubscriptionRow = {
   /** Snapshot taken when the trial was activated — null on rows created before offers existed (those were all standard 30-day trials). */
   offer_code: OfferCode | null;
   trial_days: number | null;
-  /** PayMe (the only provider) identifiers + billing state — null until a payment method was added and a PayMe subscription exists. */
-  payment_provider: "payme" | null;
+  /** Provider identifiers + billing state - null until a payment method was added and a provider subscription exists. (The database also allows "sumit"; no code creates such a row yet.) */
+  payment_provider: "payme" | "sumit" | null;
   provider_subscription_id: string | null;
   provider_last_transaction_id: string | null;
   last_payment_succeeded_at: string | null;
@@ -67,7 +67,7 @@ export type BusinessSubscription = {
   trialDays?: number;
   paymentFailedAt?: string;
   gracePeriodEndsAt?: string;
-  paymentProvider?: "mock" | "stripe" | "payme" | "other";
+  paymentProvider?: "mock" | "stripe" | "payme" | "sumit" | "other";
   providerCustomerId?: string;
   providerSubscriptionId?: string;
   providerLastTransactionId?: string;

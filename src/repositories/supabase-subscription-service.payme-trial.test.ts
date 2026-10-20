@@ -64,8 +64,19 @@ function from(table: string) {
       return { eq: async () => ({ error: null }) };
     },
     delete() {
-      log.push({ table, op: "delete" });
-      return { eq: async () => ({ error: null }) };
+      // chainable (.eq().eq()) and awaitable, recording its filters so a test can see WHICH rows a delete targets
+      const filters: Array<[string, unknown]> = [];
+      log.push({ table, op: "delete", filters } as never);
+      const chain = {
+        eq(column: string, value: unknown) {
+          filters.push([column, value]);
+          return chain;
+        },
+        then(resolve: (value: { error: null }) => unknown) {
+          return Promise.resolve({ error: null }).then(resolve);
+        },
+      };
+      return chain;
     },
   };
   return q;

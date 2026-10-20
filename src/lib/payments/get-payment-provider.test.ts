@@ -125,7 +125,8 @@ describe("Stage 1 guard rails (static)", () => {
   });
 
   it("nothing outside the new modules imports them yet: the wizard, approval, trial, grace, admin revenue and the PayMe callbacks are untouched", () => {
-    const allowed = ["lib/sumit/", "lib/payments/", "domain/payments/"];
+    // (Stage 2A added the server-side SUMIT save flow, repositories/sumit-payment-method-service.ts - checked just below.)
+    const allowed = ["lib/sumit/", "lib/payments/", "domain/payments/", "repositories/sumit-payment-method-service"];
     for (const file of walk(root)) {
       const rel = path.relative(root, file).replace(/\\/g, "/");
       if (!/\.(ts|tsx)$/.test(rel) || allowed.some((prefix) => rel.startsWith(prefix))) continue;
@@ -133,7 +134,16 @@ describe("Stage 1 guard rails (static)", () => {
     }
   });
 
-  it("the proposed migration is additive, allows 'sumit', keeps provider_token out of SUMIT rows and lives outside any auto-run folder", () => {
+  it("the SUMIT save flow is not wired to any action, form, wizard, trial, approval or cron yet", () => {
+    for (const file of walk(root)) {
+      const rel = path.relative(root, file).replace(/\\/g, "/");
+      // production code only (tests may name the file); the module itself is of course allowed to
+      if (!/\.(ts|tsx)$/.test(rel) || /\.test\./.test(rel) || rel.startsWith("repositories/sumit-payment-method-service")) continue;
+      expect(readFileSync(file, "utf8"), rel).not.toMatch(/sumit-payment-method-service/);
+    }
+  });
+
+  it("the migration is additive, allows 'sumit', keeps provider_token out of SUMIT rows and lives outside any auto-run folder", () => {
     const repoRoot = path.resolve(root, "..");
     const file = path.join(repoRoot, "supabase", "pending-migrations", "20261020000000_sumit_provider_support.sql");
     const sql = readFileSync(file, "utf8");

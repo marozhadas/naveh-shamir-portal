@@ -282,7 +282,7 @@ export async function savePaymentMethodForRegistration(
   if (!buildSubscriptionPlan(registration, new Date()).ok) return { success: false, reason: "invalid-plan" };
 
   const { error } = await admin.from("billing_payment_methods").upsert(
-    { business_registration_id: registrationId, owner_id: ownerId, provider: "payme", provider_token: paymentToken, card_mask: cardMask, updated_at: new Date().toISOString() },
+    { business_registration_id: registrationId, owner_id: ownerId, provider: "payme", provider_token: paymentToken, provider_customer_id: null, provider_payment_method_id: null, card_mask: cardMask, updated_at: new Date().toISOString() },
     { onConflict: "business_registration_id" },
   );
   if (error) return { success: false, reason: "unknown-error" };
@@ -389,13 +389,13 @@ async function activatePayMeSubscription(input: ActivatePayMeSubscriptionInput):
   // 1) Keep the reusable token (server-only table; never the card itself).
   if (!input.tokenAlreadyStored) {
     const { error: methodError } = await admin.from("billing_payment_methods").upsert(
-      { business_registration_id: registrationId, owner_id: ownerId, provider: "payme", provider_token: paymentToken, card_mask: cardMask, updated_at: new Date().toISOString() },
+      { business_registration_id: registrationId, owner_id: ownerId, provider: "payme", provider_token: paymentToken, provider_customer_id: null, provider_payment_method_id: null, card_mask: cardMask, updated_at: new Date().toISOString() },
       { onConflict: "business_registration_id" },
     );
     if (methodError) return { success: false, reason: "unknown-error" };
   }
   const dropTokenOnFailure = async () => {
-    if (!input.tokenAlreadyStored) await admin.from("billing_payment_methods").delete().eq("business_registration_id", registrationId);
+    if (!input.tokenAlreadyStored) await admin.from("billing_payment_methods").delete().eq("business_registration_id", registrationId).eq("provider", "payme");
   };
 
   // 2) Create the PayMe subscription - the token IS the buyer_key; the first charge is on sub_start_date, not now.
@@ -575,7 +575,7 @@ export async function cancelPayMeSubscriptionForRejection(registrationId: string
   }
 
   // Make the saved card unusable on our side (a rejected business never needs it again).
-  await admin.from("billing_payment_methods").delete().eq("business_registration_id", registrationId);
+  await admin.from("billing_payment_methods").delete().eq("business_registration_id", registrationId).eq("provider", "payme");
   return { success: true, hadSubscription };
 }
 

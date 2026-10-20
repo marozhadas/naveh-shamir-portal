@@ -334,7 +334,13 @@ export type Database = {
       };
       billing_payment_methods: {
         Row: BillingPaymentMethodRow;
-        Insert: Omit<BillingPaymentMethodRow, "id" | "created_at" | "updated_at" | "provider"> & { id?: string; updated_at?: string; provider?: BillingPaymentMethodRow["provider"] };
+        Insert: Omit<BillingPaymentMethodRow, "id" | "created_at" | "updated_at" | "provider" | "provider_customer_id" | "provider_payment_method_id"> & {
+          id?: string;
+          updated_at?: string;
+          provider?: BillingPaymentMethodRow["provider"];
+          provider_customer_id?: string | null;
+          provider_payment_method_id?: string | null;
+        };
         Update: Partial<BillingPaymentMethodRow>;
         Relationships: [];
       };
@@ -354,9 +360,10 @@ export type Database = {
       };
       billing_transactions: {
         Row: BillingTransactionRow;
-        Insert: Omit<BillingTransactionRow, "id" | "created_at" | "currency" | "business_registration_id" | "business_name" | "subscription_id" | "plan_id" | "billing_interval" | "offer_code" | "failure_reason" | "provider_status"> & {
+        Insert: Omit<BillingTransactionRow, "id" | "created_at" | "currency" | "business_registration_id" | "business_name" | "subscription_id" | "plan_id" | "billing_interval" | "offer_code" | "failure_reason" | "provider_status" | "provider_payment_id"> & {
           id?: string;
           currency?: string;
+          provider_payment_id?: string | null;
           business_registration_id?: string | null;
           business_name?: string | null;
           subscription_id?: string | null;
