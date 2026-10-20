@@ -1,4 +1,5 @@
 import "server-only";
+import { isPayMeProviderActive } from "./dormant";
 
 /**
  * LEGACY / DORMANT (decided 2026-10-20): SUMIT + UPAY is the only payment provider; PayMe is never selected by
@@ -46,7 +47,17 @@ export const PAYME_ENV_VARIABLE_NAMES = ["PAYME_ENV", "PAYME_SELLER_ID", "PAYME_
 
 const MIN_WEBHOOK_SECRET_LENGTH = 32;
 
+/**
+ * The PayMe configuration, or null. While PayMe is dormant (always, see dormant.ts) this is null no matter what the PAYME_*
+ * variables contain - which is what switches every PayMe entry point off.
+ */
 export function getPayMeConfig(): PayMeConfig | null {
+  if (!isPayMeProviderActive()) return null;
+  return readPayMeConfigFromEnv();
+}
+
+/** The PURE parse of the PAYME_* variables. Not an entry point: it ignores the provider selection, so only legacy tests / debugging may call it. */
+export function readPayMeConfigFromEnv(): PayMeConfig | null {
   const env = process.env.PAYME_ENV;
   const sellerId = process.env.PAYME_SELLER_ID;
   const hostedFieldsKey = process.env.PAYME_HOSTED_FIELDS_KEY;

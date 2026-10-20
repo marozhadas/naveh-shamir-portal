@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
+// LEGACY: PayMe is dormant (see lib/payme/dormant.ts). This file tests the dormant toggle as if PayMe were enabled; actions.dormant.test.ts proves the real behaviour.
+vi.mock("@/lib/payme/dormant", () => ({ isPayMeProviderActive: () => true }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 const isAdmin = vi.fn();

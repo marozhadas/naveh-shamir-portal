@@ -139,11 +139,14 @@ describe("Stage 1 guard rails (static)", () => {
 
   it("nothing outside the new modules imports them yet: the wizard, approval, trial, grace, admin revenue and the PayMe callbacks are untouched", () => {
     // (Stage 2A added the server-side SUMIT save flow, repositories/sumit-payment-method-service.ts - checked just below.)
-    const allowed = ["lib/sumit/", "lib/payments/", "domain/payments/", "repositories/sumit-payment-method-service"];
+    // (lib/payme/dormant.ts asks the selector whether PayMe is the provider - it never is: that is the single switch that keeps PayMe off.)
+    const allowed = ["lib/sumit/", "lib/payments/", "domain/payments/", "repositories/sumit-payment-method-service", "lib/payme/dormant.ts"];
     for (const file of walk(root)) {
       const rel = path.relative(root, file).replace(/\\/g, "/");
       if (!/\.(ts|tsx)$/.test(rel) || allowed.some((prefix) => rel.startsWith(prefix))) continue;
-      expect(readFileSync(file, "utf8"), rel).not.toMatch(/@\/lib\/sumit|@\/lib\/payments|@\/domain\/payments/);
+      // the shared "payments temporarily unavailable" constants are the one thing PayMe's owner/admin actions may import
+      const source = readFileSync(file, "utf8").split("@/lib/payments/payments-unavailable").join("");
+      expect(source, rel).not.toMatch(/@\/lib\/sumit|@\/lib\/payments|@\/domain\/payments/);
     }
   });
 

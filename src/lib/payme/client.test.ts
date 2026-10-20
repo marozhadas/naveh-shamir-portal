@@ -3,6 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 vi.mock("server-only", () => ({}));
+// LEGACY: PayMe is dormant (see lib/payme/dormant.ts). This file tests the dormant code as if it were enabled, so it stays covered for rollback/debug.
+vi.mock("@/lib/payme/dormant", () => ({ isPayMeProviderActive: () => true }));
 
 const ENV_KEYS = ["PAYME_ENV", "PAYME_SELLER_ID", "PAYME_HOSTED_FIELDS_KEY", "PAYME_WEBHOOK_SECRET", "PAYME_CLIENT_KEY", "PAYME_SECRET_KEY"] as const;
 const PUBLIC_KEY = "public-key-for-browser-456";

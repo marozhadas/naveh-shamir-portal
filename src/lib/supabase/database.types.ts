@@ -337,7 +337,8 @@ export type Database = {
         Insert: Omit<BillingPaymentMethodRow, "id" | "created_at" | "updated_at" | "provider" | "provider_customer_id" | "provider_payment_method_id"> & {
           id?: string;
           updated_at?: string;
-          provider?: BillingPaymentMethodRow["provider"];
+          /** Required on purpose: billing_payment_methods.provider has no default (see the pending migration), so every insert names its provider. */
+          provider: BillingPaymentMethodRow["provider"];
           provider_customer_id?: string | null;
           provider_payment_method_id?: string | null;
         };

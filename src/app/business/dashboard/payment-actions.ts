@@ -8,14 +8,20 @@ import { isPayMeConfigured } from "@/lib/payme/config";
 import { getPayMeConfigForBusiness } from "@/lib/payme/flow-access";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { isSupabaseBusinessId } from "@/utils/business-id";
+import { PAYMENTS_TEMPORARILY_UNAVAILABLE, PAYMENTS_TEMPORARILY_UNAVAILABLE_MESSAGE } from "@/lib/payments/payments-unavailable";
 
-export type ActivateTrialState = { status: "idle" | "error" | "success"; message?: string };
+export type ActivateTrialState = { status: "idle" | "error" | "success"; message?: string; code?: typeof PAYMENTS_TEMPORARILY_UNAVAILABLE };
+
+/** The safe answer while no payment provider is connected (SUMIT is not live in the UI yet; PayMe is dormant and never a fallback). */
+function paymentsUnavailable(): { status: "error"; message: string; code: typeof PAYMENTS_TEMPORARILY_UNAVAILABLE } {
+  return { status: "error", message: PAYMENTS_TEMPORARILY_UNAVAILABLE_MESSAGE, code: PAYMENTS_TEMPORARILY_UNAVAILABLE };
+}
 
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{10,120}$/;
 const CARD_MASK_PATTERN = /^[0-9*xX\- ]{8,25}$/;
 
 const ERROR_MESSAGE: Record<string, string> = {
-  "payme-not-configured": "הסליקה עדיין לא הופעלה בפורטל. נסו שוב מאוחר יותר.",
+  "payme-not-configured": PAYMENTS_TEMPORARILY_UNAVAILABLE_MESSAGE,
   "payme-rejected": "לא הצלחנו להגדיר את אמצעי התשלום. לא בוצע חיוב. נסו שוב או בדקו את פרטי הכרטיס.",
   "invalid-plan": "לא ניתן להפעיל מנוי בתשלום לעסק בהגדרות הנוכחיות. בחרו חבילה בעמוד החבילות. לא בוצע חיוב.",
   "already-exists": "תקופת הניסיון כבר הופעלה לעסק הזה.",
@@ -31,7 +37,7 @@ const ERROR_MESSAGE: Record<string, string> = {
  * stored plan + billing interval). Never logs or returns the token.
  */
 export async function activateTrialWithPaymentMethodAction(input: { token: string; cardMask?: string | null; consent: boolean }): Promise<ActivateTrialState> {
-  if (!isPayMeConfigured()) return { status: "error", message: ERROR_MESSAGE["payme-not-configured"] };
+  if (!isPayMeConfigured()) return paymentsUnavailable();
 
   const user = await authAdapter.getCurrentUser();
   if (!user) return { status: "error", message: "יש להתחבר כבעל/ת העסק כדי להפעיל את הניסיון." };
@@ -41,7 +47,7 @@ export async function activateTrialWithPaymentMethodAction(input: { token: strin
   if (!businessId || !isSupabaseBusinessId(businessId)) return { status: "error", message: "לא נמצא עסק המשויך לחשבון זה." };
 
   // Sandbox guard: while PAYME_ENV=sandbox only an admin-enabled business may go on (the service layer checks again).
-  if (!(await getPayMeConfigForBusiness(businessId))) return { status: "error", message: ERROR_MESSAGE["payme-not-configured"] };
+  if (!(await getPayMeConfigForBusiness(businessId))) return paymentsUnavailable();
 
   if (typeof input.token !== "string" || !TOKEN_PATTERN.test(input.token)) return { status: "error", message: ERROR_MESSAGE["payme-rejected"] };
   const cardMask = typeof input.cardMask === "string" && CARD_MASK_PATTERN.test(input.cardMask) ? input.cardMask : null;
@@ -67,7 +73,7 @@ const REGISTRATION_ERROR_MESSAGE: Record<string, string> = {
   "invalid-plan": "לא ניתן לשמור אמצעי תשלום לעסק בהגדרות הנוכחיות. בחרו חבילה בתשלום בעמוד החבילות. לא בוצע חיוב.",
 };
 
-export type SavePaymentMethodState = { status: "idle" | "error" | "success"; message?: string };
+export type SavePaymentMethodState = { status: "idle" | "error" | "success"; message?: string; code?: typeof PAYMENTS_TEMPORARILY_UNAVAILABLE };
 
 /**
  * Step 6 of the Plus/Premium registration. Hosted Fields only tokenized the card; this keeps the token server-side
@@ -78,7 +84,7 @@ export type SavePaymentMethodState = { status: "idle" | "error" | "success"; mes
  * verifies belongs to the signed-in owner. The token is never logged and never returned.
  */
 export async function savePaymentMethodForRegistrationAction(input: { registrationId: string; token: string; cardMask?: string | null; consent: boolean }): Promise<SavePaymentMethodState> {
-  if (!isPayMeConfigured()) return { status: "error", message: ERROR_MESSAGE["payme-not-configured"] };
+  if (!isPayMeConfigured()) return paymentsUnavailable();
 
   const sessionUser = await getSupabaseSessionUser();
   if (!sessionUser) return { status: "error", message: "ההתחברות פגה. יש להתחבר מחדש כדי להשלים את ההרשמה." };
@@ -96,10 +102,12 @@ export async function savePaymentMethodForRegistrationAction(input: { registrati
   return { status: "success" };
 }
 
-export type CancelSubscriptionState = { status: "idle" | "error" | "success"; message?: string };
+export type CancelSubscriptionState = { status: "idle" | "error" | "success"; message?: string; code?: typeof PAYMENTS_TEMPORARILY_UNAVAILABLE };
 
 /** Cancel the owner's own PayMe subscription. The business is resolved from the session; no id comes from the client. */
 export async function cancelPayMeSubscriptionAction(): Promise<CancelSubscriptionState> {
+  // PayMe is dormant: its cancel API is unreachable, so nothing is attempted (no PayMe subscription exists to cancel anyway).
+  if (!isPayMeConfigured()) return paymentsUnavailable();
   const user = await authAdapter.getCurrentUser();
   if (!user) return { status: "error", message: "יש להתחבר כדי לבטל את המנוי." };
   const businessId = user.ownedBusinessIds[0];

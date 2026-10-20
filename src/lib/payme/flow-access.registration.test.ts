@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
+// LEGACY: PayMe is dormant (see lib/payme/dormant.ts). This file tests the dormant code as if it were enabled, so it stays covered for rollback/debug.
+vi.mock("@/lib/payme/dormant", () => ({ isPayMeProviderActive: () => true }));
 vi.mock("@/lib/supabase/admin-client", () => ({ isSupabaseAdminConfigured: () => false, createAdminSupabaseClient: () => ({}) }));
 
 const ENV_KEYS = ["PAYME_ENV", "PAYME_SELLER_ID", "PAYME_HOSTED_FIELDS_KEY", "PAYME_WEBHOOK_SECRET", "PAYME_SANDBOX_TEST_EMAILS"] as const;

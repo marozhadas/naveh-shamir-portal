@@ -26,6 +26,8 @@ import { changeBusinessSlugSchema, type ChangeBusinessSlugInput } from "./change
 import { changeBusinessOfferSchema, type ChangeBusinessOfferInput } from "./change-offer-schema";
 import { changeBusinessBillingTestSchema, type ChangeBusinessBillingTestInput } from "./change-billing-test-schema";
 import { getPayMeConfig } from "@/lib/payme/config";
+import { isPayMeProviderActive } from "@/lib/payme/dormant";
+import { PAYMENTS_TEMPORARILY_UNAVAILABLE } from "@/lib/payments/payments-unavailable";
 import { decideOfferChange } from "@/domain/decide-offer-change";
 import { getOffer, type OfferCode } from "@/data/subscription-offers";
 import { isValidBusinessSlug } from "@/utils/business-slug";
@@ -60,7 +62,7 @@ function revalidateBusinessViews(registrationId: string): void {
  * reverting — a half-applied approval is a worse outcome than a notification staying open one
  * extra beat, and the error still surfaces to the admin either way.
  */
-export type ApproveRegistrationResult = { status: "success"; trialStarted: boolean; trialDays: number | null } | { status: "error"; message: string };
+export type ApproveRegistrationResult = { status: "success"; trialStarted: boolean; trialDays: number | null } | { status: "error"; message: string; code?: typeof PAYMENTS_TEMPORARILY_UNAVAILABLE };
 
 const ACTIVATION_FAILURE_MESSAGE: Record<string, string> = {
   "not-found": "ההרשמה לא נמצאה.",
@@ -78,7 +80,7 @@ const ACTIVATION_FAILURE_MESSAGE: Record<string, string> = {
 
 const APPROVAL_BLOCKED_MESSAGE = {
   "blocked-no-payment-method": "הסליקה פעילה, ולעסק הזה אין אמצעי תשלום שמור (שלב 6 בהרשמה לא הושלם). לא ניתן לאשר אותו. העסק נשאר ממתין.",
-  "blocked-payme-not-configured": "נשמר אמצעי תשלום לעסק, אבל הסליקה אינה מוגדרת כרגע, ולכן לא ניתן ליצור מנוי. העסק נשאר ממתין.",
+  "blocked-payme-not-configured": "נשמר אמצעי תשלום לעסק, אבל הסליקה אינה זמינה כרגע, ולכן לא ניתן ליצור מנוי. העסק נשאר ממתין.",
 } as const;
 
 /**
@@ -98,7 +100,8 @@ export async function approveRegistrationAction(registrationId: string): Promise
 
   const savedMethod = await getSavedPaymentMethodInfo(registrationId);
   const path = decideApprovalPath({ planTier: registration.plan_tier, hasPaymentMethod: savedMethod.hasPaymentMethod, paymeEnv: getPayMeConfig()?.env ?? null });
-  if (path === "blocked-no-payment-method" || path === "blocked-payme-not-configured") return { status: "error", message: APPROVAL_BLOCKED_MESSAGE[path] };
+  if (path === "blocked-payme-not-configured") return { status: "error", message: APPROVAL_BLOCKED_MESSAGE[path], code: PAYMENTS_TEMPORARILY_UNAVAILABLE };
+  if (path === "blocked-no-payment-method") return { status: "error", message: APPROVAL_BLOCKED_MESSAGE[path] };
 
   let trialDays: number | null = null;
   let offerCode: string | null = null;
@@ -605,6 +608,9 @@ export type ChangeBusinessBillingTestResult =
  */
 export async function changeBusinessBillingTestAction(input: ChangeBusinessBillingTestInput): Promise<ChangeBusinessBillingTestResult> {
   const adminId = await requireAdmin();
+
+  // PayMe is dormant: this switch only ever opened PayMe test payments, so there is nothing for it to do (and it writes nothing).
+  if (!isPayMeProviderActive()) return { status: "validation-error", message: "בדיקת הסליקה אינה זמינה: הסליקה עוברת ל-SUMIT." };
 
   const parsed = changeBusinessBillingTestSchema.safeParse(input);
   if (!parsed.success) {

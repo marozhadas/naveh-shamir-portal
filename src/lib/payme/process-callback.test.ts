@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
+// LEGACY: PayMe is dormant (see lib/payme/dormant.ts). This file tests the dormant code as if it were enabled, so it stays covered for rollback/debug.
+vi.mock("@/lib/payme/dormant", () => ({ isPayMeProviderActive: () => true }));
 
 /**
  * End-to-end behaviour of the PayMe callback pipeline — the REAL route handler and the REAL processor — against a
