@@ -47,10 +47,9 @@ function resolveProvider(registrantEmail: string | null | undefined, injected?: 
   if (!config || !isSumitAvailableForEmail(config, registrantEmail)) return null;
   if (injected) return injected;
   try {
-    const provider = getPaymentProvider();
-    return provider?.id === "sumit" ? provider : null;
+    return getPaymentProvider();
   } catch {
-    // PAYMENTS_PROVIDER is not "sumit" / misconfigured: this flow stays off (it never falls back to another provider).
+    // PAYMENTS_PROVIDER is unset / not "sumit" / misconfigured (a PaymentsConfigurationError): this flow stays off. It never guesses or falls back to another provider.
     return null;
   }
 }

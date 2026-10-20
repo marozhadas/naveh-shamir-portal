@@ -1,6 +1,10 @@
 import "server-only";
 
 /**
+ * LEGACY / DORMANT (decided 2026-10-20): SUMIT + UPAY is the only payment provider; PayMe is never selected by
+ * PAYMENTS_PROVIDER and is not a fallback. This code stays only until SUMIT passes end to end - do not build on it.
+ * Cleanup plan: docs/payme-cleanup.md.
+ *
  * PayMe configuration — read ONLY from server environment variables (set in Vercel → Project →
  * Settings → Environment Variables; never committed, never prefixed NEXT_PUBLIC_, so none of it can
  * reach a client bundle):

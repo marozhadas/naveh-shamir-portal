@@ -17,49 +17,60 @@ function configureSumit() {
   process.env.SUMIT_API_PUBLIC_KEY = "public-key-for-tests";
 }
 
-describe("PAYMENTS_PROVIDER selection - fail closed", () => {
-  it("unset (or blank): the existing PayMe behaviour, even when SUMIT happens to be fully configured", () => {
-    expect(parsePaymentsProvider(undefined)).toBe("payme");
-    expect(parsePaymentsProvider("")).toBe("payme");
-    expect(parsePaymentsProvider("   ")).toBe("payme");
-    expect(getPaymentsProviderId()).toBe("payme");
-    expect(getPaymentProvider()).toBeNull();
-    configureSumit();
-    expect(getPaymentProvider()).toBeNull();
-  });
+function thrown(fn: () => unknown): PaymentsConfigurationError {
+  try {
+    fn();
+  } catch (error) {
+    expect(error).toBeInstanceOf(PaymentsConfigurationError);
+    return error as PaymentsConfigurationError;
+  }
+  throw new Error("expected a PaymentsConfigurationError");
+}
 
-  it("'payme': PayMe (no provider object - PayMe keeps its own flow), whatever SUMIT's state", () => {
-    process.env.PAYMENTS_PROVIDER = "payme";
-    expect(getPaymentsProviderId()).toBe("payme");
-    expect(getPaymentProvider()).toBeNull();
-    configureSumit();
-    expect(getPaymentProvider()).toBeNull();
-  });
-
-  it("'sumit' with every required variable: the SUMIT provider (case and spaces ignored)", () => {
+describe("PAYMENTS_PROVIDER selection - SUMIT is the only provider, fail closed, no guessing", () => {
+  it("'sumit' with every required SUMIT variable: the SUMIT provider (case and spaces ignored)", () => {
     configureSumit();
     for (const value of ["sumit", " SUMIT ", "Sumit"]) {
       process.env.PAYMENTS_PROVIDER = value;
-      expect(getPaymentProvider()?.id, value).toBe("sumit");
+      expect(getPaymentsProviderId(), value).toBe("sumit");
+      expect(getPaymentProvider().id, value).toBe("sumit");
     }
+  });
+
+  it("UNSET or blank: a clear configuration error - no provider is guessed, even when SUMIT is fully configured", () => {
+    for (const value of [undefined, "", "   "]) {
+      if (value === undefined) delete process.env.PAYMENTS_PROVIDER;
+      else process.env.PAYMENTS_PROVIDER = value;
+      const error = thrown(() => parsePaymentsProvider(value));
+      expect(error.variables).toEqual(["PAYMENTS_PROVIDER"]);
+      expect(error.message).toMatch(/not set/);
+    }
+    delete process.env.PAYMENTS_PROVIDER;
+    thrown(() => getPaymentsProviderId());
+    thrown(() => getPaymentProvider());
+    configureSumit();
+    thrown(() => getPaymentProvider()); // SUMIT configured, but the switch was not set: still no guess
+  });
+
+  it("'payme' is NOT a selectable provider any more - PayMe is legacy/dormant and is never selected, whatever SUMIT's state", () => {
+    process.env.PAYMENTS_PROVIDER = "payme";
+    expect(thrown(() => getPaymentsProviderId()).message).toMatch(/legacy\/dormant/);
+    thrown(() => getPaymentProvider());
+    configureSumit();
+    thrown(() => getPaymentProvider());
+    expect(() => parsePaymentsProvider(" PayMe ")).toThrow(PaymentsConfigurationError);
   });
 
   it("'sumit' with ANYTHING missing throws a clear configuration error and never falls back to PayMe", () => {
     process.env.PAYMENTS_PROVIDER = "sumit";
-    expect(() => getPaymentProvider()).toThrow(PaymentsConfigurationError);
+    thrown(() => getPaymentProvider());
 
     for (const missing of ["SUMIT_COMPANY_ID", "SUMIT_API_KEY", "SUMIT_API_PUBLIC_KEY"] as const) {
       configureSumit();
       delete process.env[missing];
-      let error: unknown;
-      try {
-        getPaymentProvider();
-      } catch (caught) {
-        error = caught;
-      }
-      expect(error, missing).toBeInstanceOf(PaymentsConfigurationError);
-      expect((error as PaymentsConfigurationError).variables).toEqual([missing]);
-      expect((error as PaymentsConfigurationError).message).toContain(missing);
+      const error = thrown(() => getPaymentProvider());
+      expect(error.variables, missing).toEqual([missing]);
+      expect(error.message, missing).toContain(missing);
     }
   });
 
@@ -85,14 +96,16 @@ describe("PAYMENTS_PROVIDER selection - fail closed", () => {
   it("the errors name variables only - never a secret value", () => {
     process.env.SUMIT_API_KEY = "secret-api-key-for-tests";
     process.env.PAYMENTS_PROVIDER = "sumit";
-    let message = "";
-    try {
-      getPaymentProvider();
-    } catch (error) {
-      message = (error as Error).message;
-    }
-    expect(message).toContain("SUMIT_COMPANY_ID");
-    expect(message).not.toContain("secret-api-key-for-tests");
+    const error = thrown(() => getPaymentProvider());
+    expect(error.message).toContain("SUMIT_COMPANY_ID");
+    expect(error.message).not.toContain("secret-api-key-for-tests");
+  });
+
+  it("the selector never returns null and never names PayMe as a result", () => {
+    const source = readFileSync(path.resolve(__dirname, "get-payment-provider.ts"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(source).not.toMatch(/return null/);
+    expect(source).not.toMatch(/return "payme"|=== "payme"\) return/);
+    expect(source).not.toMatch(/lib\/payme/);
   });
 });
 
