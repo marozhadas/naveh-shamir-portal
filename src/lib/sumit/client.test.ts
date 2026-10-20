@@ -1,0 +1,249 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
+
+import { PaymentProviderError } from "@/domain/payments/payment-provider";
+import { chargeSumitCustomer, createSumitCustomer, getSumitPayment, getSumitPaymentMethod, listSumitPayments, mapSumitPayment, mapSumitPaymentMethod, removeSumitPaymentMethod, setSumitPaymentMethod } from "./client";
+
+const API_KEY = "secret-api-key-for-tests";
+const PUBLIC_KEY = "public-key-for-tests";
+const TOKEN = "11111111-2222-3333-4444-555555555555";
+const KEYS = ["SUMIT_COMPANY_ID", "SUMIT_API_KEY", "SUMIT_API_PUBLIC_KEY", "SUMIT_DRY_RUN"] as const;
+
+const fetchMock = vi.fn();
+
+/** The PaymentProviderError a call rejects with (fails the test if it did not reject). */
+async function caught(promise: Promise<unknown>): Promise<PaymentProviderError> {
+  try {
+    await promise;
+  } catch (error) {
+    return error as PaymentProviderError;
+  }
+  throw new Error("expected the call to reject");
+}
+
+function configure(dryRun?: string) {
+  process.env.SUMIT_COMPANY_ID = "123456";
+  process.env.SUMIT_API_KEY = API_KEY;
+  process.env.SUMIT_API_PUBLIC_KEY = PUBLIC_KEY;
+  if (dryRun !== undefined) process.env.SUMIT_DRY_RUN = dryRun;
+}
+
+function reply(body: unknown, status = 200) {
+  fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }));
+}
+const ok = (data: unknown) => reply({ Status: 0, UserErrorMessage: null, TechnicalErrorDetails: null, Data: data });
+
+function lastCall() {
+  const [url, init] = fetchMock.mock.calls.at(-1)!;
+  return { url: url as string, init: init as RequestInit, body: JSON.parse(String((init as RequestInit).body)) as Record<string, unknown> };
+}
+
+beforeEach(() => {
+  fetchMock.mockReset();
+  vi.stubGlobal("fetch", fetchMock);
+  configure();
+});
+afterEach(() => {
+  vi.unstubAllGlobals();
+  for (const key of KEYS) delete process.env[key];
+});
+
+describe("request shape", () => {
+  it("every call is a JSON POST to api.sumit.co.il with the company credentials in the body (never in the URL or headers)", async () => {
+    ok({ CustomerID: 77 });
+    await createSumitCustomer({ externalId: "reg-1", name: "Noa" });
+    const { url, init, body } = lastCall();
+    expect(url).toBe("https://api.sumit.co.il/accounting/customers/create/");
+    expect(init.method).toBe("POST");
+    expect(body.Credentials).toEqual({ CompanyID: 123456, APIKey: API_KEY });
+    expect(url).not.toContain(API_KEY);
+    expect(JSON.stringify(init.headers)).not.toContain(API_KEY);
+  });
+
+  it("customers/create finds-or-creates by our external id", async () => {
+    ok({ CustomerID: 77 });
+    const result = await createSumitCustomer({ externalId: " reg-1 ", name: " Noa Levi ", email: "noa@example.com", phone: "0545218644" });
+    expect(result).toEqual({ customerId: "77" });
+    expect(lastCall().body.Details).toEqual({ Name: "Noa Levi", ExternalIdentifier: "reg-1", SearchMode: 2, EmailAddress: "noa@example.com", Phone: "0545218644" });
+  });
+
+  it("setforcustomer sends the one-time token and the customer id - and nothing about the card", async () => {
+    ok({ CustomerID: 77, PaymentMethod: { ID: 5, CustomerID: 77, CreditCard_CardMask: "458045******4580" } });
+    const result = await setSumitPaymentMethod({ customerId: "77", singleUseToken: TOKEN });
+    const { url, body } = lastCall();
+    expect(url).toBe("https://api.sumit.co.il/billing/paymentmethods/setforcustomer/");
+    expect(body.Customer).toEqual({ ID: 77 });
+    expect(body.SingleUseToken).toBe(TOKEN);
+    expect(JSON.stringify(body)).not.toMatch(/CardNumber|CVV|Expiration|CitizenID|CreditCard_/);
+    expect(result).toEqual({ customerId: "77", paymentMethod: { id: "5", customerId: "77", cardMask: "458045******4580" } });
+  });
+
+  it("getforcustomer / remove / get / list use the documented paths and bodies", async () => {
+    ok({ PaymentMethod: { ID: 5, CreditCard_LastDigits: "4580" } });
+    expect(await getSumitPaymentMethod("77")).toEqual({ id: "5", customerId: null, cardMask: "****4580" });
+    expect(lastCall().url).toBe("https://api.sumit.co.il/billing/paymentmethods/getforcustomer/");
+    expect(lastCall().body).toMatchObject({ Customer: { ID: 77 }, IncludeInactive: false });
+
+    ok({});
+    await removeSumitPaymentMethod("77");
+    expect(lastCall().url).toBe("https://api.sumit.co.il/billing/paymentmethods/remove/");
+
+    ok({ Payment: { ID: 900, ValidPayment: true, Amount: 39, CustomerID: 77 } });
+    expect(await getSumitPayment("900")).toMatchObject({ id: "900", valid: true, amountAgorot: 3900 });
+    expect(lastCall().url).toBe("https://api.sumit.co.il/billing/payments/get/");
+    expect(lastCall().body.PaymentID).toBe(900);
+
+    ok({ Payments: [{ ID: 1, Amount: 39.5, ValidPayment: false }, { nope: true }], HasNextPage: true });
+    const list = await listSumitPayments({ dateFrom: new Date("2026-10-01T00:00:00Z"), dateTo: new Date("2026-10-02T00:00:00Z"), valid: true });
+    expect(list.hasNextPage).toBe(true);
+    expect(list.payments).toHaveLength(1);
+    expect(list.payments[0]).toMatchObject({ id: "1", amountAgorot: 3950, valid: false });
+    expect(lastCall().url).toBe("https://api.sumit.co.il/billing/payments/list/");
+    expect(lastCall().body).toMatchObject({ Date_From: "2026-10-01T00:00:00.000Z", Valid: true, StartIndex: 0 });
+  });
+
+  it("getPayment returns null when SUMIT has no such payment (Success, no Payment)", async () => {
+    ok({});
+    expect(await getSumitPayment("901")).toBeNull();
+  });
+
+  it("recurring endpoints are never called", async () => {
+    ok({ CustomerID: 1 });
+    await createSumitCustomer({ externalId: "a", name: "b" });
+    for (const [url] of fetchMock.mock.calls) expect(url as string).not.toContain("/billing/recurring/");
+  });
+});
+
+describe("charge", () => {
+  const request = { customerId: "77", amountAgorot: 3900, description: "Plus - Naveh Shamir", documentDescription: "Plus (key-1)", vatIncluded: true, sendDocumentByEmail: false };
+
+  it("charges the customer's SAVED method: no token, no card, ILS converted at the edge, VAT explicit", async () => {
+    configure("false");
+    ok({ Payment: { ID: 900, ValidPayment: true, Amount: 39, CustomerID: 77, Date: "2026-10-20T10:00:00Z" }, DocumentDownloadURL: "https://app.sumit.co.il/d/x" });
+    const result = await chargeSumitCustomer(request);
+    const { url, body } = lastCall();
+    expect(url).toBe("https://api.sumit.co.il/billing/payments/charge/");
+    expect(body.Customer).toEqual({ ID: 77 });
+    expect(body.PaymentMethod).toBeUndefined();
+    expect(body.SingleUseToken).toBeUndefined();
+    expect(body.Items).toEqual([{ Item: { Name: "Plus - Naveh Shamir" }, Quantity: 1, UnitPrice: 39, Currency: 0, Description: "Plus - Naveh Shamir" }]);
+    expect(body.VATIncluded).toBe(true);
+    expect(body.AuthoriseOnly).toBeUndefined();
+    expect(result.dryRun).toBe(false);
+    expect(result.payment).toMatchObject({ id: "900", valid: true, amountAgorot: 3900 });
+    expect(result.documentUrl).toBe("https://app.sumit.co.il/d/x");
+  });
+
+  it("DRY RUN (the default): the charge is authorise-only with a draft document", async () => {
+    ok({ Payment: { ID: 901, ValidPayment: true, Amount: 39 } });
+    const result = await chargeSumitCustomer(request);
+    expect(lastCall().body).toMatchObject({ AuthoriseOnly: true, DraftDocument: true });
+    expect(result.dryRun).toBe(true);
+  });
+
+  it("only an https document link is kept", async () => {
+    ok({ Payment: { ID: 902, ValidPayment: true, Amount: 39 }, DocumentDownloadURL: "http://insecure.example/x" });
+    expect((await chargeSumitCustomer(request)).documentUrl).toBeNull();
+  });
+
+  it("refuses bad amounts / ids before any request", async () => {
+    for (const amountAgorot of [0, -100, 39.5, Number.NaN]) {
+      await expect(chargeSumitCustomer({ ...request, amountAgorot })).rejects.toMatchObject({ kind: "invalid-input" });
+    }
+    await expect(chargeSumitCustomer({ ...request, customerId: "abc" })).rejects.toMatchObject({ kind: "invalid-input" });
+    await expect(chargeSumitCustomer({ ...request, description: " " })).rejects.toMatchObject({ kind: "invalid-input" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("an unreadable payment in a Success reply is an error, never a charge", async () => {
+    ok({ Payment: { ID: "oops", Amount: "x" } });
+    await expect(chargeSumitCustomer(request)).rejects.toMatchObject({ kind: "invalid-response" });
+  });
+});
+
+describe("input validation (nothing is sent)", () => {
+  it("rejects an empty name / external id, a malformed token and a malformed customer id", async () => {
+    await expect(createSumitCustomer({ externalId: "r", name: "  " })).rejects.toMatchObject({ kind: "invalid-input" });
+    await expect(createSumitCustomer({ externalId: " ", name: "n" })).rejects.toMatchObject({ kind: "invalid-input" });
+    await expect(setSumitPaymentMethod({ customerId: "77", singleUseToken: "short" })).rejects.toMatchObject({ kind: "invalid-input" });
+    await expect(setSumitPaymentMethod({ customerId: "7 7", singleUseToken: TOKEN })).rejects.toMatchObject({ kind: "invalid-input" });
+    await expect(getSumitPayment("1; drop")).rejects.toMatchObject({ kind: "invalid-input" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("is not-configured (and sends nothing) when the credentials are missing", async () => {
+    delete process.env.SUMIT_API_KEY;
+    await expect(createSumitCustomer({ externalId: "r", name: "n" })).rejects.toMatchObject({ kind: "not-configured" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("error handling", () => {
+  it("BusinessError -> 'rejected' with SUMIT's own short message as detail", async () => {
+    reply({ Status: 1, UserErrorMessage: "הכרטיס נדחה", TechnicalErrorDetails: "internal-detail", Data: null });
+    await expect(createSumitCustomer({ externalId: "r", name: "n" })).rejects.toMatchObject({ kind: "rejected", detail: "הכרטיס נדחה" });
+  });
+
+  it("TechnicalError -> 'provider-error'; Status given by name is understood too", async () => {
+    reply({ Status: 2, TechnicalErrorDetails: "boom", Data: null });
+    await expect(createSumitCustomer({ externalId: "r", name: "n" })).rejects.toMatchObject({ kind: "provider-error" });
+    reply({ Status: "BusinessError", UserErrorMessage: "no", Data: null });
+    await expect(createSumitCustomer({ externalId: "r", name: "n" })).rejects.toMatchObject({ kind: "rejected" });
+    ok({ CustomerID: 5 });
+    expect(await createSumitCustomer({ externalId: "r", name: "n" })).toEqual({ customerId: "5" });
+  });
+
+  it("a reply with no readable Status is never treated as success", async () => {
+    reply({ Data: { CustomerID: 9 } });
+    await expect(createSumitCustomer({ externalId: "r", name: "n" })).rejects.toMatchObject({ kind: "invalid-response" });
+    reply({ Status: 99, Data: {} });
+    await expect(createSumitCustomer({ externalId: "r", name: "n" })).rejects.toMatchObject({ kind: "invalid-response" });
+  });
+
+  it("network failure / timeout -> 'network'; non-JSON -> 'invalid-response'; Success with a bad HTTP status -> 'invalid-response'", async () => {
+    fetchMock.mockRejectedValueOnce(new Error("socket hang up"));
+    await expect(createSumitCustomer({ externalId: "r", name: "n" })).rejects.toMatchObject({ kind: "network" });
+    fetchMock.mockResolvedValueOnce(new Response("<html>", { status: 502 }));
+    await expect(createSumitCustomer({ externalId: "r", name: "n" })).rejects.toMatchObject({ kind: "invalid-response" });
+    reply({ Status: 0, Data: { CustomerID: 1 } }, 500);
+    await expect(createSumitCustomer({ externalId: "r", name: "n" })).rejects.toMatchObject({ kind: "invalid-response" });
+  });
+
+  it("secrets never leave in an error: API key, public key and the token are redacted", async () => {
+    fetchMock.mockRejectedValueOnce(new Error(`failed for ${API_KEY} and ${PUBLIC_KEY}`));
+    const networkError = await caught(createSumitCustomer({ externalId: "r", name: "n" }));
+    expect(networkError.message).not.toContain(API_KEY);
+    expect(networkError.message).not.toContain(PUBLIC_KEY);
+    expect(networkError.message).toContain("[redacted]");
+
+    reply({ Status: 1, UserErrorMessage: `bad token ${TOKEN}`, Data: null });
+    const rejected = await caught(setSumitPaymentMethod({ customerId: "77", singleUseToken: TOKEN }));
+    expect(rejected.message).not.toContain(TOKEN);
+    expect(rejected.detail).not.toContain(TOKEN);
+  });
+});
+
+describe("mappers pick a whitelist - sensitive fields are never carried", () => {
+  const sensitive = { ID: 5, CustomerID: 77, CreditCard_Number: "4580458045804580", CreditCard_CVV: "123", CreditCard_Track2: "t2", CreditCard_CitizenID: "123456789", CreditCard_Token: "perm-token-xyz", CreditCard_ExpirationMonth: 12, CreditCard_ExpirationYear: 2030, CreditCard_CardMask: "458045******4580" };
+
+  it("payment method: id, customer id and mask only", () => {
+    const mapped = mapSumitPaymentMethod(sensitive);
+    expect(mapped).toEqual({ id: "5", customerId: "77", cardMask: "458045******4580" });
+    const text = JSON.stringify(mapped);
+    for (const forbidden of ["4580458045804580", "123456789", "perm-token-xyz", "t2", "2030"]) expect(text).not.toContain(forbidden);
+  });
+
+  it("an odd mask is dropped rather than passed along", () => {
+    expect(mapSumitPaymentMethod({ ID: 1, CreditCard_CardMask: "4580458045804580 <script>" })?.cardMask).toBeNull();
+    expect(mapSumitPaymentMethod(null)).toBeNull();
+  });
+
+  it("payment: a whitelist, with the amount converted to integer agorot", () => {
+    const mapped = mapSumitPayment({ ID: 9, CustomerID: 77, ValidPayment: true, Amount: 49, Status: "OK", PaymentMethod: sensitive, DocumentID: 31 });
+    expect(mapped).toMatchObject({ id: "9", customerId: "77", valid: true, amountAgorot: 4900, cardMask: "458045******4580", documentId: "31" });
+    expect(JSON.stringify(mapped)).not.toMatch(/perm-token-xyz|4580458045804580|123456789/);
+    expect(mapSumitPayment({ ID: 0, Amount: 5 })).toBeNull();
+    expect(mapSumitPayment({ ID: 3, Amount: -1 })).toBeNull();
+  });
+});
