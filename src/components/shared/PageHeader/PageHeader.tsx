@@ -6,7 +6,7 @@ type Crumb = { label: string; href?: string };
 type PageHeaderProps = {
   breadcrumbs: Crumb[];
   title: string;
-  description: string;
+  description?: string;
 };
 
 /** Shared breadcrumb + H1 + subtitle shell for top-level pages (matches the pattern already used on /businesses and /business/plans). */
@@ -29,7 +29,7 @@ export function PageHeader({ breadcrumbs, title, description }: PageHeaderProps)
         </ol>
       </nav>
       <h1 className={styles.title}>{title}</h1>
-      <p className={styles.description}>{description}</p>
+      {description && <p className={styles.description}>{description}</p>}
     </div>
   );
 }

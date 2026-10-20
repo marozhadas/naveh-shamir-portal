@@ -133,7 +133,7 @@ export function MarketplaceListingForm() {
     return (
       <div className={styles.successBox} role="status">
         <p className={styles.successTitle}>המודעה פורסמה בהצלחה!</p>
-        <p className={styles.successDetail}>המודעה מופיעה כעת בלוח מסירה ומכירה. צוות הפורטל עדיין יכול להסיר מודעה שאינה תקינה.</p>
+        <p className={styles.successDetail}>המודעה מופיעה כעת בלוח יד שניה. צוות הפורטל עדיין יכול להסיר מודעה שאינה תקינה.</p>
         {state.managementUrl && <ManagementLinkBox managementUrl={state.managementUrl} />}
         <Button href="/marketplace" variant="secondary">
           חזרה ללוח

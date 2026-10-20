@@ -31,7 +31,7 @@ export function MarketplaceFilters({ searchDraft, onSearchChange, onClearSearch,
     <div className={styles.wrap}>
       <SearchBar
         id={searchId}
-        label="חיפוש מודעות בלוח מסירה ומכירה"
+        label="חיפוש מודעות בלוח יד שניה"
         placeholder="חיפוש לפי שם, תיאור או קטגוריה..."
         value={searchDraft}
         onChange={(event) => onSearchChange(event.target.value)}

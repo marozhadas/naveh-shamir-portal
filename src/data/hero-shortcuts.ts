@@ -16,7 +16,7 @@ export type HeroShortcut = {
 
 export const HERO_SHORTCUTS: HeroShortcut[] = [
   { id: "businesses", label: "עסקים", href: "/businesses", icon: Briefcase, tone: "slate" },
-  { id: "marketplace", label: "מסירה ומכירה", href: "/marketplace", icon: ShoppingBag, tone: "yellow" },
+  { id: "marketplace", label: "יד שניה", href: "/marketplace", icon: ShoppingBag, tone: "yellow" },
   { id: "events", label: "אירועים", href: "/events", icon: CalendarDays, tone: "green" },
   { id: "news", label: "חדשות השכונה", href: "/news", icon: Newspaper, tone: "sky" },
   { id: "essential-numbers", label: "מספרים חיוניים", href: "/essential-numbers", icon: Phone, tone: "blue" },

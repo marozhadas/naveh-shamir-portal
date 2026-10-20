@@ -26,7 +26,7 @@ export const footerSettingsSchema = z
       creditText: z.string().min(1, "טקסט הקרדיט לא יכול להיות ריק").max(CONTENT_LIMITS.footerCreditText),
       /** Optional — an empty value keeps the credit as plain text, exactly like before this field existed. */
       creditUrl: z.string().refine(isSafeHrefOrEmpty, { message: "כתובת לא תקינה" }),
-      navItems: z.array(footerNavItemSchema).min(1).max(8),
+      navItems: z.array(footerNavItemSchema).min(1).max(10),
       legalLinks: z.array(footerLegalLinkSchema),
       /** Guarded here too: cannot be turned off once the site is live (spec safeguard). */
       showLegalLinks: z.boolean(),

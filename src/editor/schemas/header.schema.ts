@@ -26,7 +26,7 @@ export const headerSettingsSchema = z
       personalAreaLabel: z.string().min(1).max(CONTENT_LIMITS.ctaLabel),
       personalAreaHref: z.string().refine(isSafeHrefOrEmpty, { message: "כתובת לא תקינה" }),
       showPersonalAreaButton: z.boolean(),
-      navItems: z.array(headerNavItemSchema).min(1).max(8),
+      navItems: z.array(headerNavItemSchema).min(1).max(10),
     }),
     appearance: z.object({
       backgroundColorToken: colorTokenSchema,

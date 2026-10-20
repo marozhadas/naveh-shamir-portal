@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/shared/PageHeader/PageHeader";
 import { MarketplaceListingForm } from "./MarketplaceListingForm";
 import styles from "./post.module.css";
 
-export const metadata: Metadata = { title: "פרסום מודעה | לוח מסירה ומכירה | נווה שמיר", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "פרסום מודעה | לוח יד שניה | נווה שמיר", robots: { index: false, follow: false } };
 
 export default function PostMarketplaceListingPage() {
   return (
@@ -17,7 +17,7 @@ export default function PostMarketplaceListingPage() {
       <ConnectedHeader />
       <main id="main-content">
         <PageHeader
-          breadcrumbs={[{ label: "בית", href: "/" }, { label: "מסירה ומכירה", href: "/marketplace" }, { label: "פרסום מודעה" }]}
+          breadcrumbs={[{ label: "בית", href: "/" }, { label: "יד שניה", href: "/marketplace" }, { label: "פרסום מודעה" }]}
           title="פרסום מודעה"
           description="מלאו את פרטי הפריט — המודעה תתפרסם בלוח באופן מיידי."
         />

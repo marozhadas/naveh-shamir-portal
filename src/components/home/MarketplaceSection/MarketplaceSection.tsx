@@ -21,7 +21,7 @@ type MarketplaceSectionProps = {
 export function MarketplaceSection({ listings }: MarketplaceSectionProps) {
   return (
     <section id="marketplace" className={styles.section} aria-labelledby="marketplace-heading">
-      <SectionHeader id="marketplace-heading">מסירה ומכירה בשכונה</SectionHeader>
+      <SectionHeader id="marketplace-heading">יד שניה בשכונה</SectionHeader>
 
       {listings.length === 0 ? (
         <div className={emptyStateStyles.wrap} role="status">

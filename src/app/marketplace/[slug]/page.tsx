@@ -37,10 +37,10 @@ export async function generateMetadata({ params }: ListingPageProps): Promise<Me
   const { slug: rawSlug } = await params;
   const slug = normalizeSlug(rawSlug);
   const listing = await getActiveListingBySlug(slug);
-  if (!listing) return { title: "מודעה לא נמצאה | לוח מסירה ומכירה", robots: { index: false, follow: false } };
+  if (!listing) return { title: "מודעה לא נמצאה | לוח יד שניה", robots: { index: false, follow: false } };
 
   return {
-    title: `${listing.title} | לוח מסירה ומכירה בנווה שמיר`,
+    title: `${listing.title} | לוח יד שניה בנווה שמיר`,
     description: listing.description.slice(0, 160),
     robots: { index: false, follow: false },
   };
@@ -71,7 +71,7 @@ export default async function MarketplaceListingPage({ params }: ListingPageProp
       <ConnectedHeader />
       <main id="main-content">
         <PageHeader
-          breadcrumbs={[{ label: "בית", href: "/" }, { label: "מסירה ומכירה", href: "/marketplace" }, { label: listing.title }]}
+          breadcrumbs={[{ label: "בית", href: "/" }, { label: "יד שניה", href: "/marketplace" }, { label: listing.title }]}
           title={listing.title}
           description={categoryLabel}
         />

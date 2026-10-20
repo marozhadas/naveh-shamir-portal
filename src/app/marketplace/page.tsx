@@ -10,7 +10,7 @@ import { MarketplaceGridSkeleton } from "@/components/marketplace/MarketplaceGri
 import { getActiveListings } from "@/repositories/marketplace-service";
 import styles from "./marketplace.module.css";
 
-const PAGE_TITLE = "לוח מסירה ומכירה בנווה שמיר | הפורטל של השכונה";
+const PAGE_TITLE = "לוח יד שניה בנווה שמיר | הפורטל של השכונה";
 const PAGE_DESCRIPTION = "מוצרים, ריהוט, ציוד ופריטים מתושבי נווה שמיר - למסירה או למכירה.";
 
 export const metadata: Metadata = {
@@ -37,7 +37,7 @@ export default function MarketplacePage() {
       <ConnectedHeader />
       <main id="main-content">
         <div className={styles.pageHeadWrap}>
-          <PageHeader breadcrumbs={[{ label: "בית", href: "/" }, { label: "מסירה ומכירה" }]} title="לוח מסירה ומכירה" description={PAGE_DESCRIPTION} />
+          <PageHeader breadcrumbs={[{ label: "בית", href: "/" }, { label: "יד שניה" }]} title="לוח יד שניה" description={PAGE_DESCRIPTION} />
           <div className={styles.ctaWrap}>
             <Button href="/marketplace/post" variant="accent">
               פרסום מודעה

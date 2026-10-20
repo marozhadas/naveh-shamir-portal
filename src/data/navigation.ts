@@ -4,7 +4,8 @@ import type { NavLink } from "@/types/navigation";
 export const NAV_LINKS: NavLink[] = [
   { id: "home", label: "בית", href: "/" },
   { id: "businesses", label: "עסקים", href: "/businesses" },
-  { id: "marketplace", label: "מסירה ומכירה", href: "/marketplace" },
+  { id: "marketplace", label: "יד שניה", href: "/marketplace" },
+  { id: "real-estate", label: "נדל״ן בשכונה", href: "/real-estate" },
   { id: "events", label: "אירועים", href: "/events" },
   { id: "news", label: "חדשות השכונה", href: "/news" },
   { id: "essential", label: "מספרים חיוניים", href: "/essential-numbers" },
