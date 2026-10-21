@@ -154,6 +154,16 @@ describe("Stage 1 guard rails (static)", () => {
     expect(code("domain/payments/payment-provider.ts")).not.toMatch(/server-only|fetch\(|process\.env|from "@\/lib/);
   });
 
+  it("the payment contract has no 'failed' outcome: only succeeded / authorised / unconfirmed, and 'unconfirmed' carries a reason and the reconciliation flag", () => {
+    const contract = code("domain/payments/payment-provider.ts");
+    const statusType = contract.slice(contract.indexOf("export type PaymentStatus"), contract.indexOf("export type UnconfirmedReason"));
+    expect(statusType.match(/"(\w+)"/g)).toEqual(['"succeeded"', '"authorised"', '"unconfirmed"']);
+    expect(contract).toMatch(/requiresReconciliation: boolean;/);
+    expect(contract).toMatch(/unconfirmedReason: UnconfirmedReason \| null;/);
+    expect(contract).not.toMatch(/failureReason/);
+    for (const rel of ["lib/sumit/client.ts", "lib/sumit/sumit-payment-provider.ts"]) expect(code(rel), rel).not.toMatch(/status[^\n]*"failed"|"failed"[^\n]*status/);
+  });
+
   it("no recurring endpoint is ever used", () => {
     for (const rel of ["lib/sumit/client.ts", "lib/sumit/sumit-payment-provider.ts"]) {
       expect(code(rel), rel).not.toMatch(/billing\/recurring/);

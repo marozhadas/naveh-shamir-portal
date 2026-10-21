@@ -7,6 +7,7 @@ import {
   type PaymentResult,
   type SavePaymentMethodInput,
   type SavedPaymentMethod,
+  type UnconfirmedReason,
 } from "@/domain/payments/payment-provider";
 import { chargeSumitCustomer, createSumitCustomer, getSumitPayment, getSumitPaymentMethod, removeSumitPaymentMethod, setSumitPaymentMethod, type SumitPayment } from "./client";
 import { getSumitConfig } from "./config";
@@ -15,22 +16,42 @@ import { getSumitConfig } from "./config";
 export const MAX_CHARGE_AGOROT = 200_000;
 
 /**
- * The status is derived from the evidence, never from the current configuration:
- *   invalid payment                      -> "failed"      (SUMIT returned a readable payment that is explicitly not valid)
- *   valid + THIS request was a capture   -> "succeeded"   (the only status that may become revenue)
- *   valid + THIS request was authorise   -> "authorised"
- *   valid + unknown origin (read-back)   -> "unconfirmed" (cannot tell a capture from an authorise-only; not revenue)
+ * The status is derived from the evidence, never from the current configuration, and there is no "failed":
+ *   reported not valid                                         -> "unconfirmed" (reason reported-not-valid: ValidPayment=false is not documented to mean nothing was captured)
+ *   valid + authorise-only request                             -> "authorised"
+ *   valid + read-back (mode unknown)                           -> "unconfirmed" (reason read-back)
+ *   valid + capture request + amount NOT proven                -> "unconfirmed" (reason amount-rules-unverified, e.g. VAT not included)
+ *   valid + capture request + amount proven (VAT-included, exact) -> "succeeded" (the only status that may become revenue)
+ * Every "unconfirmed" result requires reconciliation and is never retried automatically.
  */
-function toPaymentResult(payment: SumitPayment, extra: { mode: PaymentMode; documentUrl: string | null }): PaymentResult {
-  const status = !payment.valid ? "failed" : extra.mode === "capture" ? "succeeded" : extra.mode === "authorise-only" ? "authorised" : "unconfirmed";
+function toPaymentResult(payment: SumitPayment, extra: { mode: PaymentMode; amountProven: boolean; documentUrl: string | null }): PaymentResult {
+  let status: PaymentResult["status"];
+  let unconfirmedReason: UnconfirmedReason | null = null;
+  if (!payment.valid) {
+    status = "unconfirmed";
+    unconfirmedReason = "reported-not-valid";
+  } else if (extra.mode === "authorise-only") {
+    status = "authorised";
+  } else if (extra.mode === "unknown") {
+    status = "unconfirmed";
+    unconfirmedReason = "read-back";
+  } else if (!extra.amountProven) {
+    status = "unconfirmed";
+    unconfirmedReason = "amount-rules-unverified";
+  } else {
+    status = "succeeded";
+  }
   return {
     paymentId: payment.id,
     customerId: payment.customerId,
     status,
     mode: extra.mode,
+    reportedValid: payment.valid,
+    unconfirmedReason,
+    requiresReconciliation: status === "unconfirmed",
     amountAgorot: payment.amountAgorot,
     occurredAt: payment.date,
-    failureReason: status === "failed" ? (payment.statusDescription ?? payment.status ?? null) : null,
+    providerStatusText: payment.statusDescription ?? payment.status ?? null,
     documentUrl: extra.documentUrl,
     cardMask: payment.cardMask,
   };
@@ -40,8 +61,9 @@ function toPaymentResult(payment: SumitPayment, extra: { mode: PaymentMode; docu
  * The SUMIT implementation of the domain PaymentProvider. There is no recurring here - the portal decides WHEN to charge;
  * SUMIT stores the card, charges it and issues the document.
  *
- * charge(): ONLY a Success reply with a readable, consistent payment becomes a result (see toPaymentResult / the domain evidence
- * rule). EVERYTHING else THROWS - network, timeout, TechnicalError, an unreadable or inconsistent reply, and also a BusinessError:
+ * charge(): ONLY a Success reply with a readable, consistent payment becomes a result, and even then only a proven capture is
+ * "succeeded" (see toPaymentResult / the domain evidence rule); every other readable answer is "unconfirmed" and requires
+ * reconciliation. EVERYTHING that is not readable THROWS - network, timeout, TechnicalError, an unreadable or inconsistent reply, and also a BusinessError:
  * SUMIT's documentation does not say that a BusinessError proves nothing was charged (only "Success / BusinessError /
  * TechnicalError"), so it is never classified as a certain refusal. The caller reconciles (getPayment / the provider's list)
  * before any retry; there is no automatic retry.
@@ -73,7 +95,7 @@ export function createSumitPaymentProvider(): PaymentProvider {
         throw new PaymentProviderError("invalid-input", "charge amount is out of range");
       }
       if (!input.uniqueKey.trim()) throw new PaymentProviderError("invalid-input", "a charge needs an idempotency key");
-      const { payment, documentUrl, authoriseOnly } = await chargeSumitCustomer({
+      const { payment, documentUrl, authoriseOnly, amountProven } = await chargeSumitCustomer({
         customerId: input.customerId,
         amountAgorot: input.amountAgorot,
         description: input.description,
@@ -81,13 +103,13 @@ export function createSumitPaymentProvider(): PaymentProvider {
         vatIncluded: input.vatIncluded,
         sendDocumentByEmail: input.sendDocumentByEmail ?? false,
       });
-      return toPaymentResult(payment, { mode: authoriseOnly ? "authorise-only" : "capture", documentUrl });
+      return toPaymentResult(payment, { mode: authoriseOnly ? "authorise-only" : "capture", amountProven, documentUrl });
     },
 
     async getPayment(paymentId) {
       // A read-back: SUMIT documents no field that separates a captured charge from an authorise-only one, and the configuration may
       // have changed since the payment was made - so the mode is "unknown" and a valid payment is only "unconfirmed", never "succeeded".
-      return toPaymentResult(await getSumitPayment(paymentId), { mode: "unknown", documentUrl: null });
+      return toPaymentResult(await getSumitPayment(paymentId), { mode: "unknown", amountProven: false, documentUrl: null });
     },
   };
 }

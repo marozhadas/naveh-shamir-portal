@@ -240,12 +240,14 @@ export type SumitChargeRequest = {
  * A Success reply is accepted only when its payment is readable AND consistent with what was asked: the same customer (when the
  * reply names one) and the amount. A reply that disagrees is not trusted - it throws invalid-response (outcome UNKNOWN: money
  * may have moved), it is never mapped to success or to failure.
- *   - VAT included (the price already contains VAT): the paid amount must equal the requested amount exactly.
- *   - VAT not included: SUMIT documents "VATIncluded: Defaults to false" but not how Payment.Amount relates to UnitPrice, so only
- *     "not less than the requested amount" is checked until SUMIT confirms (docs/sumit-verification.md, question 4).
+ *   - VAT included (the price already contains VAT): the paid amount must equal the requested amount exactly. An exact match is
+ *     evidence that the amount is right (`amountProven: true`).
+ *   - VAT not included: SUMIT documents "VATIncluded: Defaults to false" but not how Payment.Amount relates to UnitPrice. A lower
+ *     amount is inconsistent and throws; a higher one is only "plausible", so `amountProven` is FALSE and the provider layer never
+ *     lets this path return "succeeded" (docs/sumit-verification.md, question 3).
  * `authoriseOnly` is what THIS request asked for, taken from the configuration at the moment of the call.
  */
-export async function chargeSumitCustomer(input: SumitChargeRequest): Promise<{ payment: SumitPayment; documentUrl: string | null; authoriseOnly: boolean }> {
+export async function chargeSumitCustomer(input: SumitChargeRequest): Promise<{ payment: SumitPayment; documentUrl: string | null; authoriseOnly: boolean; amountProven: boolean }> {
   const config = requireConfig();
   const customerId = customerIdToNumber(input.customerId);
   if (!Number.isInteger(input.amountAgorot) || input.amountAgorot <= 0) throw new PaymentProviderError("invalid-input", "invalid charge amount");
@@ -271,7 +273,7 @@ export async function chargeSumitCustomer(input: SumitChargeRequest): Promise<{ 
   const amountAgrees = input.vatIncluded ? payment.amountAgorot === input.amountAgorot : payment.amountAgorot >= input.amountAgorot;
   if (!amountAgrees) throw new PaymentProviderError("invalid-response", "SUMIT returned a payment whose amount disagrees with the request");
   const rawUrl = typeof data.DocumentDownloadURL === "string" ? data.DocumentDownloadURL : null;
-  return { payment, documentUrl: rawUrl && /^https:\/\//i.test(rawUrl) ? rawUrl : null, authoriseOnly: config.dryRun };
+  return { payment, documentUrl: rawUrl && /^https:\/\//i.test(rawUrl) ? rawUrl : null, authoriseOnly: config.dryRun, amountProven: input.vatIncluded };
 }
 
 /** A payment by id. A Success reply WITHOUT a readable payment is an error - SUMIT does not document "not found" as an empty Success, so absence is never inferred. */

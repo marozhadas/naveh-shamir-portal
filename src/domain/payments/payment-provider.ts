@@ -7,17 +7,21 @@
  *
  * Money is always integer agorot (1/100 ILS), like billing_transactions.amount_agorot.
  *
- * EVIDENCE RULE: a result only ever claims what the evidence proves.
+ * EVIDENCE RULE: a result only ever claims what the evidence proves - and there is NO "failed" outcome, because the provider's
+ * documentation does not prove "nothing was charged" for any of the signals it gives (an error envelope, ValidPayment=false).
  *   - "succeeded" (money moved)  needs ALL of: THIS request asked for a real charge (mode "capture"), the provider answered Success,
- *     the payment is readable and explicitly valid, and its customer and amount agree with the request. Nothing read back later
- *     (getPayment) can reach "succeeded": a read-back cannot tell a captured charge from an authorise-only one.
- *   - "authorised"               the request was authorise-only (a dry run): validated, never charged, never revenue.
- *   - "unconfirmed"              the provider reports a valid payment but we cannot prove it was captured (a read-back): never revenue by itself.
- *   - "failed"                   the provider answered Success with a readable payment that is explicitly NOT valid.
- *   Anything else - network failure, timeout, a technical error, an unreadable or inconsistent reply, a BusinessError, a missing
- *   field - is NOT a result: it throws a PaymentProviderError. For a charge the outcome is then UNKNOWN (SUMIT does not document
- *   that a BusinessError means "nothing was charged"), so it must be reconciled with getPayment / the provider's list BEFORE any
- *   retry. No automatic retry, ever.
+ *     the payment is readable and explicitly valid (reportedValid), its customer agrees with the request, and the amount is PROVEN
+ *     (a VAT-included price paid exactly). Nothing read back later (getPayment) can reach "succeeded".
+ *   - "authorised"               the request was authorise-only (a dry run) and the provider reports it valid: validated, never charged, never revenue.
+ *   - "unconfirmed"              everything else the provider answered readably. NOT proof of a charge and NOT proof of no charge: never revenue
+ *     and never a trigger for dunning / retry by itself. requiresReconciliation is true and unconfirmedReason says why:
+ *       "read-back"                a getPayment cannot tell a captured charge from an authorise-only one;
+ *       "reported-not-valid"       ValidPayment=false is not documented to mean that nothing was captured;
+ *       "amount-rules-unverified"  the amount / VAT rules are not verified (e.g. VAT not included), so the amount does not prove the charge.
+ *   Anything not readable or not consistent - network failure, timeout, a technical error, an unreadable reply, a BusinessError, a missing
+ *   field - is NOT a result: it throws a PaymentProviderError. The outcome is then UNKNOWN.
+ *   BOTH an "unconfirmed" result and a thrown error mean: reconcile with getPayment / the provider's list BEFORE anything else.
+ *   No automatic retry, ever.
  */
 
 export type PaymentProviderId = "payme" | "sumit";
@@ -85,10 +89,10 @@ export type PaymentStatus =
   | "succeeded"
   /** Authorise-only (dry run): the card was only validated - nothing was charged and nothing may be booked as revenue. */
   | "authorised"
-  /** The provider reports a valid payment, but whether it was captured is NOT proven (a read-back). Not revenue by itself. */
-  | "unconfirmed"
-  /** The provider returned a readable payment that is explicitly not valid. (Never produced for an error envelope.) */
-  | "failed";
+  /** Readable, but NOT proven either way (see unconfirmedReason). Not revenue, not a failure: it must be reconciled, never retried automatically. */
+  | "unconfirmed";
+
+export type UnconfirmedReason = "read-back" | "reported-not-valid" | "amount-rules-unverified";
 
 /** What the request that created the payment asked for - from the request itself, never from the current configuration. */
 export type PaymentMode = "capture" | "authorise-only" | "unknown";
@@ -99,11 +103,17 @@ export type PaymentResult = {
   status: PaymentStatus;
   /** "capture" / "authorise-only" for the request that produced this result; "unknown" for a read-back. Store it with the attempt. */
   mode: PaymentMode;
+  /** The provider's own Payment.ValidPayment flag, as reported. Informational: "false" is not proof that nothing was charged. */
+  reportedValid: boolean;
+  /** Why the status is "unconfirmed"; null for "succeeded" and "authorised". */
+  unconfirmedReason: UnconfirmedReason | null;
+  /** True exactly when the status is "unconfirmed": check with getPayment / the provider's list first, and never retry automatically. */
+  requiresReconciliation: boolean;
   amountAgorot: number;
   /** ISO time, when the provider reports one. */
   occurredAt: string | null;
-  /** Short plain text for a failed payment (provider's own description). Display only. */
-  failureReason: string | null;
+  /** The provider's own short status text (Status / StatusDescription), when it gave one. Display / logging only - never a basis for a decision. */
+  providerStatusText: string | null;
   /** https link to the invoice/receipt, when the provider issued one. */
   documentUrl: string | null;
   cardMask: string | null;

@@ -217,6 +217,15 @@ describe("charge", () => {
     await expect(chargeSumitCustomer({ ...request, vatIncluded: false })).rejects.toMatchObject({ kind: "invalid-response" });
   });
 
+  it("the amount is 'proven' only for a VAT-included price paid exactly; with VAT not included it is never proven (the rules are unverified)", async () => {
+    ok({ Payment: { ID: 900, CustomerID: 77, ValidPayment: true, Amount: 39 } });
+    expect((await chargeSumitCustomer(request)).amountProven).toBe(true);
+    ok({ Payment: { ID: 900, CustomerID: 77, ValidPayment: true, Amount: 39 } });
+    expect((await chargeSumitCustomer({ ...request, vatIncluded: false })).amountProven).toBe(false);
+    ok({ Payment: { ID: 900, CustomerID: 77, ValidPayment: true, Amount: 46.02 } });
+    expect((await chargeSumitCustomer({ ...request, vatIncluded: false })).amountProven).toBe(false);
+  });
+
   it("a BusinessError on a charge is thrown as 'rejected' - the client never turns it into a payment (SUMIT does not document it as 'nothing was charged')", async () => {
     reply({ Status: 1, UserErrorMessage: "העסקה נדחתה", Data: null });
     await expect(chargeSumitCustomer(request)).rejects.toMatchObject({ kind: "rejected", detail: "העסקה נדחתה" });

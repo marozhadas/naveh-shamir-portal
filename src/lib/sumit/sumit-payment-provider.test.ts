@@ -95,14 +95,14 @@ describe("getPaymentMethod / removePaymentMethod / getPayment", () => {
       else process.env.SUMIT_DRY_RUN = dryRun;
       ok({ Payment: { ID: 900, ValidPayment: true, Amount: 39, CustomerID: 77 } });
       const result = await provider.getPayment("900");
-      expect(result, String(dryRun)).toMatchObject({ paymentId: "900", status: "unconfirmed", mode: "unknown", amountAgorot: 3900, customerId: "77", failureReason: null });
+      expect(result, String(dryRun)).toMatchObject({ paymentId: "900", status: "unconfirmed", mode: "unknown", reportedValid: true, unconfirmedReason: "read-back", requiresReconciliation: true, amountAgorot: 3900, customerId: "77" });
       expect(result.status).not.toBe("succeeded");
     }
   });
 
-  it("getPayment: an explicitly invalid payment is 'failed'; a missing or unreadable one THROWS (absence is never inferred)", async () => {
+  it("getPayment: an explicitly invalid payment is NOT 'failed' - it is an uncertain result that needs reconciliation; a missing or unreadable one THROWS (absence is never inferred)", async () => {
     ok({ Payment: { ID: 901, ValidPayment: false, Amount: 39, StatusDescription: "declined" } });
-    expect(await provider.getPayment("901")).toMatchObject({ status: "failed", mode: "unknown", failureReason: "declined" });
+    expect(await provider.getPayment("901")).toMatchObject({ status: "unconfirmed", mode: "unknown", reportedValid: false, unconfirmedReason: "reported-not-valid", requiresReconciliation: true, providerStatusText: "declined" });
     ok({});
     await expect(provider.getPayment("902")).rejects.toMatchObject({ kind: "invalid-response" });
     ok({ Payment: { ID: 903, Amount: 39 } }); // ValidPayment missing
@@ -117,7 +117,7 @@ describe("charge", () => {
     configure("false");
     ok({ Payment: { ID: 900, ValidPayment: true, Amount: 39, CustomerID: 77 }, DocumentDownloadURL: "https://app.sumit.co.il/d/1" });
     const result = await provider.charge(charge);
-    expect(result).toMatchObject({ paymentId: "900", status: "succeeded", mode: "capture", amountAgorot: 3900, documentUrl: "https://app.sumit.co.il/d/1", failureReason: null });
+    expect(result).toMatchObject({ paymentId: "900", status: "succeeded", mode: "capture", reportedValid: true, unconfirmedReason: null, requiresReconciliation: false, amountAgorot: 3900, documentUrl: "https://app.sumit.co.il/d/1" });
     expect(bodyOf(0).AuthoriseOnly).toBeUndefined();
     expect(bodyOf(0).VATIncluded).toBe(true);
     expect(String(bodyOf(0).DocumentDescription)).toContain(charge.uniqueKey);
@@ -139,10 +139,58 @@ describe("charge", () => {
     expect((await provider.charge(charge)).status).toBe("succeeded");
   });
 
-  it("a payment SUMIT marks not valid is a resolved 'failed' result with its description", async () => {
+  it("ValidPayment=false is an UNCERTAIN result that requires reconciliation - never 'failed', never revenue, never retried automatically", async () => {
     configure("false");
     ok({ Payment: { ID: 902, ValidPayment: false, Amount: 39, StatusDescription: "card declined" } });
-    expect(await provider.charge(charge)).toMatchObject({ paymentId: "902", status: "failed", mode: "capture", failureReason: "card declined" });
+    const result = await provider.charge(charge);
+    expect(result).toMatchObject({ paymentId: "902", status: "unconfirmed", mode: "capture", reportedValid: false, unconfirmedReason: "reported-not-valid", requiresReconciliation: true, providerStatusText: "card declined" });
+    expect(fetchMock).toHaveBeenCalledTimes(1); // one request, no automatic retry
+    expect((result.status as string)).not.toBe("failed");
+    // the same in a dry run: an invalid authorisation is not a certain failure either
+    delete process.env.SUMIT_DRY_RUN;
+    ok({ Payment: { ID: 903, ValidPayment: false, Amount: 39 } });
+    expect(await provider.charge(charge)).toMatchObject({ status: "unconfirmed", mode: "authorise-only", requiresReconciliation: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("no input whatsoever produces a 'failed' result: the only statuses are succeeded / authorised / unconfirmed, and only a proven capture is 'succeeded'", async () => {
+    const seen = new Set<string>();
+    for (const dryRun of [undefined, "false"]) {
+      for (const vatIncluded of [true, false]) {
+        for (const valid of [true, false]) {
+          if (dryRun === undefined) delete process.env.SUMIT_DRY_RUN;
+          else process.env.SUMIT_DRY_RUN = dryRun;
+          ok({ Payment: { ID: 910, ValidPayment: valid, Amount: vatIncluded ? 39 : 46.02 } });
+          const result = await provider.charge({ ...charge, vatIncluded });
+          seen.add(result.status);
+          expect(result.requiresReconciliation).toBe(result.status === "unconfirmed");
+          if (result.status === "succeeded") expect({ dryRun, vatIncluded, valid }).toEqual({ dryRun: "false", vatIncluded: true, valid: true });
+        }
+      }
+    }
+    ok({ Payment: { ID: 911, ValidPayment: true, Amount: 39 } });
+    seen.add((await provider.getPayment("911")).status);
+    expect([...seen].sort()).toEqual(["authorised", "succeeded", "unconfirmed"]);
+  });
+
+  it("VAT NOT included: the amount rules are unverified, so a captured, valid payment is never 'succeeded' on the amount check alone", async () => {
+    configure("false");
+    ok({ Payment: { ID: 920, ValidPayment: true, Amount: 46.02, CustomerID: 77 } }); // looks like price + 18% VAT - plausible, not proven
+    const result = await provider.charge({ ...charge, vatIncluded: false });
+    expect(result).toMatchObject({ status: "unconfirmed", mode: "capture", reportedValid: true, unconfirmedReason: "amount-rules-unverified", requiresReconciliation: true, amountAgorot: 4602 });
+    // even an amount that equals the price exactly is not proof when VAT is not included
+    ok({ Payment: { ID: 921, ValidPayment: true, Amount: 39 } });
+    expect(await provider.charge({ ...charge, vatIncluded: false })).toMatchObject({ status: "unconfirmed", unconfirmedReason: "amount-rules-unverified" });
+    // an amount BELOW the price is inconsistent whatever the VAT rule: an error, not a result
+    ok({ Payment: { ID: 922, ValidPayment: true, Amount: 30 } });
+    await expect(provider.charge({ ...charge, vatIncluded: false })).rejects.toMatchObject({ kind: "invalid-response" });
+    // VAT included and paid exactly: the amount is proven -> 'succeeded'
+    ok({ Payment: { ID: 923, ValidPayment: true, Amount: 39 } });
+    expect(await provider.charge({ ...charge, vatIncluded: true })).toMatchObject({ status: "succeeded", unconfirmedReason: null, requiresReconciliation: false });
+    // authorise-only is unaffected by the amount rules (it is never revenue)
+    delete process.env.SUMIT_DRY_RUN;
+    ok({ Payment: { ID: 924, ValidPayment: true, Amount: 46.02 } });
+    expect(await provider.charge({ ...charge, vatIncluded: false })).toMatchObject({ status: "authorised", requiresReconciliation: false });
   });
 
   it("a BusinessError is NOT classified as a certain refusal: it THROWS 'rejected' (SUMIT does not document it as 'nothing was charged') and carries no result", async () => {
