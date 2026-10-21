@@ -7,12 +7,17 @@
  *
  * Money is always integer agorot (1/100 ILS), like billing_transactions.amount_agorot.
  *
- * Outcomes of `charge` (the caller must treat them differently):
- *   - a resolved PaymentResult with status "failed"      -> the provider answered "no": nothing was charged.
- *   - a resolved PaymentResult with status "succeeded"   -> money moved (or, with status "authorised", it was only validated).
- *   - a thrown PaymentProviderError                      -> NO answer we can trust (network, timeout, provider error,
- *     unreadable reply). The charge may or may not have happened, so it must be reconciled with getPayment / the provider's
- *     list BEFORE any retry - never retried blindly.
+ * EVIDENCE RULE: a result only ever claims what the evidence proves.
+ *   - "succeeded" (money moved)  needs ALL of: THIS request asked for a real charge (mode "capture"), the provider answered Success,
+ *     the payment is readable and explicitly valid, and its customer and amount agree with the request. Nothing read back later
+ *     (getPayment) can reach "succeeded": a read-back cannot tell a captured charge from an authorise-only one.
+ *   - "authorised"               the request was authorise-only (a dry run): validated, never charged, never revenue.
+ *   - "unconfirmed"              the provider reports a valid payment but we cannot prove it was captured (a read-back): never revenue by itself.
+ *   - "failed"                   the provider answered Success with a readable payment that is explicitly NOT valid.
+ *   Anything else - network failure, timeout, a technical error, an unreadable or inconsistent reply, a BusinessError, a missing
+ *   field - is NOT a result: it throws a PaymentProviderError. For a charge the outcome is then UNKNOWN (SUMIT does not document
+ *   that a BusinessError means "nothing was charged"), so it must be reconciled with getPayment / the provider's list BEFORE any
+ *   retry. No automatic retry, ever.
  */
 
 export type PaymentProviderId = "payme" | "sumit";
@@ -76,16 +81,24 @@ export type ChargeInput = {
 };
 
 export type PaymentStatus =
-  /** Money was charged. */
+  /** Money was charged - proven by the evidence rule above (mode "capture"). The only status that may ever be recognised as revenue. */
   | "succeeded"
-  /** Dry run: the card was only validated/authorised - nothing was charged and nothing may be booked as revenue. */
+  /** Authorise-only (dry run): the card was only validated - nothing was charged and nothing may be booked as revenue. */
   | "authorised"
+  /** The provider reports a valid payment, but whether it was captured is NOT proven (a read-back). Not revenue by itself. */
+  | "unconfirmed"
+  /** The provider returned a readable payment that is explicitly not valid. (Never produced for an error envelope.) */
   | "failed";
+
+/** What the request that created the payment asked for - from the request itself, never from the current configuration. */
+export type PaymentMode = "capture" | "authorise-only" | "unknown";
 
 export type PaymentResult = {
   paymentId: string;
   customerId: ProviderCustomerId | null;
   status: PaymentStatus;
+  /** "capture" / "authorise-only" for the request that produced this result; "unknown" for a read-back. Store it with the attempt. */
+  mode: PaymentMode;
   amountAgorot: number;
   /** ISO time, when the provider reports one. */
   occurredAt: string | null;
@@ -105,6 +118,9 @@ export interface PaymentProvider {
   getPaymentMethod(customerId: ProviderCustomerId): Promise<SavedPaymentMethod | null>;
   removePaymentMethod(customerId: ProviderCustomerId): Promise<void>;
   charge(input: ChargeInput): Promise<PaymentResult>;
-  /** A payment by the provider's id, or null when the provider has no such payment. */
-  getPayment(paymentId: string): Promise<PaymentResult | null>;
+  /**
+   * A payment by the provider's id, as a read-back: never "succeeded" (mode "unknown"). Throws when the provider cannot give a
+   * readable payment - including "no such payment", which the provider does not document, so absence is never inferred.
+   */
+  getPayment(paymentId: string): Promise<PaymentResult>;
 }

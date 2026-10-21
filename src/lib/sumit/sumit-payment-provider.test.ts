@@ -6,13 +6,15 @@ import { PaymentProviderError, type PaymentProvider } from "@/domain/payments/pa
 import { MAX_CHARGE_AGOROT, createSumitPaymentProvider } from "./sumit-payment-provider";
 
 const TOKEN = "11111111-2222-3333-4444-555555555555";
-const KEYS = ["SUMIT_COMPANY_ID", "SUMIT_API_KEY", "SUMIT_API_PUBLIC_KEY", "SUMIT_DRY_RUN"] as const;
+const KEYS = ["SUMIT_COMPANY_ID", "SUMIT_API_KEY", "SUMIT_API_PUBLIC_KEY", "SUMIT_ENVIRONMENT", "SUMIT_TEST_COMPANY_ID", "SUMIT_ALLOW_PRODUCTION", "SUMIT_DRY_RUN"] as const;
 const fetchMock = vi.fn();
 
 function configure(dryRun?: string) {
   process.env.SUMIT_COMPANY_ID = "123456";
   process.env.SUMIT_API_KEY = "secret-api-key-for-tests";
   process.env.SUMIT_API_PUBLIC_KEY = "public-key-for-tests";
+  process.env.SUMIT_ENVIRONMENT = "test";
+  process.env.SUMIT_TEST_COMPANY_ID = "123456"; // the approved test organization = the configured one
   if (dryRun !== undefined) process.env.SUMIT_DRY_RUN = dryRun;
 }
 const reply = (body: unknown) => fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } }));
@@ -87,13 +89,26 @@ describe("getPaymentMethod / removePaymentMethod / getPayment", () => {
     expect(paths()).toEqual(["/billing/paymentmethods/remove/"]);
   });
 
-  it("getPayment maps a valid payment to succeeded, an invalid one to failed, a missing one to null", async () => {
-    ok({ Payment: { ID: 900, ValidPayment: true, Amount: 39, CustomerID: 77 } });
-    expect(await provider.getPayment("900")).toMatchObject({ paymentId: "900", status: "succeeded", amountAgorot: 3900, customerId: "77" });
+  it("getPayment is a READ-BACK: a valid payment is only 'unconfirmed' (mode unknown) - never 'succeeded' - whatever the dry-run setting is NOW", async () => {
+    for (const dryRun of [undefined, "true", "false"]) {
+      if (dryRun === undefined) delete process.env.SUMIT_DRY_RUN;
+      else process.env.SUMIT_DRY_RUN = dryRun;
+      ok({ Payment: { ID: 900, ValidPayment: true, Amount: 39, CustomerID: 77 } });
+      const result = await provider.getPayment("900");
+      expect(result, String(dryRun)).toMatchObject({ paymentId: "900", status: "unconfirmed", mode: "unknown", amountAgorot: 3900, customerId: "77", failureReason: null });
+      expect(result.status).not.toBe("succeeded");
+    }
+  });
+
+  it("getPayment: an explicitly invalid payment is 'failed'; a missing or unreadable one THROWS (absence is never inferred)", async () => {
     ok({ Payment: { ID: 901, ValidPayment: false, Amount: 39, StatusDescription: "declined" } });
-    expect(await provider.getPayment("901")).toMatchObject({ status: "failed", failureReason: "declined" });
+    expect(await provider.getPayment("901")).toMatchObject({ status: "failed", mode: "unknown", failureReason: "declined" });
     ok({});
-    expect(await provider.getPayment("902")).toBeNull();
+    await expect(provider.getPayment("902")).rejects.toMatchObject({ kind: "invalid-response" });
+    ok({ Payment: { ID: 903, Amount: 39 } }); // ValidPayment missing
+    await expect(provider.getPayment("903")).rejects.toMatchObject({ kind: "invalid-response" });
+    reply({ Status: 1, UserErrorMessage: "not found", Data: null });
+    await expect(provider.getPayment("904")).rejects.toMatchObject({ kind: "rejected" });
   });
 });
 
@@ -102,7 +117,7 @@ describe("charge", () => {
     configure("false");
     ok({ Payment: { ID: 900, ValidPayment: true, Amount: 39, CustomerID: 77 }, DocumentDownloadURL: "https://app.sumit.co.il/d/1" });
     const result = await provider.charge(charge);
-    expect(result).toMatchObject({ paymentId: "900", status: "succeeded", amountAgorot: 3900, documentUrl: "https://app.sumit.co.il/d/1", failureReason: null });
+    expect(result).toMatchObject({ paymentId: "900", status: "succeeded", mode: "capture", amountAgorot: 3900, documentUrl: "https://app.sumit.co.il/d/1", failureReason: null });
     expect(bodyOf(0).AuthoriseOnly).toBeUndefined();
     expect(bodyOf(0).VATIncluded).toBe(true);
     expect(String(bodyOf(0).DocumentDescription)).toContain(charge.uniqueKey);
@@ -111,20 +126,38 @@ describe("charge", () => {
   it("DRY RUN: the result is 'authorised' - never 'succeeded' - so nothing can be booked as revenue", async () => {
     ok({ Payment: { ID: 901, ValidPayment: true, Amount: 39 } });
     const result = await provider.charge(charge);
-    expect(result.status).toBe("authorised");
+    expect(result).toMatchObject({ status: "authorised", mode: "authorise-only" });
     expect(bodyOf(0)).toMatchObject({ AuthoriseOnly: true, DraftDocument: true });
+  });
+
+  it("'succeeded' is claimed ONLY for a request that asked for a real charge: the mode is taken from the request at the moment of the call", async () => {
+    // same SUMIT reply, two requests: the dry-run one is never 'succeeded'
+    ok({ Payment: { ID: 901, ValidPayment: true, Amount: 39 } });
+    expect((await provider.charge(charge)).status).toBe("authorised");
+    configure("false");
+    ok({ Payment: { ID: 901, ValidPayment: true, Amount: 39 } });
+    expect((await provider.charge(charge)).status).toBe("succeeded");
   });
 
   it("a payment SUMIT marks not valid is a resolved 'failed' result with its description", async () => {
     configure("false");
     ok({ Payment: { ID: 902, ValidPayment: false, Amount: 39, StatusDescription: "card declined" } });
-    expect(await provider.charge(charge)).toMatchObject({ paymentId: "902", status: "failed", failureReason: "card declined" });
+    expect(await provider.charge(charge)).toMatchObject({ paymentId: "902", status: "failed", mode: "capture", failureReason: "card declined" });
   });
 
-  it("a BusinessError (SUMIT said no) is a resolved 'failed' result, not a throw", async () => {
+  it("a BusinessError is NOT classified as a certain refusal: it THROWS 'rejected' (SUMIT does not document it as 'nothing was charged') and carries no result", async () => {
     configure("false");
     reply({ Status: 1, UserErrorMessage: "העסקה נדחתה", Data: null });
-    expect(await provider.charge(charge)).toMatchObject({ status: "failed", failureReason: "העסקה נדחתה", paymentId: "" });
+    await expect(provider.charge(charge)).rejects.toMatchObject({ kind: "rejected", detail: "העסקה נדחתה" });
+  });
+
+  it("an unreadable payment (ValidPayment missing / not a boolean) or one that disagrees with the request THROWS - uncertain, no automatic retry", async () => {
+    configure("false");
+    for (const payment of [{ ID: 900, Amount: 39 }, { ID: 900, Amount: 39, ValidPayment: "true" }, { ID: 900, Amount: 40, ValidPayment: true }, { ID: 900, CustomerID: 78, Amount: 39, ValidPayment: true }]) {
+      ok({ Payment: payment });
+      await expect(provider.charge(charge), JSON.stringify(payment)).rejects.toMatchObject({ kind: "invalid-response" });
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(4); // exactly one request per charge: nothing retried
   });
 
   it("NO trustworthy answer THROWS - the outcome is unknown and must be reconciled, never retried blindly", async () => {

@@ -60,11 +60,13 @@ vi.mock("@/lib/supabase/admin-client", () => ({ isSupabaseAdminConfigured: () =>
 
 import { saveSumitPaymentMethodForRegistration } from "./sumit-payment-method-service";
 
-const ENV_KEYS = ["PAYMENTS_PROVIDER", "SUMIT_COMPANY_ID", "SUMIT_API_KEY", "SUMIT_API_PUBLIC_KEY", "SUMIT_DRY_RUN", "SUMIT_TEST_EMAILS"] as const;
+const ENV_KEYS = ["PAYMENTS_PROVIDER", "SUMIT_COMPANY_ID", "SUMIT_API_KEY", "SUMIT_API_PUBLIC_KEY", "SUMIT_ENVIRONMENT", "SUMIT_TEST_COMPANY_ID", "SUMIT_ALLOW_PRODUCTION", "SUMIT_DRY_RUN", "SUMIT_TEST_EMAILS"] as const;
 function configureSumit(overrides: Partial<Record<(typeof ENV_KEYS)[number], string>> = {}) {
   process.env.SUMIT_COMPANY_ID = "123456";
   process.env.SUMIT_API_KEY = "secret-api-key-for-tests";
   process.env.SUMIT_API_PUBLIC_KEY = "public-key-for-tests";
+  process.env.SUMIT_ENVIRONMENT = "test";
+  process.env.SUMIT_TEST_COMPANY_ID = "123456"; // the approved test organization = the configured one
   process.env.SUMIT_TEST_EMAILS = EMAIL;
   for (const [key, value] of Object.entries(overrides)) process.env[key] = value;
 }

@@ -6,7 +6,7 @@ vi.mock("server-only", () => ({}));
 
 import { PaymentsConfigurationError, getPaymentProvider, getPaymentsProviderId, parsePaymentsProvider } from "./get-payment-provider";
 
-const KEYS = ["PAYMENTS_PROVIDER", "SUMIT_COMPANY_ID", "SUMIT_API_KEY", "SUMIT_API_PUBLIC_KEY"] as const;
+const KEYS = ["PAYMENTS_PROVIDER", "SUMIT_COMPANY_ID", "SUMIT_API_KEY", "SUMIT_API_PUBLIC_KEY", "SUMIT_ENVIRONMENT", "SUMIT_TEST_COMPANY_ID", "SUMIT_ALLOW_PRODUCTION"] as const;
 afterEach(() => {
   for (const key of KEYS) delete process.env[key];
 });
@@ -15,6 +15,8 @@ function configureSumit() {
   process.env.SUMIT_COMPANY_ID = "123456";
   process.env.SUMIT_API_KEY = "secret-api-key-for-tests";
   process.env.SUMIT_API_PUBLIC_KEY = "public-key-for-tests";
+  process.env.SUMIT_ENVIRONMENT = "test";
+  process.env.SUMIT_TEST_COMPANY_ID = "123456"; // the approved test organization = the configured one
 }
 
 function thrown(fn: () => unknown): PaymentsConfigurationError {
@@ -72,6 +74,27 @@ describe("PAYMENTS_PROVIDER selection - SUMIT is the only provider, fail closed,
       expect(error.variables, missing).toEqual([missing]);
       expect(error.message, missing).toContain(missing);
     }
+  });
+
+  it("the approved-test-organization guard fails closed through the selector too: a wrong organization, an unset environment or a locked production never yields a provider", () => {
+    process.env.PAYMENTS_PROVIDER = "sumit";
+    configureSumit();
+    process.env.SUMIT_COMPANY_ID = "999111"; // not the approved test organization (123456)
+    const wrongOrganization = thrown(() => getPaymentProvider());
+    expect(wrongOrganization.variables).toEqual(["SUMIT_COMPANY_ID"]);
+    expect(wrongOrganization.message).toMatch(/not the approved test organization/);
+    expect(wrongOrganization.message).not.toMatch(/999111|123456/);
+
+    configureSumit();
+    delete process.env.SUMIT_ENVIRONMENT;
+    expect(thrown(() => getPaymentProvider()).variables).toEqual(["SUMIT_ENVIRONMENT"]);
+
+    configureSumit();
+    process.env.SUMIT_ENVIRONMENT = "production";
+    process.env.SUMIT_COMPANY_ID = "999111";
+    expect(thrown(() => getPaymentProvider()).variables).toEqual(["SUMIT_ALLOW_PRODUCTION"]);
+    process.env.SUMIT_ALLOW_PRODUCTION = "true";
+    expect(getPaymentProvider().id).toBe("sumit");
   });
 
   it("an invalid SUMIT_COMPANY_ID counts as missing", () => {

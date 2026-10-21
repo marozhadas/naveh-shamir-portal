@@ -8,7 +8,7 @@ import { chargeSumitCustomer, createSumitCustomer, getSumitPayment, getSumitPaym
 const API_KEY = "secret-api-key-for-tests";
 const PUBLIC_KEY = "public-key-for-tests";
 const TOKEN = "11111111-2222-3333-4444-555555555555";
-const KEYS = ["SUMIT_COMPANY_ID", "SUMIT_API_KEY", "SUMIT_API_PUBLIC_KEY", "SUMIT_DRY_RUN"] as const;
+const KEYS = ["SUMIT_COMPANY_ID", "SUMIT_API_KEY", "SUMIT_API_PUBLIC_KEY", "SUMIT_ENVIRONMENT", "SUMIT_TEST_COMPANY_ID", "SUMIT_ALLOW_PRODUCTION", "SUMIT_DRY_RUN"] as const;
 
 const fetchMock = vi.fn();
 
@@ -26,6 +26,8 @@ function configure(dryRun?: string) {
   process.env.SUMIT_COMPANY_ID = "123456";
   process.env.SUMIT_API_KEY = API_KEY;
   process.env.SUMIT_API_PUBLIC_KEY = PUBLIC_KEY;
+  process.env.SUMIT_ENVIRONMENT = "test";
+  process.env.SUMIT_TEST_COMPANY_ID = "123456"; // the approved test organization = the configured one
   if (dryRun !== undefined) process.env.SUMIT_DRY_RUN = dryRun;
 }
 
@@ -94,7 +96,7 @@ describe("request shape", () => {
     expect(lastCall().url).toBe("https://api.sumit.co.il/billing/payments/get/");
     expect(lastCall().body.PaymentID).toBe(900);
 
-    ok({ Payments: [{ ID: 1, Amount: 39.5, ValidPayment: false }, { nope: true }], HasNextPage: true });
+    ok({ Payments: [{ ID: 1, Amount: 39.5, ValidPayment: false }], HasNextPage: true });
     const list = await listSumitPayments({ dateFrom: new Date("2026-10-01T00:00:00Z"), dateTo: new Date("2026-10-02T00:00:00Z"), valid: true });
     expect(list.hasNextPage).toBe(true);
     expect(list.payments).toHaveLength(1);
@@ -103,9 +105,35 @@ describe("request shape", () => {
     expect(lastCall().body).toMatchObject({ Date_From: "2026-10-01T00:00:00.000Z", Valid: true, StartIndex: 0 });
   });
 
-  it("getPayment returns null when SUMIT has no such payment (Success, no Payment)", async () => {
+  it("getPayment never infers 'no such payment' from an empty Success: it is an uncertain reply and throws", async () => {
     ok({});
-    expect(await getSumitPayment("901")).toBeNull();
+    await expect(getSumitPayment("901")).rejects.toMatchObject({ kind: "invalid-response" });
+    ok({ Payment: null });
+    await expect(getSumitPayment("901")).rejects.toMatchObject({ kind: "invalid-response" });
+  });
+
+  it("getPayment refuses a reply about a different payment than the one asked for", async () => {
+    ok({ Payment: { ID: 999, ValidPayment: true, Amount: 39 } });
+    await expect(getSumitPayment("901")).rejects.toMatchObject({ kind: "invalid-response" });
+  });
+
+  it("a payments LIST that is malformed, has an unreadable row, or does not say whether there is a next page is an error - never an empty or partial list", async () => {
+    const range = { dateFrom: new Date("2026-10-01T00:00:00Z"), dateTo: new Date("2026-10-02T00:00:00Z") };
+    for (const data of [{}, { Payments: "x", HasNextPage: false }, { Payments: [], HasNextPage: "no" }, { Payments: [] }, { Payments: [{ ID: 1, Amount: 39 }], HasNextPage: false }, { Payments: [{ ID: 1, Amount: 39, ValidPayment: true }, { nope: true }], HasNextPage: false }]) {
+      ok(data);
+      await expect(listSumitPayments(range), JSON.stringify(data)).rejects.toMatchObject({ kind: "invalid-response" });
+    }
+    ok({ Payments: [], HasNextPage: false });
+    expect(await listSumitPayments(range)).toEqual({ payments: [], hasNextPage: false });
+  });
+
+  it("getforcustomer: a missing method is 'none', a malformed one is an error", async () => {
+    ok({ PaymentMethod: null });
+    expect(await getSumitPaymentMethod("77")).toBeNull();
+    ok({});
+    expect(await getSumitPaymentMethod("77")).toBeNull();
+    ok({ PaymentMethod: "oops" });
+    await expect(getSumitPaymentMethod("77")).rejects.toMatchObject({ kind: "invalid-response" });
   });
 
   it("recurring endpoints are never called", async () => {
@@ -130,7 +158,7 @@ describe("charge", () => {
     expect(body.Items).toEqual([{ Item: { Name: "Plus - Naveh Shamir" }, Quantity: 1, UnitPrice: 39, Currency: 0, Description: "Plus - Naveh Shamir" }]);
     expect(body.VATIncluded).toBe(true);
     expect(body.AuthoriseOnly).toBeUndefined();
-    expect(result.dryRun).toBe(false);
+    expect(result.authoriseOnly).toBe(false);
     expect(result.payment).toMatchObject({ id: "900", valid: true, amountAgorot: 3900 });
     expect(result.documentUrl).toBe("https://app.sumit.co.il/d/x");
   });
@@ -139,7 +167,7 @@ describe("charge", () => {
     ok({ Payment: { ID: 901, ValidPayment: true, Amount: 39 } });
     const result = await chargeSumitCustomer(request);
     expect(lastCall().body).toMatchObject({ AuthoriseOnly: true, DraftDocument: true });
-    expect(result.dryRun).toBe(true);
+    expect(result.authoriseOnly).toBe(true);
   });
 
   it("only an https document link is kept", async () => {
@@ -159,6 +187,39 @@ describe("charge", () => {
   it("an unreadable payment in a Success reply is an error, never a charge", async () => {
     ok({ Payment: { ID: "oops", Amount: "x" } });
     await expect(chargeSumitCustomer(request)).rejects.toMatchObject({ kind: "invalid-response" });
+  });
+
+  it("a payment whose ValidPayment is missing or not a boolean is UNREADABLE (uncertain), not 'false' (a certain failure)", async () => {
+    for (const ValidPayment of [undefined, null, "true", "false", 1, 0, "yes"]) {
+      ok({ Payment: { ID: 900, Amount: 39, ...(ValidPayment === undefined ? {} : { ValidPayment }) } });
+      await expect(chargeSumitCustomer(request), String(ValidPayment)).rejects.toMatchObject({ kind: "invalid-response" });
+    }
+    expect(mapSumitPayment({ ID: 900, Amount: 39 })).toBeNull();
+    expect(mapSumitPayment({ ID: 900, Amount: 39, ValidPayment: "true" })).toBeNull();
+    expect(mapSumitPayment({ ID: 900, Amount: 39, ValidPayment: false })).toMatchObject({ valid: false });
+    expect(mapSumitPayment({ ID: 900, Amount: 39, ValidPayment: true })).toMatchObject({ valid: true });
+  });
+
+  it("a Success reply that disagrees with the request is not trusted: another customer, or an amount that does not fit", async () => {
+    // VAT included: the paid amount must equal the requested amount exactly
+    ok({ Payment: { ID: 900, CustomerID: 78, ValidPayment: true, Amount: 39 } });
+    await expect(chargeSumitCustomer(request)).rejects.toMatchObject({ kind: "invalid-response" });
+    ok({ Payment: { ID: 900, CustomerID: 77, ValidPayment: true, Amount: 40 } });
+    await expect(chargeSumitCustomer(request)).rejects.toMatchObject({ kind: "invalid-response" });
+    ok({ Payment: { ID: 900, CustomerID: 77, ValidPayment: true, Amount: 38.99 } });
+    await expect(chargeSumitCustomer(request)).rejects.toMatchObject({ kind: "invalid-response" });
+    ok({ Payment: { ID: 900, CustomerID: 77, ValidPayment: true, Amount: 39 } });
+    expect((await chargeSumitCustomer(request)).payment.amountAgorot).toBe(3900);
+    // VAT not included: documented only as "defaults to false"; the amount may be higher (VAT added) but never lower
+    ok({ Payment: { ID: 900, CustomerID: 77, ValidPayment: true, Amount: 46.02 } });
+    expect((await chargeSumitCustomer({ ...request, vatIncluded: false })).payment.amountAgorot).toBe(4602);
+    ok({ Payment: { ID: 900, CustomerID: 77, ValidPayment: true, Amount: 30 } });
+    await expect(chargeSumitCustomer({ ...request, vatIncluded: false })).rejects.toMatchObject({ kind: "invalid-response" });
+  });
+
+  it("a BusinessError on a charge is thrown as 'rejected' - the client never turns it into a payment (SUMIT does not document it as 'nothing was charged')", async () => {
+    reply({ Status: 1, UserErrorMessage: "העסקה נדחתה", Data: null });
+    await expect(chargeSumitCustomer(request)).rejects.toMatchObject({ kind: "rejected", detail: "העסקה נדחתה" });
   });
 });
 

@@ -33,6 +33,7 @@ const CURRENCY_ILS = 0;
 export type SumitPayment = {
   id: string;
   customerId: string | null;
+  /** SUMIT's explicit Payment.ValidPayment boolean. A missing / non-boolean value is NOT mapped as false: the payment is unreadable (null). */
   valid: boolean;
   status: string | null;
   statusDescription: string | null;
@@ -147,17 +148,25 @@ export function mapSumitPaymentMethod(raw: unknown): SumitPaymentMethod | null {
   return { id: idText(method.ID), customerId: idText(method.CustomerID), cardMask: mask ?? (lastDigits ? `****${lastDigits}` : null) };
 }
 
+/**
+ * Maps a SUMIT Payment, or returns null when it is NOT cleanly readable. Every field the decision rests on must be present
+ * and well-formed: a missing or non-boolean ValidPayment is NOT "false" (that would look like a certain failure) - the caller
+ * treats null as an uncertain outcome and throws, with no automatic retry.
+ */
 export function mapSumitPayment(raw: unknown, secrets: string[] = []): SumitPayment | null {
   if (!raw || typeof raw !== "object") return null;
   const payment = raw as Json;
   const id = idText(payment.ID);
   const amount = payment.Amount;
   if (!id || typeof amount !== "number" || !Number.isFinite(amount) || amount < 0) return null;
+  if (typeof payment.ValidPayment !== "boolean") return null;
+  const customerId = idText(payment.CustomerID);
+  if (payment.CustomerID !== null && payment.CustomerID !== undefined && customerId === null) return null;
   const date = typeof payment.Date === "string" && !Number.isNaN(new Date(payment.Date).getTime()) ? new Date(payment.Date).toISOString() : null;
   return {
     id,
-    customerId: idText(payment.CustomerID),
-    valid: payment.ValidPayment === true,
+    customerId,
+    valid: payment.ValidPayment,
     status: plainText(payment.Status, secrets),
     statusDescription: plainText(payment.StatusDescription, secrets),
     amountAgorot: Math.round(amount * 100),
@@ -204,7 +213,10 @@ export async function setSumitPaymentMethod(input: { customerId: string; singleU
 export async function getSumitPaymentMethod(customerId: string): Promise<SumitPaymentMethod | null> {
   const config = requireConfig();
   const data = await post(config, "/billing/paymentmethods/getforcustomer/", { Customer: { ID: customerIdToNumber(customerId) }, IncludeInactive: false });
-  return mapSumitPaymentMethod(data.PaymentMethod);
+  if (data.PaymentMethod === null || data.PaymentMethod === undefined) return null;
+  const method = mapSumitPaymentMethod(data.PaymentMethod);
+  if (!method) throw new PaymentProviderError("invalid-response", "SUMIT returned an unreadable payment method");
+  return method;
 }
 
 export async function removeSumitPaymentMethod(customerId: string): Promise<void> {
@@ -222,8 +234,18 @@ export type SumitChargeRequest = {
   sendDocumentByEmail: boolean;
 };
 
-/** Charges the customer's SAVED payment method (no PaymentMethod / token in the request). In a dry run it only authorises. */
-export async function chargeSumitCustomer(input: SumitChargeRequest): Promise<{ payment: SumitPayment; documentUrl: string | null; dryRun: boolean }> {
+/**
+ * Charges the customer's SAVED payment method (no PaymentMethod / token in the request). In a dry run it only authorises.
+ *
+ * A Success reply is accepted only when its payment is readable AND consistent with what was asked: the same customer (when the
+ * reply names one) and the amount. A reply that disagrees is not trusted - it throws invalid-response (outcome UNKNOWN: money
+ * may have moved), it is never mapped to success or to failure.
+ *   - VAT included (the price already contains VAT): the paid amount must equal the requested amount exactly.
+ *   - VAT not included: SUMIT documents "VATIncluded: Defaults to false" but not how Payment.Amount relates to UnitPrice, so only
+ *     "not less than the requested amount" is checked until SUMIT confirms (docs/sumit-verification.md, question 4).
+ * `authoriseOnly` is what THIS request asked for, taken from the configuration at the moment of the call.
+ */
+export async function chargeSumitCustomer(input: SumitChargeRequest): Promise<{ payment: SumitPayment; documentUrl: string | null; authoriseOnly: boolean }> {
   const config = requireConfig();
   const customerId = customerIdToNumber(input.customerId);
   if (!Number.isInteger(input.amountAgorot) || input.amountAgorot <= 0) throw new PaymentProviderError("invalid-input", "invalid charge amount");
@@ -245,16 +267,20 @@ export async function chargeSumitCustomer(input: SumitChargeRequest): Promise<{ 
 
   const payment = mapSumitPayment(data.Payment, secretsOf(config));
   if (!payment) throw new PaymentProviderError("invalid-response", "SUMIT did not return a readable payment");
+  if (payment.customerId !== null && payment.customerId !== String(customerId)) throw new PaymentProviderError("invalid-response", "SUMIT returned a payment of another customer");
+  const amountAgrees = input.vatIncluded ? payment.amountAgorot === input.amountAgorot : payment.amountAgorot >= input.amountAgorot;
+  if (!amountAgrees) throw new PaymentProviderError("invalid-response", "SUMIT returned a payment whose amount disagrees with the request");
   const rawUrl = typeof data.DocumentDownloadURL === "string" ? data.DocumentDownloadURL : null;
-  return { payment, documentUrl: rawUrl && /^https:\/\//i.test(rawUrl) ? rawUrl : null, dryRun: config.dryRun };
+  return { payment, documentUrl: rawUrl && /^https:\/\//i.test(rawUrl) ? rawUrl : null, authoriseOnly: config.dryRun };
 }
 
-export async function getSumitPayment(paymentId: string): Promise<SumitPayment | null> {
+/** A payment by id. A Success reply WITHOUT a readable payment is an error - SUMIT does not document "not found" as an empty Success, so absence is never inferred. */
+export async function getSumitPayment(paymentId: string): Promise<SumitPayment> {
   const config = requireConfig();
   const data = await post(config, "/billing/payments/get/", { PaymentID: paymentIdToNumber(paymentId) });
-  if (!data.Payment) return null;
   const payment = mapSumitPayment(data.Payment, secretsOf(config));
-  if (!payment) throw new PaymentProviderError("invalid-response", "SUMIT returned an unreadable payment");
+  if (!payment) throw new PaymentProviderError("invalid-response", "SUMIT did not return a readable payment");
+  if (payment.id !== String(paymentIdToNumber(paymentId))) throw new PaymentProviderError("invalid-response", "SUMIT returned a different payment than requested");
   return payment;
 }
 
@@ -266,7 +292,14 @@ export async function listSumitPayments(input: { dateFrom: Date; dateTo: Date; v
     StartIndex: input.startIndex ?? 0,
     ...(input.valid === undefined ? {} : { Valid: input.valid }),
   });
-  const rows = Array.isArray(data.Payments) ? data.Payments : [];
-  const payments = rows.map((row) => mapSumitPayment(row, secretsOf(config))).filter((payment): payment is SumitPayment => payment !== null);
-  return { payments, hasNextPage: data.HasNextPage === true };
+  // A list is used to RECONCILE ("is there a payment?"), so it must be complete and readable: a malformed list, an unreadable row or an
+  // unknown "has next page" would make "no payment found" look certain when it is not. Any of them is an error, never an empty list.
+  if (!Array.isArray(data.Payments) || typeof data.HasNextPage !== "boolean") throw new PaymentProviderError("invalid-response", "SUMIT returned an unreadable payments list");
+  const payments: SumitPayment[] = [];
+  for (const row of data.Payments) {
+    const payment = mapSumitPayment(row, secretsOf(config));
+    if (!payment) throw new PaymentProviderError("invalid-response", "SUMIT returned an unreadable payment in the list");
+    payments.push(payment);
+  }
+  return { payments, hasNextPage: data.HasNextPage };
 }

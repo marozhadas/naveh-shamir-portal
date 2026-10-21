@@ -41,14 +41,16 @@ beforeEach(() => {
   process.env.SUMIT_COMPANY_ID = "123456";
   process.env.SUMIT_API_KEY = "secret-api-key-for-tests";
   process.env.SUMIT_API_PUBLIC_KEY = "public-key-for-tests";
+  process.env.SUMIT_ENVIRONMENT = "test";
+  process.env.SUMIT_TEST_COMPANY_ID = "123456"; // the approved test organization = the configured one
   fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
     bodies.push({ path: String(url).replace("https://api.sumit.co.il", ""), body: JSON.parse(String(init.body)) });
-    return new Response(JSON.stringify({ Status: 0, Data: { CustomerID: 77, PaymentMethod: { ID: 5, CustomerID: 77, CreditCard_CardMask: "458045******4580" }, Payment: { ID: 900, ValidPayment: true, Amount: 39 }, Payments: [] } }), { status: 200, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ Status: 0, Data: { CustomerID: 77, PaymentMethod: { ID: 5, CustomerID: 77, CreditCard_CardMask: "458045******4580" }, Payment: { ID: 900, ValidPayment: true, Amount: 39 }, Payments: [], HasNextPage: false } }), { status: 200, headers: { "Content-Type": "application/json" } });
   });
 });
 afterEach(() => {
   vi.unstubAllGlobals();
-  for (const key of ["SUMIT_COMPANY_ID", "SUMIT_API_KEY", "SUMIT_API_PUBLIC_KEY", "SUMIT_DRY_RUN"]) delete process.env[key];
+  for (const key of ["SUMIT_COMPANY_ID", "SUMIT_API_KEY", "SUMIT_API_PUBLIC_KEY", "SUMIT_ENVIRONMENT", "SUMIT_TEST_COMPANY_ID", "SUMIT_ALLOW_PRODUCTION", "SUMIT_DRY_RUN"]) delete process.env[key];
 });
 
 const charge = { customerId: "77", amountAgorot: 3900, description: "Plus - Naveh Shamir", documentDescription: "Plus (sumit:sub-1:2026-11-20:1)", vatIncluded: true, sendDocumentByEmail: true };
@@ -114,6 +116,8 @@ describe("every request our client builds matches the official SUMIT schema", ()
 describe("every response field our code reads exists in the official schema", () => {
   const readFields = (source: string, variable: string): string[] => [...new Set([...source.matchAll(new RegExp(`\\b${variable}\\.([A-Za-z_]+)`, "g")).map((match) => match[1])])].sort();
   const source = readFileSync(path.resolve(__dirname, "client.ts"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  // the response mappers are where raw SUMIT fields are read; the rest of the file works on our own mapped objects
+  const mappers = source.slice(source.indexOf("export function mapSumitPaymentMethod"), source.indexOf("export async function createSumitCustomer"));
   const dataTree = (endpoint: string) => endpoints[endpoint].responseData as Record<string, Tree | null>;
 
   it("the envelope: Status, UserErrorMessage, TechnicalErrorDetails, Data", () => {
@@ -129,9 +133,13 @@ describe("every response field our code reads exists in the official schema", ()
 
   it("Payment and PaymentMethod fields", () => {
     const payment = (dataTree("/billing/payments/charge/").Payment ?? {}) as Record<string, Tree | null>;
-    for (const field of readFields(source, "payment")) expect(field in payment, `Payment.${field}`).toBe(true);
+    const paymentFields = readFields(mappers, "payment");
+    expect(paymentFields.length).toBeGreaterThan(5);
+    for (const field of paymentFields) expect(field in payment, `Payment.${field}`).toBe(true);
     const method = (payment.PaymentMethod ?? {}) as Record<string, Tree | null>;
-    for (const field of readFields(source, "method")) expect(field in method, `PaymentMethod.${field}`).toBe(true);
+    const methodFields = readFields(mappers, "method");
+    expect(methodFields.length).toBeGreaterThan(2);
+    for (const field of methodFields) expect(field in method, `PaymentMethod.${field}`).toBe(true);
     expect(Object.keys(method)).toEqual(expect.arrayContaining(["ID", "CustomerID", "CreditCard_CardMask", "CreditCard_LastDigits", "CreditCard_Token"]));
   });
 });

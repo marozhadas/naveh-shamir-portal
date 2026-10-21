@@ -1,7 +1,7 @@
 import "server-only";
 import type { PaymentProvider } from "@/domain/payments/payment-provider";
 import { createSumitPaymentProvider } from "@/lib/sumit/sumit-payment-provider";
-import { getMissingSumitVariables } from "@/lib/sumit/config";
+import { getSumitConfigurationProblems } from "@/lib/sumit/config";
 
 /**
  * A clear configuration error: the payment provider the environment asks for cannot be used. It names variables only
@@ -45,14 +45,19 @@ export function getPaymentsProviderId(): "sumit" {
 /**
  * The provider the business code uses through the domain interface. Always SUMIT, or a PaymentsConfigurationError:
  *   - PAYMENTS_PROVIDER unset / "payme" / unknown: PaymentsConfigurationError (no guessing, no PayMe fallback);
- *   - "sumit" with anything missing / invalid in the SUMIT configuration: PaymentsConfigurationError naming the variables;
- *   - "sumit" with every required SUMIT variable present: the SUMIT provider.
+ *   - "sumit" with anything missing / invalid in the SUMIT configuration - including an environment that is not the approved one
+ *     (SUMIT_ENVIRONMENT / SUMIT_TEST_COMPANY_ID / SUMIT_ALLOW_PRODUCTION): PaymentsConfigurationError naming the variables and
+ *     their problem (never a value);
+ *   - "sumit" with a fully valid configuration: the SUMIT provider.
  */
 export function getPaymentProvider(): PaymentProvider {
   getPaymentsProviderId();
-  const missing = getMissingSumitVariables();
-  if (missing.length > 0) {
-    throw new PaymentsConfigurationError(`PAYMENTS_PROVIDER=sumit but the SUMIT configuration is incomplete (${missing.join(", ")})`, missing);
+  const problems = getSumitConfigurationProblems();
+  if (problems.length > 0) {
+    throw new PaymentsConfigurationError(
+      `PAYMENTS_PROVIDER=sumit but the SUMIT configuration is not usable (${problems.map((entry) => `${entry.variable}: ${entry.problem}`).join("; ")})`,
+      [...new Set(problems.map((entry) => entry.variable))],
+    );
   }
   return createSumitPaymentProvider();
 }
