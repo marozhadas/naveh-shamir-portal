@@ -274,8 +274,17 @@ export async function chargeSumitCustomer(input: SumitChargeRequest): Promise<{ 
   if (payment.customerId !== null && payment.customerId !== String(customerId)) throw new PaymentProviderError("invalid-response", "SUMIT returned a payment of another customer");
   const amountAgrees = input.vatIncluded ? payment.amountAgorot === input.amountAgorot : payment.amountAgorot >= input.amountAgorot;
   if (!amountAgrees) throw new PaymentProviderError("invalid-response", "SUMIT returned a payment whose amount disagrees with the request");
+  // Observed in the test organization (docs/sumit-verification.md D7): in the CHARGE reply the document id arrives in Data.DocumentID
+  // while Payment.DocumentID is 0; on a later read it is in Payment.DocumentID. A valid id is a positive integer (0 / null / garbage = none).
+  const dataDocumentId = idText(data.DocumentID);
+  if (payment.documentId !== null && dataDocumentId !== null && payment.documentId !== dataDocumentId) {
+    // Two different documents for one payment: never pick one. The reply contradicts itself, so it is not trusted (the money may have
+    // moved: the caller reconciles by payment id, there is no retry).
+    throw new PaymentProviderError("invalid-response", `SUMIT named two different documents for payment ${payment.id}`);
+  }
+  const resolvedPayment: SumitPayment = { ...payment, documentId: payment.documentId ?? dataDocumentId };
   const rawUrl = typeof data.DocumentDownloadURL === "string" ? data.DocumentDownloadURL : null;
-  return { payment, documentUrl: rawUrl && /^https:\/\//i.test(rawUrl) ? rawUrl : null, authoriseOnly: config.dryRun, amountProven: input.vatIncluded };
+  return { payment: resolvedPayment, documentUrl: rawUrl && /^https:\/\//i.test(rawUrl) ? rawUrl : null, authoriseOnly: config.dryRun, amountProven: input.vatIncluded };
 }
 
 /** A payment by id. A Success reply WITHOUT a readable payment is an error - SUMIT does not document "not found" as an empty Success, so absence is never inferred. */

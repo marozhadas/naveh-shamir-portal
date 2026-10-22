@@ -226,6 +226,47 @@ describe("charge", () => {
     expect((await chargeSumitCustomer({ ...request, vatIncluded: false })).amountProven).toBe(false);
   });
 
+  describe("document id (observed: Data.DocumentID on the charge reply, Payment.DocumentID on a later read)", () => {
+    const paid = { ID: 900, CustomerID: 77, ValidPayment: true, Amount: 39 };
+
+    it("takes the id from Data.DocumentID when Payment.DocumentID is 0 (the observed charge reply)", async () => {
+      ok({ Payment: { ...paid, DocumentID: 0 }, DocumentID: 2503151205, DocumentNumber: 10000 });
+      expect((await chargeSumitCustomer(request)).payment.documentId).toBe("2503151205");
+    });
+
+    it("takes the id from Payment.DocumentID when Data has none, and when both agree", async () => {
+      ok({ Payment: { ...paid, DocumentID: 31 } });
+      expect((await chargeSumitCustomer(request)).payment.documentId).toBe("31");
+      ok({ Payment: { ...paid, DocumentID: 31 }, DocumentID: 31 });
+      expect((await chargeSumitCustomer(request)).payment.documentId).toBe("31");
+      ok({ Payment: { ...paid, DocumentID: 31 }, DocumentID: 0 });
+      expect((await chargeSumitCustomer(request)).payment.documentId).toBe("31");
+    });
+
+    it("only a positive integer is an id: 0, negative, fractional, text and null mean 'no document'", async () => {
+      for (const bad of [0, -5, 1.5, "abc", "", null, true, {}]) {
+        ok({ Payment: { ...paid, DocumentID: bad }, DocumentID: bad });
+        expect((await chargeSumitCustomer(request)).payment.documentId, JSON.stringify(bad)).toBeNull();
+      }
+      ok({ Payment: paid });
+      expect((await chargeSumitCustomer(request)).payment.documentId).toBeNull();
+    });
+
+    it("two different valid ids are a contradiction: the reply is not trusted (invalid-response, naming the payment id, no document id guessed)", async () => {
+      ok({ Payment: { ...paid, DocumentID: 31 }, DocumentID: 32 });
+      const error = await caught(chargeSumitCustomer(request));
+      expect(error).toMatchObject({ kind: "invalid-response" });
+      expect(error.message).toContain("900"); // internal message for reconciliation; never the user-facing `detail`
+      expect(error.detail).toBeNull();
+      expect(fetchMock).toHaveBeenCalledTimes(1); // and no retry
+    });
+
+    it("a valid id on one side and garbage on the other is not a conflict - the valid one wins", async () => {
+      ok({ Payment: { ...paid, DocumentID: "garbage" }, DocumentID: 32 });
+      expect((await chargeSumitCustomer(request)).payment.documentId).toBe("32");
+    });
+  });
+
   it("a BusinessError on a charge is thrown as 'rejected' - the client never turns it into a payment (SUMIT does not document it as 'nothing was charged')", async () => {
     reply({ Status: 1, UserErrorMessage: "העסקה נדחתה", Data: null });
     await expect(chargeSumitCustomer(request)).rejects.toMatchObject({ kind: "rejected", detail: "העסקה נדחתה" });
