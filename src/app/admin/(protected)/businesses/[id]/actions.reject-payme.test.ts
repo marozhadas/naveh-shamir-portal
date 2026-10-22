@@ -35,6 +35,9 @@ vi.mock("@/repositories/supabase-subscription-service", () => ({
   cancelPayMeSubscriptionForRejection: (...args: unknown[]) => cancelForRejection(...args),
 }));
 
+const cancelSumitTrial = vi.fn();
+vi.mock("@/repositories/sumit-trial-cancellation", () => ({ cancelSumitTrialForRejection: (...args: unknown[]) => cancelSumitTrial(...args) }));
+
 const ID = "11111111-1111-1111-1111-111111111111";
 
 function reason(text: string): FormData {
@@ -54,6 +57,11 @@ describe("rejectRegistrationAction - a business that went live through payment",
       order.push("payme-cancelled");
       return { success: true, hadSubscription: true };
     });
+    cancelSumitTrial.mockReset();
+    cancelSumitTrial.mockImplementation(async () => {
+      order.push("sumit-trial-checked");
+      return { success: true, outcome: "none" };
+    });
   });
 
   it("stops the PayMe subscription BEFORE the status becomes rejected", async () => {
@@ -61,7 +69,7 @@ describe("rejectRegistrationAction - a business that went live through payment",
     const result = await rejectRegistrationAction(ID, { error: null, success: false }, reason("תוכן לא מתאים"));
     expect(result).toEqual({ error: null, success: true });
     expect(cancelForRejection).toHaveBeenCalledWith(ID, "admin-1");
-    expect(order).toEqual(["payme-cancelled", "status-updated"]);
+    expect(order).toEqual(["payme-cancelled", "sumit-trial-checked", "status-updated"]);
   });
 
   it("if PayMe cannot cancel, the business is NOT rejected (it would keep being billed)", async () => {
@@ -73,11 +81,65 @@ describe("rejectRegistrationAction - a business that went live through payment",
     expect(updateStatus).not.toHaveBeenCalled();
   });
 
+  it("a SUMIT trial is ended BEFORE the status becomes rejected, and the order is PayMe check, SUMIT trial, status", async () => {
+    cancelSumitTrial.mockImplementation(async () => {
+      order.push("sumit-trial-canceled");
+      return { success: true, outcome: "canceled" };
+    });
+    const { rejectRegistrationAction } = await import("./actions");
+    const result = await rejectRegistrationAction(ID, { error: null, success: false }, reason("עסק בדיקה"));
+    expect(result).toEqual({ error: null, success: true });
+    expect(cancelSumitTrial).toHaveBeenCalledWith(ID, "admin-1");
+    expect(order).toEqual(["payme-cancelled", "sumit-trial-canceled", "status-updated"]);
+  });
+
+  it("a SUMIT subscription that was billed or is not an unbilled trial STOPS the rejection: nothing is rejected, the message says to handle it manually", async () => {
+    cancelSumitTrial.mockResolvedValue({ success: false, reason: "not-eligible" });
+    const { rejectRegistrationAction } = await import("./actions");
+    const result = await rejectRegistrationAction(ID, { error: null, success: false }, reason("עסק בדיקה"));
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("ידנית");
+    expect(updateStatus).not.toHaveBeenCalled();
+  });
+
+  it("if the SUMIT trial cannot be ended, the business is NOT rejected (it would keep a live trial)", async () => {
+    cancelSumitTrial.mockResolvedValue({ success: false, reason: "unknown-error" });
+    const { rejectRegistrationAction } = await import("./actions");
+    const result = await rejectRegistrationAction(ID, { error: null, success: false }, reason("עסק בדיקה"));
+    expect(result.success).toBe(false);
+    expect(updateStatus).not.toHaveBeenCalled();
+  });
+
+  it("if the trial was ended but the rejection could not be saved, it is NOT reported as success, and the message says running it again is safe", async () => {
+    cancelSumitTrial.mockResolvedValue({ success: true, outcome: "canceled" });
+    updateStatus.mockRejectedValueOnce(new Error("db down"));
+    const { rejectRegistrationAction } = await import("./actions");
+    const result = await rejectRegistrationAction(ID, { error: null, success: false }, reason("עסק בדיקה"));
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("הסתיים");
+    expect(result.error).toContain("בטוחה להרצה חוזרת");
+  });
+
+  it("running the rejection again after that failure finishes the job: the trial is 'already-ended' and the status is saved", async () => {
+    cancelSumitTrial.mockResolvedValue({ success: true, outcome: "already-ended" });
+    const { rejectRegistrationAction } = await import("./actions");
+    expect(await rejectRegistrationAction(ID, { error: null, success: false }, reason("עסק בדיקה"))).toEqual({ error: null, success: true });
+    expect(updateStatus).toHaveBeenCalledTimes(1);
+  });
+
   it("still needs a reason, and touches nothing without one", async () => {
     const { rejectRegistrationAction } = await import("./actions");
     const result = await rejectRegistrationAction(ID, { error: null, success: false }, reason("x"));
     expect(result.success).toBe(false);
     expect(cancelForRejection).not.toHaveBeenCalled();
+    expect(cancelSumitTrial).not.toHaveBeenCalled();
     expect(updateStatus).not.toHaveBeenCalled();
+  });
+
+  it("if PayMe cannot cancel, the SUMIT check is not even reached", async () => {
+    cancelForRejection.mockResolvedValue({ success: false, reason: "payme-error" });
+    const { rejectRegistrationAction } = await import("./actions");
+    await rejectRegistrationAction(ID, { error: null, success: false }, reason("תוכן לא מתאים"));
+    expect(cancelSumitTrial).not.toHaveBeenCalled();
   });
 });

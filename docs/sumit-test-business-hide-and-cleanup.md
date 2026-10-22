@@ -18,7 +18,12 @@ Two independent gates make a business public (`resolve-business-view.ts`): its s
 
 ## Step 1 - HIDE (reversible, nothing deleted)
 
-Recommended: use the admin area's own "reject" action for this business, with a reason such as "test business". It sets the status to `rejected`, closes the notification, writes an audit entry, and for a subscription that is not a PayMe subscription it changes nothing else (`cancelPayMeSubscriptionForRejection` only acts on `payment_provider = 'payme'`).
+Recommended: use the admin area's own "reject" action for this business, with a reason such as "test business". It sets the status to `rejected`, closes the notification and writes an audit entry. What it does to the subscription depends on the row:
+
+- a card-less trial (`payment_provider` NULL): nothing else (`cancelPayMeSubscriptionForRejection` only acts on `payment_provider = 'payme'`);
+- **a SUMIT trial** (approval of a business with a saved SUMIT card, Stage 2B-1): `cancelSumitTrialForRejection` first marks the row `canceled` (`canceled_at` set, `next_billing_at` cleared, event `subscription_canceled` with `provider: sumit, charged: false`) - locally, no provider call, no charge, nothing removed at SUMIT - and only then does the status become `rejected`. It applies only to an UNBILLED trial (`payment_provider = sumit`, no `provider_subscription_id`, `trialing`, no payment fields, no `billing_transactions`). A SUMIT subscription that does not meet all of that is NOT touched and the rejection is REFUSED ("handle manually"): money may be involved. If the trial was ended but the status could not be saved, the action reports an error (never success); pressing reject again is safe (the row is then `already-ended`) and finishes the job.
+
+Note for the SUMIT trial: because the subscription is then `canceled` (no paid period), setting the status back to `approved` does NOT bring the page back - the page needs both an approved status and a subscription that gives listing access. Hiding a SUMIT test business is therefore not reversible by the status alone; for a test business that is the intent.
 
 Equivalent guarded SQL (only if the admin action cannot be used):
 
@@ -102,5 +107,28 @@ begin
   raise notice 'cleanup done for %', v_id;
 end $$;
 ```
+
+### Variant for a SUMIT trial (approved through Stage 2B-1, then rejected as in Step 1)
+
+The block above refuses any subscription with `payment_provider` set. For a business whose trial was started by approving a saved SUMIT card, replace the two subscription checks with these (everything else stays the same). They accept exactly ONE subscription that is an unbilled SUMIT trial in its final states, and still refuse anything that could involve money:
+
+```sql
+  -- the ONLY subscription is the unbilled SUMIT trial the test started (ended by the rejection, or still trialing)
+  select count(*) into n from public.business_subscriptions where business_registration_id = v_id;
+  if n > 1 then raise exception 'ABORT: % subscriptions', n; end if;
+  select count(*) into n from public.business_subscriptions
+    where business_registration_id = v_id
+      and (payment_provider is distinct from 'sumit'
+           or provider_subscription_id is not null
+           or provider_last_transaction_id is not null
+           or last_payment_succeeded_at is not null
+           or last_payment_failed_at is not null
+           or payment_failed_at is not null
+           or status not in ('trialing', 'canceled', 'expired')
+           or created_at < v_since);
+  if n <> 0 then raise exception 'ABORT: a subscription is not the unbilled SUMIT test trial'; end if;
+```
+
+The event check already allows `trial_started`, `payment_method_added` and `subscription_canceled`; the `billing_transactions` / `billing_events` / payment-method checks are unchanged (the SUMIT card row is allowed because it is `provider = 'sumit'` and was created during the test). Nothing is removed at SUMIT by the rejection or by this block: delete the customer / saved card in the SUMIT TEST organization (UI), or with an approved lab step, as the last item below.
 
 Then, in this order: the storage files with `scripts/sumit-lab/e2e-registration/storage-cleanup.mjs` (list first, then `--delete`), the dedicated test accounts in Authentication -> Users (the registration is gone, so the `NO ACTION` foreign key no longer blocks), and the customer / saved card in the SUMIT test organization (UI). The audit log keeps its entries.

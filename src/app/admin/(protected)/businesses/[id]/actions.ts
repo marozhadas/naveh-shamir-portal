@@ -33,6 +33,7 @@ import { getOffer, type OfferCode } from "@/data/subscription-offers";
 import { isValidBusinessSlug } from "@/utils/business-slug";
 import { activateRegistrationOnApproval, cancelPayMeSubscriptionForRejection, getSavedPaymentMethodInfo } from "@/repositories/supabase-subscription-service";
 import { activateSumitTrialOnApproval } from "@/repositories/sumit-trial-activation";
+import { cancelSumitTrialForRejection } from "@/repositories/sumit-trial-cancellation";
 import { decideApprovalPath } from "@/domain/decide-registration-approval";
 import { recordSlugRedirect } from "@/repositories/business-slug-redirect-repository";
 import { checkBusinessManagementEligibility, BUSINESS_MANAGEMENT_INELIGIBILITY_MESSAGE } from "@/utils/business-management-access";
@@ -142,6 +143,11 @@ export async function approveRegistrationAction(registrationId: string): Promise
 
 export type RejectActionState = { error: string | null; success: boolean };
 
+const SUMIT_TRIAL_NOT_ELIGIBLE_MESSAGE = "לעסק יש מנוי SUMIT שאינו מנוי ניסיון ללא חיוב (ייתכן שכבר חויב או שאינו בתקופת ניסיון), ולכן הדחייה לא בוצעה. יש לטפל בו ידנית.";
+const SUMIT_TRIAL_CANCEL_FAILED_MESSAGE = "לא הצלחנו לסיים את מנוי הניסיון של העסק, ולכן הדחייה לא בוצעה. נסו שוב בעוד רגע.";
+const REJECTION_NOT_SAVED_MESSAGE = "הדחייה לא נשמרה והעסק לא נדחה. נסו שוב בעוד רגע.";
+const REJECTION_NOT_SAVED_AFTER_TRIAL_ENDED_MESSAGE = "מנוי הניסיון של העסק הסתיים, אבל הדחייה לא נשמרה והעסק עדיין לא נדחה. אפשר ללחוץ על דחייה שוב: הפעולה בטוחה להרצה חוזרת.";
+
 export async function rejectRegistrationAction(
   registrationId: string,
   _prevState: RejectActionState,
@@ -164,14 +170,31 @@ export async function rejectRegistrationAction(
     return { error: "לא הצלחנו לבטל את המנוי ב-PayMe, ולכן הדחייה לא בוצעה. נסו שוב בעוד רגע, או בטלו את המנוי ב-PayMe ידנית.", success: false };
   }
 
-  await updateRegistrationStatus(registrationId, "rejected", { rejection_reason: reason });
+  // A SUMIT trial (started by approving a business with a saved SUMIT card) is ended here too - locally, no provider call, no charge -
+  // BEFORE the status changes, for the same reason as above: a rejected business must never keep an active trial. It only ever applies to a
+  // trial that was never billed; anything else with the SUMIT provider stops the rejection for a human to look at (money may be involved).
+  const sumitTrial = await cancelSumitTrialForRejection(registrationId, adminId);
+  if (!sumitTrial.success) {
+    return {
+      error: sumitTrial.reason === "not-eligible" ? SUMIT_TRIAL_NOT_ELIGIBLE_MESSAGE : SUMIT_TRIAL_CANCEL_FAILED_MESSAGE,
+      success: false,
+    };
+  }
+
+  try {
+    await updateRegistrationStatus(registrationId, "rejected", { rejection_reason: reason });
+  } catch (error) {
+    console.error("[rejectRegistrationAction] could not save the rejection:", error instanceof Error ? error.message : "unknown");
+    // Never report success for a business that was not rejected. The trial (if there was one) is already ended; running this again is safe.
+    return { error: sumitTrial.outcome === "canceled" ? REJECTION_NOT_SAVED_AFTER_TRIAL_ENDED_MESSAGE : REJECTION_NOT_SAVED_MESSAGE, success: false };
+  }
   await resolveNotificationForEntity("business-registration", registrationId, adminId);
   await recordAuditLog({
     adminId,
     action: "business-rejected",
     entityType: "business-registration",
     entityId: registrationId,
-    metadata: { businessName: registration.business_name, reason },
+    metadata: { businessName: registration.business_name, reason, ...(sumitTrial.outcome === "canceled" ? { sumitTrialCanceled: true, charged: false } : {}) },
   });
 
   revalidateBusinessViews(registrationId);

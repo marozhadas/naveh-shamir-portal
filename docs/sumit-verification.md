@@ -108,7 +108,8 @@ Scope and limits: one test registration, TEST organization, the documented test 
 - Idempotent: `UNIQUE(business_registration_id)` makes a concurrent second approval lose (`already-exists`, touches nothing); a later approval finds the business no longer pending. The approve step is guarded by `status = pending`; if it fails the subscription row we wrote is removed.
 - Cannot enter automatic billing: nothing charges; a SUMIT row has no `provider_subscription_id`, so the existing hourly job `expire_due_trials` ends the trial at `trial_ends_at` with no grace window (no charge). The owner page shows no billing date for it, and the admin revenue table shows "—" for a SUMIT row's next-billing date.
 - Admin sees SUMIT card info from provider + mask only (last four digits), with the approval dialog and the card section saying: no charge, trial days from the offer, billing not connected.
-- Known gaps (not part of this stage): rejecting a business AFTER approval does not touch its SUMIT trial row (the PayMe cancel path is PayMe-only) or the card at SUMIT; the card-less trial path for real owners; the first charge, cron, retries, grace and revenue recognition (Stage 2C+).
+- Rejection: rejecting a business ends its UNBILLED SUMIT trial locally first (`cancelSumitTrialForRejection`: `canceled`, no provider call, no charge; re-runnable; a SUMIT subscription that is not an unbilled trial refuses the rejection for manual handling; a failure after the trial ended is reported as an error, never success). Details and the cleanup variant: `docs/sumit-test-business-hide-and-cleanup.md`.
+- Known gaps (not part of this stage): the card stays at SUMIT after a rejection (removed by hand / an approved lab step); the card-less trial path for real owners; the first charge, cron, retries, grace and revenue recognition (Stage 2C+).
 
 ## How the organization is attested (without printing secrets)
 
