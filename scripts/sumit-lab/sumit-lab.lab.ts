@@ -193,14 +193,29 @@ describe("3. data-changing steps (each needs SUMIT_LAB_APPROVED=<name> and a pas
   });
 
   it.skipIf(!approved.has("replace-card"))("replace-card: a NEW token on a customer that has a card makes the new card the active one", async () => {
-    if (!ready("replace-card") || !state.customerId) return;
+    if (!ready("replace-card")) return;
+    if (!state.customerId) {
+      report("replace-card", { skipped: "no customer id: run save-card first, or set SUMIT_LAB_CUSTOMER_ID to the lab customer's id" });
+      return;
+    }
+    const customerId = state.customerId;
     recorder.setStep("replace-card");
+    const before = await getSumitPaymentMethod(customerId); // what is active BEFORE the replacement
     const token = await tokenizeTestCard(CARD_B);
-    const saved = await setSumitPaymentMethod({ customerId: state.customerId, singleUseToken: token });
-    const read = await getSumitPaymentMethod(state.customerId);
-    const withInactive = await rawPost("/billing/paymentmethods/getforcustomer/", { Customer: { ID: Number(state.customerId) }, IncludeInactive: true });
+    const saved = await setSumitPaymentMethod({ customerId, singleUseToken: token });
+    const read = await getSumitPaymentMethod(customerId);
+    const withInactive = await rawPost("/billing/paymentmethods/getforcustomer/", { Customer: { ID: Number(customerId) }, IncludeInactive: true });
     const data = withInactive.envelope.Data as { PaymentMethod?: { CreditCard_CardMask?: string }; InactivePaymentMethods?: Array<{ CreditCard_CardMask?: string }> } | undefined;
     const summary = {
+      customerId,
+      customerIdUnchanged: saved.customerId === customerId,
+      activeBeforeLast4: last4(before?.cardMask),
+      expectedBeforeLast4: last4(CARD_A.number),
+      paymentMethodIdBefore: before?.id ?? null,
+      paymentMethodIdAfterSave: saved.paymentMethod.id,
+      paymentMethodIdReadBack: read?.id ?? null,
+      // reported as observed - nothing assumes the id must (or must not) change
+      paymentMethodIdChanged: (before?.id ?? null) !== (read?.id ?? null),
       savedMaskLast4: last4(saved.paymentMethod.cardMask),
       activeAfterLast4: last4(read?.cardMask),
       expectedLast4: last4(CARD_B.number),
@@ -210,6 +225,7 @@ describe("3. data-changing steps (each needs SUMIT_LAB_APPROVED=<name> and a pas
     };
     summaries["replace-card"] = summary;
     report("replace-card", summary);
+    expect(summary.customerIdUnchanged).toBe(true);
     expect(summary.newCardIsActive).toBe(true);
   });
 
