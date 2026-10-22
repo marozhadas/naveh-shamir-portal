@@ -4,10 +4,10 @@ import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/Button";
 import { defaultFooterSettings } from "@/editor/config/editor-defaults";
-import { createPriceSnapshot, formatPriceWithInterval, TRIAL_DAYS } from "@/data/subscription-pricing";
 import { getSupabaseSessionUser } from "@/lib/supabase/server-client";
 import { getPaymentResume, PAYMENT_METHOD_ROUTE } from "@/lib/business-owner/payment-resume";
-import { getPayMeConfigForRegistrant } from "@/lib/payme/flow-access";
+import { getSumitRegistrationPayment } from "@/lib/sumit/registration-access";
+import { RESUME_NOTICE } from "@/lib/sumit/registration-copy";
 import { ResumePaymentStep } from "./ResumePaymentStep";
 import styles from "../trial/trial.module.css";
 
@@ -27,7 +27,7 @@ export default async function PaymentMethodPage() {
   if (!resume) {
     // Nothing to complete (already saved, approved, free, or not this account's): back to the dashboard. In the sandbox an
     // account that is not on the test list is told it is unavailable instead of being shown a test form.
-    if (!(await getPayMeConfigForRegistrant(sessionUser.email))) {
+    if (!getSumitRegistrationPayment(sessionUser.email)) {
       return (
         <>
           <a href="#main-content" className="skip-link">
@@ -54,8 +54,6 @@ export default async function PaymentMethodPage() {
     redirect("/business/dashboard");
   }
 
-  const snapshot = createPriceSnapshot(resume.planTier, resume.billingInterval);
-
   return (
     <>
       <a href="#main-content" className="skip-link">
@@ -66,17 +64,14 @@ export default async function PaymentMethodPage() {
         <div className={styles.container}>
           <h1 className={styles.title}>השלמת אמצעי תשלום</h1>
           <p className={styles.subtitle}>
-            נשאר שלב אחד להשלמת ההרשמה של &quot;{resume.businessName}&quot;: הוספת אמצעי תשלום. לא יתבצע חיוב כעת. העסק ימשיך להמתין לאישור הצוות.
+            {RESUME_NOTICE} העסק &quot;{resume.businessName}&quot; ימשיך להמתין לאישור הצוות.
           </p>
           <div className={styles.actionBox}>
             <ResumePaymentStep
               registrationId={resume.registrationId}
-              hostedFieldsKey={resume.hostedFieldsKey}
-              testMode={resume.testMode}
+              companyId={resume.payment.companyId}
+              apiPublicKey={resume.payment.apiPublicKey}
               planTier={resume.planTier}
-              priceLabel={formatPriceWithInterval(snapshot.amountIls, resume.billingInterval)}
-              amountValue={snapshot.amountIls.toFixed(2)}
-              trialDays={TRIAL_DAYS}
             />
           </div>
         </div>

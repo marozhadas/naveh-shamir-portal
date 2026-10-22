@@ -1,9 +1,10 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createSumitCustomer, getSumitCompanyDetailsPresence, getSumitCompanyName, getSumitPayment, getSumitPaymentMethod, listSumitPayments, setSumitPaymentMethod } from "@/lib/sumit/client";
 import { SUMIT_BASE_URL, getSumitConfig, getSumitConfigurationProblems, type SumitConfig } from "@/lib/sumit/config";
 import { createSumitPaymentProvider } from "@/lib/sumit/sumit-payment-provider";
 import { isSumitTestOrganizationName } from "@/lib/sumit/test-organization";
 import { getPaymentsProviderId } from "@/lib/payments/get-payment-provider";
+import { saveSumitPaymentMethodForRegistration } from "@/repositories/sumit-payment-method-service";
 import { PaymentProviderError } from "@/domain/payments/payment-provider";
 import {
   CARD_A,
@@ -23,6 +24,10 @@ import {
   writeOutput,
   type TestCard,
 } from "./lab-support";
+import { createFakeRegistrationDb } from "./fake-registration-db";
+
+// The registration-save step runs the REAL service with a FAKE database. The real Supabase admin client must be unreachable from the lab: touching it throws.
+vi.mock("@/lib/supabase/admin-client", () => ({ isSupabaseAdminConfigured: () => { throw new Error("THE LAB MUST NOT USE THE REAL SUPABASE CLIENT"); }, createAdminSupabaseClient: () => { throw new Error("THE LAB MUST NOT USE THE REAL SUPABASE CLIENT"); } }));
 
 /**
  * LOCAL SUMIT TEST LAB - run with `npm run sumit:lab` (see README.md). Not part of `npm test`, not part of any build.
@@ -474,6 +479,90 @@ describe("5. organization details (READ-ONLY): are the fields SUMIT needs for do
     };
     summaries.orgdetails = summary;
     report("orgdetails", summary);
+  });
+});
+
+describe("6. registration-save: the REAL save-a-card service against SUMIT Test, with a FAKE database (never the real Supabase)", () => {
+  it.skipIf(!approved.has("registration-save"))("registration-save: stranger refused (also with SUMIT_DRY_RUN=false), listed email saves a card; only the whitelisted rows are written, to the fake database", async () => {
+    if (!ready("registration-save")) return;
+    recorder.setStep("registration-save");
+
+    // --- isolation: no Supabase variable is visible to this step, and the real client throws if anything asks for it -------------
+    const SUPABASE_ENV_NAMES = ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "SUPABASE_SERVICE_ROLE_KEY"];
+    const supabaseVariablesRemoved = SUPABASE_ENV_NAMES.filter((name) => process.env[name] !== undefined).length;
+    for (const name of SUPABASE_ENV_NAMES) delete process.env[name];
+
+    const REGISTRATION_ID = "5a1e0000-0000-4000-8000-000000005a1e"; // a fixed lab id: SUMIT finds the same customer on every run
+    const OWNER_ID = "lab-owner-0001";
+    const LAB_EMAIL = "lab-registration@example.invalid";
+    const fake = createFakeRegistrationDb({ id: REGISTRATION_ID, owner_id: OWNER_ID, status: "pending", plan_tier: "plus", selected_billing_interval: "monthly", offer_code: "launch_standard" });
+    const payer = { name: "Lab Registration", email: LAB_EMAIL, phone: "0500000000" };
+    const base = { registrationId: REGISTRATION_ID, ownerId: OWNER_ID, payer };
+
+    const savedTestEmails = process.env.SUMIT_TEST_EMAILS;
+    const savedDryRun = process.env.SUMIT_DRY_RUN;
+    try {
+      // the experiment's own list for this step: only the lab address (in-process; nothing is written anywhere)
+      process.env.SUMIT_TEST_EMAILS = LAB_EMAIL;
+
+      // 1) someone who is NOT on the list is refused even with the dry run switched off - and not one request is sent
+      process.env.SUMIT_DRY_RUN = "false";
+      const callsBefore = recorder.calls();
+      const stranger = await saveSumitPaymentMethodForRegistration({ ...base, registrantEmail: "stranger@example.invalid", singleUseToken: "00000000-0000-4000-8000-000000000000" }, { admin: fake.admin });
+      const strangerSentNothing = recorder.calls() === callsBefore && fake.log.length === 0;
+      if (savedDryRun === undefined) delete process.env.SUMIT_DRY_RUN;
+      else process.env.SUMIT_DRY_RUN = savedDryRun;
+
+      // 2) the listed address saves a card (documented test card -> one-time token -> customer + card at SUMIT Test)
+      const token = await tokenizeTestCard(CARD_A);
+      const result = await saveSumitPaymentMethodForRegistration({ ...base, registrantEmail: LAB_EMAIL, singleUseToken: token }, { admin: fake.admin });
+      const row = fake.rows.billing_payment_methods[0] ?? null;
+      const customerId = typeof row?.provider_customer_id === "string" ? row.provider_customer_id : null;
+      const readBack = customerId ? await getSumitPaymentMethod(customerId) : null;
+
+      const writes = fake.log.filter((entry) => entry.op !== "select").map((entry) => entry.table + ":" + entry.op);
+      const recordedPaths = recorder.exchanges.filter((entry) => entry.step === "registration-save").map((entry) => entry.path);
+      const everythingWritten = JSON.stringify(fake.log) + JSON.stringify(result);
+      const summary = {
+        strangerRefusedEvenWithDryRunOff: stranger.success === false && stranger.reason === "sumit-not-configured",
+        strangerSentNothing,
+        listedEmailResult: result,
+        writesToTheFakeDatabase: writes,
+        rowKeys: row ? Object.keys(row).sort() : null,
+        provider: row?.provider ?? null,
+        providerTokenIsNull: row ? row.provider_token === null : null,
+        customerIdIsNumeric: customerId !== null && /^[0-9]{1,15}$/.test(customerId),
+        paymentMethodIdPresent: typeof row?.provider_payment_method_id === "string",
+        storedMaskLast4: last4(typeof row?.card_mask === "string" ? row.card_mask : null),
+        readBackMaskLast4: last4(readBack?.cardMask),
+        expectedLast4: last4(CARD_A.number),
+        tokenOrCardInAnythingWritten: everythingWritten.includes(token) || everythingWritten.includes(CARD_A.number),
+        sumitPathsUsed: [...new Set(recordedPaths)],
+        chargeRequestsSent: recorder.exchanges.filter((entry) => entry.path === "/billing/payments/charge/").length,
+        realSupabaseVariablesHiddenFromThisStep: supabaseVariablesRemoved >= 0,
+        realSupabaseClientUsed: false, // it throws if asked - this step would have failed
+        compareInSumitUi: "the customer 'Lab Registration' (external id = the fixed lab registration id) shows an ACTIVE card ending in " + last4(CARD_A.number),
+      };
+      summaries["registration-save"] = summary;
+      report("registration-save", summary);
+
+      expect(summary.strangerRefusedEvenWithDryRunOff).toBe(true);
+      expect(summary.strangerSentNothing).toBe(true);
+      expect(result).toEqual({ success: true });
+      expect(writes).toEqual(["billing_payment_methods:upsert", "business_events_log:insert"]);
+      expect(summary.provider).toBe("sumit");
+      expect(summary.providerTokenIsNull).toBe(true);
+      expect(summary.customerIdIsNumeric).toBe(true);
+      expect(summary.storedMaskLast4).toBe(last4(CARD_A.number));
+      expect(summary.readBackMaskLast4).toBe(last4(CARD_A.number));
+      expect(summary.tokenOrCardInAnythingWritten).toBe(false);
+      expect(summary.chargeRequestsSent).toBe(0);
+    } finally {
+      if (savedTestEmails === undefined) delete process.env.SUMIT_TEST_EMAILS;
+      else process.env.SUMIT_TEST_EMAILS = savedTestEmails;
+      if (savedDryRun === undefined) delete process.env.SUMIT_DRY_RUN;
+      else process.env.SUMIT_DRY_RUN = savedDryRun;
+    }
   });
 });
 

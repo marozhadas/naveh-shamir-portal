@@ -101,7 +101,17 @@ describe("static guard: the SUMIT code has no retry machinery", () => {
 
   it("no retry, backoff, timer or unbounded loop anywhere in the SUMIT modules", () => {
     expect(sources.length).toBeGreaterThan(3);
-    for (const { name, code } of sources) expect(code, name).not.toMatch(/\bretry|retries|backoff|setTimeout|setInterval|while\s*\(\s*true\s*\)|for\s*\(\s*;\s*;\s*\)/i);
+    // payments-js.ts is the browser side of the card form: its ONE timeout (checked in the next test) only ends a silent attempt
+    for (const { name, code } of sources.filter((entry) => entry.name !== "payments-js.ts")) expect(code, name).not.toMatch(/\bretry|retries|backoff|setTimeout|setInterval|while\s*\(\s*true\s*\)|for\s*\(\s*;\s*;\s*\)/i);
+  });
+
+  it("the browser side (payments-js.ts) has no retry or loop: one CreateToken call per attempt, and a timeout that only gives up", () => {
+    const code = sources.find((entry) => entry.name === "payments-js.ts")!.code;
+    expect(code).not.toMatch(/\bretry|retries|backoff|setInterval|while\s*\(\s*true\s*\)|for\s*\(\s*;\s*;\s*\)/i);
+    expect(code.match(/CreateToken\(/g)?.length).toBe(1); // the single call
+    expect(code.match(/setTimeout\(/g)?.length).toBe(1);
+    const body = code.slice(code.indexOf("export function requestToken"), code.indexOf("// --- the card fields"));
+    expect(body).not.toMatch(/\b(while|do)\b\s*[({]/);
   });
 
   it("chargeSumitCustomer sends a single request (one post call)", () => {

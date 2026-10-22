@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8" />
+<title>payments.js prototype (SUMIT test organization)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>body{font:15px system-ui;margin:24px;max-width:640px}input{display:block;margin:6px 0;padding:6px;width:260px}pre{background:#f4f4f4;padding:8px;white-space:pre-wrap}</style>
+</head>
+<body>
+<h1>payments.js prototype</h1>
+<p>Test organization, documented test cards only. Results are in <code>window.__results</code> (no card number, no token and no key is ever written there - only shapes, counts and statuses).</p>
+
+<form id="f" data-og="form" method="post" action="/sink" target="sinkframe">
+  <input data-og="cardnumber" name="cardNumber" autocomplete="off" inputmode="numeric" />
+  <input data-og="expirationmonth" name="expMonth" autocomplete="off" />
+  <input data-og="expirationyear" name="expYear" autocomplete="off" />
+  <input data-og="cvv" name="cvv" autocomplete="off" />
+  <input name="plain" value="plain-field-kept" />
+  <div class="og-errors" id="errs"></div>
+  <button type="submit" id="submitBtn">Submit</button>
+</form>
+<iframe name="sinkframe" id="sinkframe" style="display:none"></iframe>
+<pre id="out">ready</pre>
+
+<script>
+"use strict";
+// The documented SUMIT test cards (help article 5832877) - the same list the lab uses. Nothing else is ever typed here.
+const CARDS = {
+  "mc-2": { number: "5326107300020772", month: "05", year: "2031", cvv: "033" },
+  "mc-1-expired": { number: "5326105300985853", month: "04", year: "2026", cvv: "934" },
+};
+const params = new URLSearchParams(location.search);
+window.__results = {};
+window.__xhr = [];
+window.__ready = (async () => {
+  // count the requests payments.js sends (URL path + HTTP status only - never a body)
+  const open = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (method, url) {
+    const entry = { method, path: String(url).replace(/^https?:\/\/[^/]+/, "").split("?")[0], host: (String(url).match(/^https?:\/\/([^/]+)/) || [])[1] || "same-origin", status: null };
+    window.__xhr.push(entry);
+    this.addEventListener("loadend", () => (entry.status = this.status));
+    return open.apply(this, arguments);
+  };
+  window.__config = await (await fetch("/config.json")).json();
+  if (params.get("jq") !== "0") await load("/jquery.js");
+  await load("https://app.sumit.co.il/scripts/payments.js");
+  document.getElementById("out").textContent = "loaded: jQuery=" + (typeof window.jQuery) + " OfficeGuy=" + (typeof window.OfficeGuy);
+})();
+function load(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = () => reject(new Error("load failed: " + src.replace(/\?.*/, "")));
+    document.head.appendChild(s);
+  });
+}
+function fill(cardId) {
+  const card = CARDS[cardId];
+  const f = document.getElementById("f");
+  f.querySelector("[data-og=cardnumber]").value = card.number;
+  f.querySelector("[data-og=expirationmonth]").value = card.month;
+  f.querySelector("[data-og=expirationyear]").value = card.year;
+  f.querySelector("[data-og=cvv]").value = card.cvv;
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const tokenizeRequests = () => window.__xhr.filter((x) => /creditguy\/vault\/tokenizesingleuse/.test(x.path));
+function describeToken(token) {
+  if (typeof token !== "string") return { present: false };
+  return { present: true, length: token.length, uuidLike: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token), digitsOnly: /^\d+$/.test(token) };
+}
+function describeResponse(r) {
+  return { Status: r && r.Status, hasUserErrorMessage: Boolean(r && r.UserErrorMessage), hasTechnicalDetails: Boolean(r && r.TechnicalErrorDetails), token: describeToken(r && r.Data && r.Data.SingleUseToken), dataKeys: r && r.Data ? Object.keys(r.Data) : null };
+}
+const settings = (extra) => Object.assign({ CompanyID: window.__config.companyId, APIPublicKey: window.__config.apiPublicKey, FormSelector: "#f" }, extra || {});
+function fieldState() {
+  const f = document.getElementById("f");
+  const og = f.querySelector("input[name=og-token]");
+  return {
+    dataOgNamesAfter: [...f.querySelectorAll("[data-og]")].map((e) => e.getAttribute("name")),
+    ogTokenInputExists: Boolean(og),
+    ogTokenValueLength: og ? og.value.length : 0,
+    errorsText: document.getElementById("errs").textContent.length > 0 ? "(error text present)" : "",
+  };
+}
+function resetToken() { const og = document.querySelector("#f input[name=og-token]"); if (og) og.value = ""; document.getElementById("errs").textContent = ""; }
+
+window.tests = {
+  // T1 (page loaded with ?jq=0): what happens without jQuery?
+  async noJquery() {
+    await window.__ready;
+    const r = { jQueryType: typeof window.jQuery, officeGuyType: typeof window.OfficeGuy, paymentsType: typeof (window.OfficeGuy && window.OfficeGuy.Payments) };
+    fill("mc-2");
+    try { r.createTokenReturned = String(window.OfficeGuy.Payments.CreateToken(settings({ ResponseCallback() {} }))); } catch (e) { r.createTokenThrew = e.name + ": " + e.message; }
+    try { window.OfficeGuy.Payments.BindFormSubmit(settings()); r.bindThrew = null; } catch (e) { r.bindThrew = e.name + ": " + e.message; }
+    r.tokenizeRequestsSent = tokenizeRequests().length;
+    return (window.__results.noJquery = r);
+  },
+  // T2: one token through CreateToken + ResponseCallback (what a React form would do)
+  async oneToken() {
+    await window.__ready;
+    resetToken(); fill("mc-2");
+    let response = null; let calls = 0;
+    const returned = window.OfficeGuy.Payments.CreateToken(settings({ ResponseCallback(r) { calls += 1; response = r; } }));
+    await sleep(4000);
+    return (window.__results.oneToken = { returned, callbackCalls: calls, response: describeResponse(response), tokenizeRequests: tokenizeRequests().map((x) => ({ host: x.host, path: x.path, status: x.status })), ...fieldState() });
+  },
+  // T3: double submission - two calls in a row, then a call after a token exists
+  async doubleCall() {
+    await window.__ready;
+    resetToken(); fill("mc-2");
+    const before = tokenizeRequests().length;
+    const responses = [];
+    const a = window.OfficeGuy.Payments.CreateToken(settings({ ResponseCallback(r) { responses.push(describeResponse(r)); } }));
+    const b = window.OfficeGuy.Payments.CreateToken(settings({ ResponseCallback(r) { responses.push(describeResponse(r)); } }));
+    await sleep(4500);
+    const afterTwo = tokenizeRequests().length;
+    const third = window.OfficeGuy.Payments.CreateToken(settings({ ResponseCallback(r) { responses.push({ third: true }); } }));
+    await sleep(1500);
+    return (window.__results.doubleCall = { firstReturned: a, secondReturned: b, requestsForTwoRapidCalls: afterTwo - before, responsesAfterTwo: responses.length, thirdReturned: third, requestsAfterThird: tokenizeRequests().length - afterTwo, ...fieldState() });
+  },
+  // T4: an expired documented card
+  async expiredCard() {
+    await window.__ready;
+    resetToken(); fill("mc-1-expired");
+    let response = null; let calls = 0;
+    window.OfficeGuy.Payments.CreateToken(settings({ ResponseCallback(r) { calls += 1; response = r; } }));
+    await sleep(4000);
+    return (window.__results.expiredCard = { callbackCalls: calls, response: describeResponse(response), ...fieldState() });
+  },
+  // T5: the request cannot be sent at all (unreachable host): is the callback ever called?
+  async networkFailure() {
+    await window.__ready;
+    resetToken(); fill("mc-2");
+    let calls = 0;
+    window.OfficeGuy.Payments.CreateToken(settings({ Environment: "no-such-host-prototype", ResponseCallback() { calls += 1; } }));
+    await sleep(5000);
+    return (window.__results.networkFailure = { callbackCalls: calls, note: "0 calls = the page must have its own timeout" });
+  },
+  // T6: the documented BindFormSubmit flow (native form + hidden og-token field) with a real submit event
+  async bindFlow() {
+    await window.__ready;
+    resetToken(); fill("mc-2");
+    const sinkBefore = (await (await fetch("/sink-log")).json()).count;
+    const before = tokenizeRequests().length;
+    let calls = 0;
+    window.OfficeGuy.Payments.BindFormSubmit(settings({ ResponseCallback() { calls += 1; } }));
+    const f = document.getElementById("f");
+    f.requestSubmit(); f.requestSubmit();
+    await sleep(4500);
+    const afterBind = (await (await fetch("/sink-log")).json());
+    return (window.__results.bindFlow = { callbackCalls: calls, requestsForTwoRapidSubmits: tokenizeRequests().length - before, nativePostsToSink: afterBind.count - sinkBefore, ...fieldState() });
+  },
+  // T7: the same flow WITHOUT any callback (the documented example): token is put in the form, then the form is submitted natively
+  async bindFlowNoCallback() {
+    await window.__ready;
+    resetToken(); fill("mc-2");
+    const sinkBefore = (await (await fetch("/sink-log")).json()).count;
+    const before = tokenizeRequests().length;
+    document.getElementById("f").dataset.ogInitialized = "";
+    window.OfficeGuy.Payments.BindFormSubmit(settings({ FormSelector: "#f" }));
+    document.getElementById("f").requestSubmit();
+    await sleep(5000);
+    const log = await (await fetch("/sink-log")).json();
+    return (window.__results.bindFlowNoCallback = { requests: tokenizeRequests().length - before, nativePostsToSink: log.count - sinkBefore, postedFieldNames: log.fieldNames, ...fieldState() });
+  },
+};
+</script>
+</body>
+</html>

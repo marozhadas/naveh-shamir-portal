@@ -63,6 +63,23 @@ Observations from the test organization only. **They are not statements about pr
 
 Not covered by D: the document type was checked in the UI only for this one run (the API does not return it); the test-terminal mark; `VATIncluded = false`; authorise-only; a decline; the UPAY CVV exemption.
 
+## E. The card step of the registration (an experiment): what payments.js does, observed in the test organization (2026-10-22)
+
+Read from SUMIT's public script (https://app.sumit.co.il/scripts/payments.js, ~2.5 KB) and run in a browser against the test organization (`scripts/sumit-lab/payments-js-prototype`, documented test cards only, 8 tokenization calls). **Observations, not guarantees:** the script is SUMIT's, unversioned, and can change.
+
+| # | Observation | Consequence in the app |
+|---|---|---|
+| E1 | **jQuery is required.** Without a global `jQuery` every call throws `ReferenceError: jQuery is not defined` (the script itself loads fine). | The form bundles `jquery@3.7.1` (exact version, loaded only on step 6) and sets only `window.jQuery`. |
+| E2 | `OfficeGuy.Payments.CreateToken(settings)` reads the card from inputs marked `data-og="cardnumber|expirationmonth|expirationyear|cvv"` in `settings.FormSelector`, sets their `name` to "" (so a native submit never carries the card), and posts them from the browser to `https://api.sumit.co.il/creditguy/vault/tokenizesingleuse/`. | The card lives in the page's DOM for a moment (unlike PayMe's iframes). The form uses uncontrolled inputs, clears them when a token exists, and the copy no longer claims an iframe. |
+| E3 | **A callback exists that the help page does not mention:** `ResponseCallback(response)` (also `Callback(token)`). A success is `{ Status: 0, Data: { SingleUseToken } }` - a 36-character uuid; an empty card number gives HTTP 200 with `{ Status: 1, UserErrorMessage }` (and the script writes that text into `ErrorsClass`). | The form calls `CreateToken` itself with `ResponseCallback` (never `BindFormSubmit`), maps a non-zero Status to its own Hebrew text and never shows SUMIT's. |
+| E4 | **No double-submit protection.** Two calls in a row sent two requests and created two tokens; two `requestSubmit()` calls on a bound form did the same. | The form holds a lock before anything starts; one tokenization per click; no native submit (Enter included). |
+| E5 | If a hidden `input[name=og-token]` already holds a value, `CreateToken` returns `true` and sends **nothing** (the callback is not called). In the documented `BindFormSubmit` flow without a callback, the token is placed in the form and the form is then submitted natively (the post contained only the plain fields and `og-token` - never the card). | `requestToken` empties that field before every attempt and after the answer. |
+| E6 | **If the request cannot be sent (unreachable host), the callback is never called.** | `requestToken` has its own 20 s timeout and answers "no-answer"; a late answer is ignored. |
+| E7 | An **expired documented test card still tokenizes** (Status 0): the token step does not validate the card. | Validation of the card happens at SUMIT only when it is saved/charged; the browser checks the shape only (the documented test cards do not all pass Luhn, so no Luhn check). |
+| E8 | The registration-save lab step (real service, SUMIT Test, **fake database**): token -> `customers/create` (found by external id) -> `setforcustomer` -> `getforcustomer`; the row written to the fake database had `provider='sumit'`, `provider_token=null`, a numeric customer id, a payment-method id and the card's last four digits; **no charge request was sent**; a listed email saved the card and a stranger was refused **with `SUMIT_DRY_RUN=false`** without any request. | Observed once. The real Supabase was never touched (its client throws in the lab). |
+
+Not tested: the card form inside the real wizard in a browser (it needs a signed-in owner and writes a real registration), an ID-number (citizenid) requirement under UPAY in production, behaviour when the script's host is blocked, and what a re-used one-time token does.
+
 ## How the organization is attested (without printing secrets)
 
 1. In SUMIT, switch to the TEST business (the business selector in the sidebar; "בדיקות" is added to its name, shown in red). Open https://app.sumit.co.il/developers/keys/ **while in that business** and copy the CompanyID and the keys into `.env.local` yourself. Nothing is pasted in chat.
@@ -105,6 +122,8 @@ Budget: the test organization has about 100 operations and 400 API calls per mon
 3. פטור CVV של UPAY בחיוב כרטיס שמור עם `payments/charge`: האם הוא חל בהגדרות ברירת המחדל, ומה משנים `PreventStandingOrder` ו-`MerchantNumber`? (לא ניתן לבדיקה בארגון בדיקות, אין בו UPAY.)
 
 ## What still blocks Stage 2B
+
+- The card step (E) is an experiment limited to SUMIT_TEST_EMAILS on the test organization. Opening it wider, the admin's view of a SUMIT card, and what the approval does with it are NOT done: today an approval of such a registration only approves the business (no subscription, no trial).
 
 - More lab evidence for C1, C2, C4 and the open parts of C3 / C6 (one run is not proof), before any revenue recognition or grace logic. Still approval-gated lab steps: `charge-vat-false`, `authorise-only`, `no-method`, `null-token`.
 - C5 (UPAY CVV exemption) before production.

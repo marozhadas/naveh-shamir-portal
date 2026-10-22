@@ -186,14 +186,33 @@ describe("who may use it, and what must be true first", () => {
     expect(provider.savePaymentMethod).not.toHaveBeenCalled();
   });
 
-  it("dry run (the default): only the listed test emails; with SUMIT_DRY_RUN=false everyone", async () => {
+  it("the experiment: ONLY the listed test emails, ALWAYS - also with SUMIT_DRY_RUN=false", async () => {
     const provider = makeProvider();
     expect(await saveSumitPaymentMethodForRegistration(input({ registrantEmail: "stranger@example.com" }), { provider })).toEqual({ success: false, reason: "sumit-not-configured" });
     expect(await saveSumitPaymentMethodForRegistration(input({ registrantEmail: null }), { provider })).toEqual({ success: false, reason: "sumit-not-configured" });
     expect(provider.savePaymentMethod).not.toHaveBeenCalled();
     expect(await saveSumitPaymentMethodForRegistration(input({ registrantEmail: "NOA@example.com" }), { provider })).toEqual({ success: true });
     configureSumit({ SUMIT_DRY_RUN: "false" });
-    expect(await saveSumitPaymentMethodForRegistration(input({ registrantEmail: "stranger@example.com" }), { provider })).toEqual({ success: true });
+    provider.savePaymentMethod.mockClear();
+    expect(await saveSumitPaymentMethodForRegistration(input({ registrantEmail: "stranger@example.com" }), { provider })).toEqual({ success: false, reason: "sumit-not-configured" });
+    expect(provider.savePaymentMethod).not.toHaveBeenCalled();
+    expect(await saveSumitPaymentMethodForRegistration(input({ registrantEmail: EMAIL }), { provider })).toEqual({ success: true });
+  });
+
+  it("an empty SUMIT_TEST_EMAILS list lets nobody in (also with SUMIT_DRY_RUN=false)", async () => {
+    const provider = makeProvider();
+    for (const dryRun of [undefined, "false"]) {
+      configureSumit({ SUMIT_TEST_EMAILS: "", ...(dryRun ? { SUMIT_DRY_RUN: dryRun } : {}) });
+      expect(await saveSumitPaymentMethodForRegistration(input(), { provider }), String(dryRun)).toEqual({ success: false, reason: "sumit-not-configured" });
+    }
+    expect(provider.savePaymentMethod).not.toHaveBeenCalled();
+  });
+
+  it("an injected admin client is used instead of the real one (so a test or the lab can never reach the real database)", async () => {
+    const calls: string[] = [];
+    const fake = { from: (table: string) => { calls.push(table); return from(table); } } as never;
+    expect(await saveSumitPaymentMethodForRegistration(input(), { provider: makeProvider(), admin: fake })).toEqual({ success: true });
+    expect(calls).toEqual(["business_registrations", "business_subscriptions", "billing_payment_methods", "business_events_log"]);
   });
 
   it("never falls back to another provider: without PAYMENTS_PROVIDER=sumit (or with a bad value) and no injected provider, it stays off", async () => {

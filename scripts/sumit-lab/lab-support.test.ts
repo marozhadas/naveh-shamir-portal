@@ -207,7 +207,7 @@ describe("the charge-saved step is one guarded request with no retry", () => {
 
 describe("the reconcile step is read-only", () => {
   const lab = readFileSync(path.join(__dirname, "sumit-lab.lab.ts"), "utf8");
-  const step = lab.slice(lab.indexOf('describe("4. reconcile'), lab.indexOf('describe("secrets never reach the output"'));
+  const step = lab.slice(lab.indexOf('describe("4. reconcile'), lab.indexOf('describe("5. organization details'));
   const stepCode = step.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
   it("only lists and reads payments: no charge, no customer, no payment-method, no tokenization, no raw write, and it is off unless SUMIT_LAB_READONLY=reconcile", () => {
@@ -220,7 +220,7 @@ describe("the reconcile step is read-only", () => {
 
 describe("the organization-details step reports presence only", () => {
   const lab = readFileSync(path.join(__dirname, "sumit-lab.lab.ts"), "utf8");
-  const step = lab.slice(lab.indexOf('describe("5. organization details'), lab.indexOf('describe("secrets never reach the output"'));
+  const step = lab.slice(lab.indexOf('describe("5. organization details'), lab.indexOf('describe("6. registration-save'));
 
   it("calls only the presence function, is off unless SUMIT_LAB_READONLY=orgdetails, and prints no value", () => {
     expect(step).toContain('process.env.SUMIT_LAB_READONLY !== "orgdetails"');
@@ -256,7 +256,15 @@ describe("static guard rails for the lab", () => {
     for (const name of labFiles) {
       const source = code(readFileSync(path.join(dir, name), "utf8"));
       expect(source, name).not.toMatch(/payme(?!nt)/i);
-      expect(source, name).not.toMatch(/SUPABASE|createAdminSupabaseClient/);
+      // The ONLY Supabase mentions allowed: the registration-save step hides the Supabase variables from itself, and replaces the real
+      // admin client with one that THROWS if anything asks for it (it runs the real service with a fake database).
+      const allowedSupabase = /SUPABASE_ENV_NAMES|NEXT_PUBLIC_SUPABASE|SUPABASE_SERVICE_ROLE_KEY|vi\.mock\("@\/lib\/supabase\/admin-client"/;
+      const otherLines = source.split("\n").filter((line) => !allowedSupabase.test(line)).join("\n");
+      expect(otherLines, name).not.toMatch(/SUPABASE|createAdminSupabaseClient/);
+      for (const mockLine of source.split("\n").filter((line) => /vi\.mock\("@\/lib\/supabase\/admin-client"/.test(line))) {
+        expect(mockLine, name).toContain("throw new Error");
+        expect(mockLine, name).not.toMatch(/return \{ data|from:|select|upsert/);
+      }
       // the production unlock may only be READ, as a guard ("must not be set"); the lab never sets it
       expect(source.replace(/process\.env\.SUMIT_ALLOW_PRODUCTION === undefined/g, ""), name).not.toMatch(/SUMIT_ALLOW_PRODUCTION/);
       expect(source, name).not.toMatch(/console\.(log|info|warn|error)\([^)]*(apiKey|apiPublicKey|process\.env)/);
@@ -273,5 +281,68 @@ describe("static guard rails for the lab", () => {
     for (const name of readdirSync(appSumit).filter((entry) => /\.ts$/.test(entry) && !/\.test\./.test(entry))) {
       expect(readFileSync(path.join(appSumit, name), "utf8"), name).not.toMatch(/tokenizesingleuse|CardNumber/);
     }
+  });
+});
+
+describe("the registration-save step (real service, SUMIT Test, FAKE database)", () => {
+  const dir = __dirname;
+  const lab = readFileSync(path.join(dir, "sumit-lab.lab.ts"), "utf8");
+  const step = lab.slice(lab.indexOf('describe("6. registration-save'), lab.indexOf('describe("secrets never reach the output"'));
+
+  it("is a data-changing step: it needs its own approval by name", () => {
+    expect(DATA_CHANGING_STEPS).toContain("registration-save");
+    expect(step).toContain('approved.has("registration-save")');
+    expect(step).toContain('ready("registration-save")');
+  });
+
+  it("every call of the service passes the FAKE database, and nothing here can create the real client", () => {
+    const calls = step.match(/saveSumitPaymentMethodForRegistration\(/g)?.length ?? 0;
+    expect(calls).toBe(2);
+    expect(step.match(/\{ admin: fake\.admin \}/g)?.length).toBe(calls);
+    expect(step).not.toMatch(/createAdminSupabaseClient|isSupabaseAdminConfigured|createClient\(/);
+    expect(step).toContain("createFakeRegistrationDb(");
+    // the real client is replaced by one that throws, at the top of the lab file
+    expect(lab).toMatch(/vi\.mock\("@\/lib\/supabase\/admin-client", \(\) => \(\{ isSupabaseAdminConfigured: \(\) => \{ throw new Error\(/);
+  });
+
+  it("sends no charge: no provider.charge, no payments endpoint, no AuthoriseOnly", () => {
+    const code = step.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    // (the only mention of the charge endpoint is the line that COUNTS charge requests, which must stay 0)
+    expect(code.split("\n").filter((line) => !/chargeRequestsSent/.test(line)).join("\n")).not.toMatch(/provider\.charge|createSumitPaymentProvider|payments\/charge|AuthoriseOnly|SUMIT_DRY_RUN = "true"/);
+    expect(code).toMatch(/chargeRequestsSent: recorder\.exchanges\.filter\(\(entry\) => entry\.path === "\/billing\/payments\/charge\/"\)\.length/);
+    expect(code).toContain("expect(summary.chargeRequestsSent).toBe(0)");
+  });
+
+  it("restores the environment it changes (the test list and the dry run)", () => {
+    expect(step).toMatch(/finally \{[\s\S]*?SUMIT_TEST_EMAILS[\s\S]*?SUMIT_DRY_RUN/);
+  });
+});
+
+describe("the fake registration database", () => {
+  it("allows exactly the card upsert and the event insert; any other table, write or read throws", async () => {
+    const { createFakeRegistrationDb } = await import("./fake-registration-db");
+    const registration = { id: "r1", owner_id: "o1", status: "pending" };
+    const fake = createFakeRegistrationDb(registration);
+    const db = fake.admin as unknown as { from: (table: string) => Record<string, (...args: unknown[]) => unknown> };
+
+    const found = await (db.from("business_registrations").select() as unknown as { eq: (c: string, v: unknown) => { eq: (c: string, v: unknown) => { maybeSingle: () => Promise<{ data: unknown }> } } }).eq("id", "r1").eq("owner_id", "o1").maybeSingle();
+    expect(found.data).toBe(registration);
+    const missing = await (db.from("business_registrations").select() as unknown as { eq: (c: string, v: unknown) => { eq: (c: string, v: unknown) => { maybeSingle: () => Promise<{ data: unknown }> } } }).eq("id", "r1").eq("owner_id", "someone-else").maybeSingle();
+    expect(missing.data).toBeNull();
+
+    await db.from("billing_payment_methods").upsert({ business_registration_id: "r1", provider: "sumit" }, {});
+    await db.from("business_events_log").insert({ business_registration_id: "r1" });
+    expect(fake.log.filter((entry) => entry.op !== "select").map((entry) => `${entry.table}:${entry.op}`)).toEqual(["billing_payment_methods:upsert", "business_events_log:insert"]);
+
+    await expect(db.from("business_registrations").upsert({ id: "r1" }, {})).rejects.toThrow(/unexpected write/);
+    await expect(db.from("business_subscriptions").insert({})).rejects.toThrow(/unexpected write/);
+    expect(() => db.from("business_registrations").update({})).toThrow(/not allowed/);
+    expect(() => db.from("billing_payment_methods").delete()).toThrow(/not allowed/);
+    await expect((db.from("billing_transactions").select() as unknown as { eq: () => { maybeSingle: () => Promise<unknown> } }).eq().maybeSingle()).rejects.toThrow(/unexpected read/);
+  });
+
+  it("holds no credentials and opens no connection", () => {
+    const source = readFileSync(path.join(__dirname, "fake-registration-db.ts"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(source).not.toMatch(/process\.env|fetch\(|createClient|supabase|http/i);
   });
 });

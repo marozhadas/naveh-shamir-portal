@@ -21,7 +21,7 @@ export const ALLOWED_ORIGIN = "https://api.sumit.co.il/";
 export const DEFAULT_MAX_CALLS = 30;
 
 /** The steps that CHANGE data in SUMIT (customers, saved cards, tokens, charges, documents). Each needs explicit approval by name. */
-export const DATA_CHANGING_STEPS = ["save-card", "null-token", "replace-card", "charge-saved", "charge-vat-false", "authorise-only", "no-method"] as const;
+export const DATA_CHANGING_STEPS = ["save-card", "null-token", "replace-card", "registration-save", "charge-saved", "charge-vat-false", "authorise-only", "no-method"] as const;
 export type DataChangingStep = (typeof DATA_CHANGING_STEPS)[number];
 
 export type TestCard = { id: string; brand: string; number: string; month: number; year: number; cvv: string };

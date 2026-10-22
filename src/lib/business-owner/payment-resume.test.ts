@@ -4,28 +4,29 @@ vi.mock("server-only", () => ({}));
 
 const sessionUser = vi.fn();
 vi.mock("@/lib/supabase/server-client", () => ({ getSupabaseSessionUser: () => sessionUser() }));
-const registrantConfig = vi.fn();
-vi.mock("@/lib/payme/flow-access", () => ({ getPayMeConfigForRegistrant: (...args: unknown[]) => registrantConfig(...args) }));
+const registrationPayment = vi.fn();
+vi.mock("@/lib/sumit/registration-access", () => ({ getSumitRegistrationPayment: (...args: unknown[]) => registrationPayment(...args) }));
 const find = vi.fn();
 vi.mock("@/repositories/supabase-subscription-service", () => ({ findRegistrationAwaitingPaymentMethod: (...args: unknown[]) => find(...args) }));
 
 import { getPaymentResume } from "./payment-resume";
 
 const REGISTRATION = { registrationId: "reg-1", planTier: "plus" as const, billingInterval: "monthly" as const, businessName: "סטודיו נועה" };
+const PAYMENT = { companyId: 123456, apiPublicKey: "public-key", testMode: true as const };
 
 describe("getPaymentResume", () => {
   beforeEach(() => {
     sessionUser.mockReset();
-    registrantConfig.mockReset();
+    registrationPayment.mockReset();
     find.mockReset();
     sessionUser.mockResolvedValue({ id: "user-1", email: "owner@example.com" });
-    registrantConfig.mockResolvedValue({ env: "live", hostedFieldsKey: "public-key" });
+    registrationPayment.mockReturnValue(PAYMENT);
     find.mockResolvedValue(REGISTRATION);
   });
 
   it("offers the owner's own pending registration, found by the verified session user - never by an id from the browser", async () => {
     const resume = await getPaymentResume();
-    expect(resume).toMatchObject({ registrationId: "reg-1", planTier: "plus", hostedFieldsKey: "public-key", testMode: false });
+    expect(resume).toMatchObject({ registrationId: "reg-1", planTier: "plus", payment: PAYMENT });
     expect(find).toHaveBeenCalledWith("user-1");
     expect(getPaymentResume.length).toBe(0); // no parameters at all
   });
@@ -36,16 +37,17 @@ describe("getPaymentResume", () => {
     expect(find).not.toHaveBeenCalled();
   });
 
-  it("10. sandbox: an account that is not on the test list gets no Hosted Fields and no lookup", async () => {
-    registrantConfig.mockResolvedValue(null);
+  it("an account that is not on SUMIT_TEST_EMAILS (or SUMIT is not the test organization) gets no card step and no lookup", async () => {
+    registrationPayment.mockReturnValue(null);
     expect(await getPaymentResume()).toBeNull();
-    expect(registrantConfig).toHaveBeenCalledWith("owner@example.com");
+    expect(registrationPayment).toHaveBeenCalledWith("owner@example.com");
     expect(find).not.toHaveBeenCalled();
   });
 
-  it("sandbox: a listed account gets the test-mode form", async () => {
-    registrantConfig.mockResolvedValue({ env: "sandbox", hostedFieldsKey: "sandbox-public-key" });
-    expect(await getPaymentResume()).toMatchObject({ testMode: true, hostedFieldsKey: "sandbox-public-key" });
+  it("hands over only the CompanyID and the PUBLIC key - never a secret", async () => {
+    const resume = await getPaymentResume();
+    expect(Object.keys(resume!.payment).sort()).toEqual(["apiPublicKey", "companyId", "testMode"]);
+    expect(JSON.stringify(resume)).not.toMatch(/apiKey"|secret/i);
   });
 
   it("7/8/9. nothing to complete (already has a card, approved, free): nothing is offered", async () => {

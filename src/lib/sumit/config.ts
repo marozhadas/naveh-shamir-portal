@@ -15,7 +15,8 @@ import "server-only";
  *   PAYMENTS_PROVIDER      must be "sumit" (see lib/payments/get-payment-provider.ts).
  *   SUMIT_DRY_RUN          (optional) charges are only validated (AuthoriseOnly + DraftDocument), never executed, UNLESS this is exactly
  *                          "false". Unset / anything else = dry run.
- *   SUMIT_TEST_EMAILS      (optional) comma-separated sign-in emails that may use the SUMIT payment step while the dry run is on.
+ *   SUMIT_TEST_EMAILS      (optional) comma-separated sign-in emails that may use the SUMIT card step of the registration (lib/sumit/registration-access.ts).
+ *                          That experiment is limited to this list AND to SUMIT_ENVIRONMENT=test, whatever SUMIT_DRY_RUN says. Empty = nobody.
  *
  * SUMIT_DRY_RUN and SUMIT_ENVIRONMENT are DIFFERENT protections. The dry run only changes what a charge request asks for; it does
  * NOT prove that the organization is the test one. The environment guard is what proves (by configuration) which organization

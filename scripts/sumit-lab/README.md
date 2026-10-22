@@ -38,7 +38,7 @@ $env:SUMIT_LAB_APPROVED = "save-card"
 npm run sumit:lab
 ```
 
-הצעדים (בשם): `save-card`, `null-token`, `replace-card`, `charge-saved`, `charge-vat-false`, `authorise-only`, `no-method`. הצעד `decline` חסום: SUMIT לא מתעדת תרחיש דחייה, ולכן לא מנחשים מספרי כרטיס.
+הצעדים (בשם): `save-card`, `null-token`, `replace-card`, `registration-save` (מריץ את שירות שמירת הכרטיס של ההרשמה מול SUMIT Test עם **מסד נתונים מדומה** בזיכרון - `fake-registration-db.ts`; הלקוח האמיתי של Supabase חסום ויזרוק שגיאה אם מישהו מבקש אותו; אין חיוב), `charge-saved`, `charge-vat-false`, `authorise-only`, `no-method`. הצעד `decline` חסום: SUMIT לא מתעדת תרחיש דחייה, ולכן לא מנחשים מספרי כרטיס.
 
 ## אימות שהמפתחות הם של ארגון הבדיקות
 

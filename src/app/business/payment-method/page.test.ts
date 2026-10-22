@@ -15,8 +15,8 @@ const sessionUser = vi.fn();
 vi.mock("@/lib/supabase/server-client", () => ({ getSupabaseSessionUser: () => sessionUser() }));
 const resume = vi.fn();
 vi.mock("@/lib/business-owner/payment-resume", () => ({ PAYMENT_METHOD_ROUTE: "/business/payment-method", getPaymentResume: () => resume() }));
-const registrantConfig = vi.fn();
-vi.mock("@/lib/payme/flow-access", () => ({ getPayMeConfigForRegistrant: (...args: unknown[]) => registrantConfig(...args) }));
+const registrationPayment = vi.fn();
+vi.mock("@/lib/sumit/registration-access", () => ({ getSumitRegistrationPayment: (...args: unknown[]) => registrationPayment(...args) }));
 vi.mock("@/editor/connected/ConnectedHeader", () => ({ ConnectedHeader: () => null }));
 vi.mock("@/components/layout/Footer", () => ({ Footer: () => null }));
 // The wrapper is replaced by a marker so the test sees exactly which props the server hands it.
@@ -26,7 +26,7 @@ vi.mock("./ResumePaymentStep", () => ({
 
 import PaymentMethodPage from "./page";
 
-const RESUME = { registrationId: "55555555-5555-5555-5555-555555555555", planTier: "plus", billingInterval: "yearly", businessName: "סטודיו נועה", hostedFieldsKey: "public-key", testMode: false };
+const RESUME = { registrationId: "55555555-5555-5555-5555-555555555555", planTier: "plus", billingInterval: "yearly", businessName: "סטודיו נועה", payment: { companyId: 123456, apiPublicKey: "public-key", testMode: true } };
 
 async function render(): Promise<string> {
   return renderToStaticMarkup(await PaymentMethodPage());
@@ -37,10 +37,10 @@ describe("/business/payment-method - step 6 for an existing pending registration
     redirect.mockClear();
     sessionUser.mockReset();
     resume.mockReset();
-    registrantConfig.mockReset();
+    registrationPayment.mockReset();
     sessionUser.mockResolvedValue({ id: "user-1", email: "owner@example.com" });
     resume.mockResolvedValue(RESUME);
-    registrantConfig.mockResolvedValue({ env: "live" });
+    registrationPayment.mockReturnValue({ companyId: 123456, apiPublicKey: "public-key", testMode: true });
   });
 
   it("2. leads to step 6 of THAT registration: the same payment form with the registration found on the server", async () => {
@@ -49,11 +49,14 @@ describe("/business/payment-method - step 6 for an existing pending registration
     const props = JSON.parse(/data-props="([^"]*)"/.exec(html)![1].replace(/&quot;/g, '"')) as Record<string, unknown>;
     expect(props.registrationId).toBe(RESUME.registrationId);
     expect(props.planTier).toBe("plus");
-    // the price shown comes from the server-side price snapshot of the stored plan and track (yearly plus), not from the browser
-    expect(props.priceLabel).toBe("390 ₪ לשנה");
-    expect(props.amountValue).toBe("390.00");
+    // only the CompanyID and the PUBLIC key reach the client wrapper - no price, no secret
+    expect(props.companyId).toBe(123456);
+    expect(props.apiPublicKey).toBe("public-key");
+    expect(Object.keys(props).sort()).toEqual(["apiPublicKey", "companyId", "planTier", "registrationId"]);
     expect(html).toContain("נשאר שלב אחד להשלמת ההרשמה");
-    expect(html).toContain("לא יתבצע חיוב כעת");
+    // the notice says what really happens: a card is SAVED - no charge, no subscription, no trial (and promises no automatic trial)
+    expect(html).toContain("לא יתבצע חיוב, לא ייווצר מנוי ולא תתחיל תקופת ניסיון");
+    expect(html).not.toMatch(/באופן אוטומטי|תתחיל תקופת הניסיון לאחר/);
   });
 
   it("takes no id, price, trial or offer from the URL: the page has no parameters at all", () => {
@@ -73,9 +76,9 @@ describe("/business/payment-method - step 6 for an existing pending registration
     await expect(render()).rejects.toThrow("NEXT_REDIRECT:/business/dashboard");
   });
 
-  it("10. sandbox, account not on the test list: told it is unavailable, no form at all", async () => {
+  it("an account that is not on the SUMIT test list: told it is unavailable, no form at all", async () => {
     resume.mockResolvedValue(null);
-    registrantConfig.mockResolvedValue(null);
+    registrationPayment.mockReturnValue(null);
     const html = await render();
     expect(html).toContain("אינה זמינה כרגע");
     expect(html).not.toContain('data-step6="yes"');

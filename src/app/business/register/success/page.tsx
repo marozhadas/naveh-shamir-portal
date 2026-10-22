@@ -4,6 +4,7 @@ import { ConnectedHeader } from "@/editor/connected/ConnectedHeader";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/Button";
 import { defaultFooterSettings } from "@/editor/config/editor-defaults";
+import { SUCCESS_PAYMENT_SAVED } from "@/lib/sumit/registration-copy";
 import styles from "./success.module.css";
 
 const PLAN_NAME: Record<string, string> = { plus: "Plus", premium: "Premium", free: "חינמי" };
@@ -46,7 +47,7 @@ export default async function RegisterSuccessPage({ searchParams }: SuccessPageP
           {planName && !isPremium && <p className={styles.planLine}>מסלול: {planName}</p>}
           <p className={styles.disclaimer}>
             {paymentSaved
-              ? "אמצעי התשלום נשמר ולא בוצע חיוב. העסק ממתין לאישור הצוות. לאחר האישור תתחיל תקופת הניסיון באופן אוטומטי (30 ימים, או 90 ימים בהטבת פיילוט), ולא תצטרכו לבצע שום פעולה נוספת."
+              ? SUCCESS_PAYMENT_SAVED
               : isPremium
               ? "העסק כבר מופיע באזור האישי שלכם כממתין לאישור. הפעלת חבילת Premium תתבצע לאחר אישור העסק."
               : hasAccount

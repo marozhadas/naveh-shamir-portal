@@ -6,7 +6,8 @@ import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { BUSINESS_PLANS } from "@/data/business-plans";
 import { isBillingInterval } from "@/data/subscription-pricing";
 import { getSupabaseSessionUser } from "@/lib/supabase/server-client";
-import { getPayMeConfigForRegistrant } from "@/lib/payme/flow-access";
+import { getSumitRegistrationPayment } from "@/lib/sumit/registration-access";
+import { REGISTRATION_PAGE_DISCLAIMER } from "@/lib/sumit/registration-copy";
 import { registrationReturnPath } from "@/utils/safe-return-path";
 import { OwnerAuthGate } from "@/components/auth/OwnerAuthGate/OwnerAuthGate";
 import { RegistrationFlow } from "./RegistrationFlow";
@@ -28,10 +29,9 @@ export default async function RegisterPlusPage({ searchParams }: RegisterPlusPag
   // only mounted once there is a session, so nothing a visitor typed can be lost to a login redirect;
   // the plan and billing interval live in this URL and ride through login as the return path.
   const sessionUser = await getSupabaseSessionUser();
-  // Step 6 (card entry; only saves the card, the business stays pending until an admin approves it) exists only when PayMe is open for THIS owner: live for everyone,
-  // sandbox only for the test emails. The public key is handed to this signed-in owner only.
-  const payMeConfig = sessionUser ? await getPayMeConfigForRegistrant(sessionUser.email) : null;
-  const payment = payMeConfig ? { hostedFieldsKey: payMeConfig.hostedFieldsKey, testMode: payMeConfig.env === "sandbox" } : null;
+    // Step 6 (SUMIT card entry; only SAVES the card - no charge, no subscription, no trial; the business stays pending) exists only for an owner on SUMIT_TEST_EMAILS
+  // on the approved TEST organization (lib/sumit/registration-access.ts). Only the CompanyID and the PUBLIC key reach the browser.
+  const payment = sessionUser ? getSumitRegistrationPayment(sessionUser.email) : null;
 
   return (
     <>
@@ -64,7 +64,7 @@ export default async function RegisterPlusPage({ searchParams }: RegisterPlusPag
             <p className={styles.priceLine}>30 ימי ניסיון חינם. מחירי Plus הם מחירי השקה.</p>
             <p className={styles.disclaimer}>
               {payment
-                ? "בשלב האחרון של ההרשמה תזינו אמצעי תשלום. לא מתבצע חיוב עכשיו, והניסיון מתחיל רק לאחר אישור העסק."
+                ? REGISTRATION_PAGE_DISCLAIMER
                 : "בשלב זה לא נדרש אמצעי תשלום ולא מתבצע חיוב. הניסיון מתחיל רק לאחר אישור העסק והפעלה מפורשת."}
             </p>
           </div>

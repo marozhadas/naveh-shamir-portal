@@ -173,23 +173,40 @@ describe("Stage 1 guard rails (static)", () => {
   it("nothing outside the new modules imports them yet: the wizard, approval, trial, grace, admin revenue and the PayMe callbacks are untouched", () => {
     // (Stage 2A added the server-side SUMIT save flow, repositories/sumit-payment-method-service.ts - checked just below.)
     // (lib/payme/dormant.ts asks the selector whether PayMe is the provider - it never is: that is the single switch that keeps PayMe off.)
-    const allowed = ["lib/sumit/", "lib/payments/", "domain/payments/", "repositories/sumit-payment-method-service", "lib/payme/dormant.ts"];
+    // (The SUMIT card step of the registration - an experiment limited to SUMIT_TEST_EMAILS on the test organization - is wired through exactly these files.)
+    const registrationStep = [
+      "app/business/dashboard/sumit-payment-actions.ts",
+      "components/business-dashboard/SumitCardForm/",
+      "app/business/register/plus/page.tsx",
+      "app/business/register/plus/PlusRegistrationWizard.tsx",
+      "app/business/register/plus/RegistrationFlow.tsx",
+      "app/business/register/premium/page.tsx",
+      "app/business/register/success/page.tsx",
+      "app/business/payment-method/page.tsx",
+      "app/business/trial/page.tsx",
+      "components/business-dashboard/SubscriptionStatusCard/SubscriptionStatusCard.tsx",
+      "lib/business-owner/payment-resume.ts",
+    ];
+    const allowed = ["lib/sumit/", "lib/payments/", "domain/payments/", "repositories/sumit-payment-method-service", "lib/payme/dormant.ts", ...registrationStep];
     for (const file of walk(root)) {
       const rel = path.relative(root, file).replace(/\\/g, "/");
-      if (!/\.(ts|tsx)$/.test(rel) || allowed.some((prefix) => rel.startsWith(prefix))) continue;
+      // production code only: a test may mock or name a SUMIT module
+      if (!/\.(ts|tsx)$/.test(rel) || /\.test\./.test(rel) || allowed.some((prefix) => rel.startsWith(prefix))) continue;
       // the shared "payments temporarily unavailable" constants are the one thing PayMe's owner/admin actions may import
       const source = readFileSync(file, "utf8").split("@/lib/payments/payments-unavailable").join("");
       expect(source, rel).not.toMatch(/@\/lib\/sumit|@\/lib\/payments|@\/domain\/payments/);
     }
   });
 
-  it("the SUMIT save flow is not wired to any action, form, wizard, trial, approval or cron yet", () => {
+  it("the SUMIT save flow is called from ONE place - the registration card action - and from no trial, approval, grace or cron code", () => {
+    const importers: string[] = [];
     for (const file of walk(root)) {
       const rel = path.relative(root, file).replace(/\\/g, "/");
       // production code only (tests may name the file); the module itself is of course allowed to
       if (!/\.(ts|tsx)$/.test(rel) || /\.test\./.test(rel) || rel.startsWith("repositories/sumit-payment-method-service")) continue;
-      expect(readFileSync(file, "utf8"), rel).not.toMatch(/sumit-payment-method-service/);
+      if (/sumit-payment-method-service/.test(readFileSync(file, "utf8"))) importers.push(rel);
     }
+    expect(importers).toEqual(["app/business/dashboard/sumit-payment-actions.ts"]);
   });
 
   it("the migration is additive, allows 'sumit', keeps provider_token out of SUMIT rows and lives outside any auto-run folder", () => {

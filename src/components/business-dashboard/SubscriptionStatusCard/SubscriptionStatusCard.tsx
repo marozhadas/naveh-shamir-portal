@@ -4,6 +4,7 @@ import { startCheckoutAction, cancelSubscriptionAction, reactivateSubscriptionAc
 import { MOCK_PAYMENT_DISCLAIMER } from "@/adapters/mock-payment-provider-adapter";
 import { isValidBusinessSlug } from "@/utils/business-slug";
 import { TRIAL_DAYS } from "@/data/subscription-pricing";
+import { RESUME_TITLE } from "@/lib/sumit/registration-copy";
 import type { BusinessSubscription, SubscriptionAccess } from "@/types/subscription";
 import styles from "./SubscriptionStatusCard.module.css";
 
@@ -47,8 +48,8 @@ export function SubscriptionStatusCard({
     if (paymentResumeHref) {
       return (
         <div className={`${styles.card} ${styles.neutral}`}>
-          <p className={styles.title}>נשאר שלב אחד להשלמת ההרשמה: הוספת אמצעי תשלום</p>
-          <p className={styles.description}>לא יתבצע חיוב כעת. לאחר שהצוות יאשר את העסק תתחיל תקופת הניסיון באופן אוטומטי.</p>
+          <p className={styles.title}>{RESUME_TITLE}</p>
+          <p className={styles.description}>לא יתבצע חיוב, לא ייווצר מנוי ולא תתחיל תקופת ניסיון. העסק ממתין לאישור הצוות.</p>
           <Button href={paymentResumeHref} variant="accent">
             השלמת אמצעי תשלום
           </Button>

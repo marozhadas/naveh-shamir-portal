@@ -10,6 +10,8 @@ import { authAdapter, isRealBusinessOwnerSession } from "@/adapters/mock-auth-ad
 import { isDemoModeEnabled } from "@/lib/demo-mode";
 import { redirectGuestToLoginInProduction } from "@/app/business/redirect-guest-to-login";
 import { getPaymentResume, PAYMENT_METHOD_ROUTE } from "@/lib/business-owner/payment-resume";
+import { RESUME_NOTICE } from "@/lib/sumit/registration-copy";
+
 import { Button } from "@/components/ui/Button";
 import { subscriptionRepository } from "@/repositories/mock-subscription-repository";
 import { businessRepository } from "@/repositories/mock-business-repository";
@@ -57,7 +59,7 @@ export default async function BusinessTrialPage() {
           <div className={styles.container}>
             <h1 className={styles.title}>נשאר שלב אחד להשלמת ההרשמה</h1>
             <p className={styles.notice} role="status">
-              נשאר שלב אחד להשלמת ההרשמה: הוספת אמצעי תשלום. לא יתבצע חיוב כעת.
+              {RESUME_NOTICE}
             </p>
             <div className={styles.actionBox}>
               <Button href={PAYMENT_METHOD_ROUTE} variant="accent">

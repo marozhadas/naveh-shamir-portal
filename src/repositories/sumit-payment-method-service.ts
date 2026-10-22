@@ -2,13 +2,15 @@ import "server-only";
 import { createAdminSupabaseClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin-client";
 import { PaymentProviderError, type PaymentProvider } from "@/domain/payments/payment-provider";
 import { getPaymentProvider } from "@/lib/payments/get-payment-provider";
-import { getSumitConfig, isSumitAvailableForEmail } from "@/lib/sumit/config";
+import { getSumitConfig } from "@/lib/sumit/config";
+import { isSumitRegistrationEmailAllowed } from "@/lib/sumit/registration-access";
+import { isPlausibleSumitToken } from "@/lib/sumit/token-shape";
 import { buildSubscriptionPlan } from "@/lib/payme/build-subscription-plan";
 
 /**
  * Step 6 of the registration, SUMIT flavour - SAVE A PAYMENT METHOD ONLY. Nothing is charged, no subscription is created,
- * the business stays "pending" and unpublished. (Not wired to any action, form or payments.js yet - Stage 2A is the
- * server-side half, proven with mocks.)
+ * the business stays "pending" and unpublished. (Called by saveSumitPaymentMethodForRegistrationAction, which is limited to SUMIT_TEST_EMAILS on the test
+ * organization - see lib/sumit/registration-access.ts.)
  *
  * The browser (later, via payments.js) hands us the SingleUseToken. We:
  *   1) check the owner's own registration is still pending, has no subscription and a billable plan (same rules as PayMe's step 6);
@@ -37,14 +39,15 @@ export type SaveSumitPaymentMethodResult =
   | { success: false; reason: "sumit-not-configured" | "invalid-input" | "not-eligible" | "already-exists" | "invalid-plan" | "rejected" | "provider-error" | "unknown-error" };
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-/** SUMIT's SingleUseToken is a uuid; accept the same loose, safe charset the client does. */
-const SINGLE_USE_TOKEN_PATTERN = /^[A-Za-z0-9-]{8,100}$/;
 const CUSTOMER_ID_PATTERN = /^[0-9]{1,15}$/;
+
+/** The database client the service writes through. Injectable so a test or the local lab can hand it a fake - the lab never touches the real one. */
+export type RegistrationAdminClient = Pick<ReturnType<typeof createAdminSupabaseClient>, "from">;
 
 function resolveProvider(registrantEmail: string | null | undefined, injected?: PaymentProvider | null): PaymentProvider | null {
   const config = getSumitConfig();
-  // SUMIT is available only when it is configured AND (dry run -> the registrant is on the test list; live -> everyone).
-  if (!config || !isSumitAvailableForEmail(config, registrantEmail)) return null;
+  // The SUMIT card step is an EXPERIMENT: only the approved TEST organization and only the listed test emails - whatever SUMIT_DRY_RUN says.
+  if (!config || !isSumitRegistrationEmailAllowed(config, registrantEmail)) return null;
   if (injected) return injected;
   try {
     return getPaymentProvider();
@@ -54,16 +57,16 @@ function resolveProvider(registrantEmail: string | null | undefined, injected?: 
   }
 }
 
-export async function saveSumitPaymentMethodForRegistration(input: SaveSumitPaymentMethodInput, deps: { provider?: PaymentProvider } = {}): Promise<SaveSumitPaymentMethodResult> {
+export async function saveSumitPaymentMethodForRegistration(input: SaveSumitPaymentMethodInput, deps: { provider?: PaymentProvider; admin?: RegistrationAdminClient } = {}): Promise<SaveSumitPaymentMethodResult> {
   const provider = resolveProvider(input.registrantEmail, deps.provider);
-  if (!provider || !isSupabaseAdminConfigured()) return { success: false, reason: "sumit-not-configured" };
+  if (!provider || (!deps.admin && !isSupabaseAdminConfigured())) return { success: false, reason: "sumit-not-configured" };
 
   const payerName = input.payer.name.trim();
-  if (!UUID_PATTERN.test(input.registrationId) || !input.ownerId || !payerName || payerName.length > 120 || !SINGLE_USE_TOKEN_PATTERN.test(input.singleUseToken)) {
+  if (!UUID_PATTERN.test(input.registrationId) || !input.ownerId || !payerName || payerName.length > 120 || !isPlausibleSumitToken(input.singleUseToken)) {
     return { success: false, reason: "invalid-input" };
   }
 
-  const admin = createAdminSupabaseClient();
+  const admin = deps.admin ?? createAdminSupabaseClient();
   const { data: registration } = await admin
     .from("business_registrations")
     .select("id, status, plan_tier, selected_billing_interval, offer_code")

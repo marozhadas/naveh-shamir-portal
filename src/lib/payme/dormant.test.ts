@@ -100,9 +100,6 @@ describe("static guard rails: nothing new can open PayMe", () => {
       "app/api/webhooks/payme/[secret]/route.ts",
       "app/business/dashboard/(chrome)/subscription/page.tsx",
       "app/business/dashboard/payment-actions.ts",
-      "app/business/payment-method/page.tsx",
-      "app/business/register/plus/page.tsx",
-      "app/business/register/premium/page.tsx",
       "app/business/trial/page.tsx",
       "domain/decide-registration-approval.ts",
       "lib/admin/live-readiness.ts",
@@ -128,15 +125,15 @@ describe("static guard rails: nothing new can open PayMe", () => {
   it("the PayMe SDK is loaded from exactly one place - the legacy payment form - which only pages driven by the (dormant, null) PayMe configuration render", () => {
     expect(production.filter((file) => text(file).includes("cdn.payme.io")).map(rel)).toEqual(["components/business-dashboard/PaymentMethodTrialForm/PaymentMethodTrialForm.tsx"]);
 
-    const users = production.filter((file) => /PaymentMethodTrialForm/.test(text(file)) && !rel(file).startsWith("components/business-dashboard/PaymentMethodTrialForm/")).map(rel).sort();
-    expect(users).toEqual([
-      "app/business/dashboard/(chrome)/subscription/page.tsx",
-      "app/business/payment-method/ResumePaymentStep.tsx",
-      "app/business/register/plus/PlusRegistrationWizard.tsx",
-      "app/business/trial/page.tsx",
-    ]);
+    // (the SUMIT card form only borrows the form's payer validation and trust badges - it does not render the PayMe form)
+    const users = production.filter((file) => /import \{[^}]*\bPaymentMethodTrialForm\b[^}]*\}/.test(text(file)) && !rel(file).startsWith("components/business-dashboard/PaymentMethodTrialForm/")).map(rel).sort();
+    expect(users).toEqual(["app/business/dashboard/(chrome)/subscription/page.tsx", "app/business/trial/page.tsx"]);
+    // the registration step (wizard, resume page, SUMIT form and action) has no PayMe at all
+    for (const file of ["app/business/register/plus/PlusRegistrationWizard.tsx", "app/business/register/plus/page.tsx", "app/business/register/premium/page.tsx", "app/business/payment-method/page.tsx", "app/business/payment-method/ResumePaymentStep.tsx", "components/business-dashboard/SumitCardForm/SumitCardForm.tsx", "app/business/dashboard/sumit-payment-actions.ts"]) {
+      expect(text(path.join(root, file)).replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, ""), file).not.toMatch(/payme(?!nt)/i);
+    }
     // every page that decides to render it first asks the PayMe configuration (null while dormant)
-    for (const page of ["app/business/register/plus/page.tsx", "app/business/register/premium/page.tsx", "app/business/payment-method/page.tsx", "app/business/trial/page.tsx", "app/business/dashboard/(chrome)/subscription/page.tsx"]) {
+    for (const page of ["app/business/trial/page.tsx", "app/business/dashboard/(chrome)/subscription/page.tsx"]) {
       expect(text(path.join(root, page)), page).toMatch(/getPayMeConfig(ForRegistrant|ForBusiness)\(/);
     }
   });

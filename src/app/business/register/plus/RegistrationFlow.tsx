@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { LAUNCH_PRICE_LABEL, TRIAL_DAYS, formatPriceWithInterval, type BillingInterval, type PriceSnapshot } from "@/data/subscription-pricing";
+import type { SumitRegistrationPayment } from "@/lib/sumit/registration-access";
 import { PlusRegistrationWizard } from "./PlusRegistrationWizard";
 import styles from "./plus-wizard.module.css";
 
@@ -18,8 +19,8 @@ type RegistrationFlowProps = {
   /** Server-verified: only then is the wizard mounted; otherwise `gate` (the sign-in screen) is shown. */
   authenticated: boolean;
   gate: ReactNode;
-  /** Passed by the server only when PayMe is open for this signed-in owner - adds the card-entry step (6) to the wizard. */
-  payment?: { hostedFieldsKey: string; testMode: boolean } | null;
+  /** Passed by the server only when the SUMIT card step is open for this signed-in owner (test list, test organization) - adds step 6 to the wizard. */
+  payment?: SumitRegistrationPayment | null;
 };
 
 /**
