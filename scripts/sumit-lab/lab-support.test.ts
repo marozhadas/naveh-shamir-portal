@@ -218,6 +218,19 @@ describe("the reconcile step is read-only", () => {
   });
 });
 
+describe("the organization-details step reports presence only", () => {
+  const lab = readFileSync(path.join(__dirname, "sumit-lab.lab.ts"), "utf8");
+  const step = lab.slice(lab.indexOf('describe("5. organization details'), lab.indexOf('describe("secrets never reach the output"'));
+
+  it("calls only the presence function, is off unless SUMIT_LAB_READONLY=orgdetails, and prints no value", () => {
+    expect(step).toContain('process.env.SUMIT_LAB_READONLY !== "orgdetails"');
+    expect(step).toContain("getSumitCompanyDetailsPresence()");
+    const code = step.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(code).not.toMatch(/getSumitCompanyName|rawPost\(|provider\.|createSumitCustomer|setSumitPaymentMethod|tokenizeTestCard/);
+    expect(code).toContain("valuesShown: false");
+  });
+});
+
 describe("diffPayments", () => {
   it("reports keys on one side only and differing values", () => {
     expect(diffPayments({ A: 1, B: 2, C: 3 }, { A: 1, B: 9, D: 4 })).toEqual({ onlyInFirst: ["C"], onlyInSecond: ["D"], differing: ["B"] });

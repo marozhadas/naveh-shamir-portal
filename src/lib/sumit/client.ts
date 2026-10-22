@@ -321,3 +321,22 @@ export async function getSumitCompanyName(): Promise<{ name: string | null }> {
   const name = (company as Json).Name;
   return { name: typeof name === "string" && name.trim() ? name.trim().slice(0, 200) : null };
 }
+
+/** The organization fields SUMIT needs to issue documents (the BusinessError said "Corporate Number / Phone Number"), plus neighbours for diagnosing a mapping gap. */
+export const SUMIT_COMPANY_PRESENCE_FIELDS = ["CorporateNumber", "Phone", "Fax", "English_Phone", "EmailAddress", "DocumentsEmailAddress"] as const;
+
+/**
+ * READ-ONLY: which of the organization fields are filled (true) or empty / missing (false). Returns BOOLEANS ONLY - never a value -
+ * so the lab can say "full / missing" without handling the organization's contact or tax details. Used by the local test lab only.
+ */
+export async function getSumitCompanyDetailsPresence(): Promise<Record<(typeof SUMIT_COMPANY_PRESENCE_FIELDS)[number], boolean>> {
+  const config = requireConfig();
+  const data = await post(config, "/website/companies/getdetails/", {});
+  const company = data.Company;
+  if (!company || typeof company !== "object") throw new PaymentProviderError("invalid-response", "SUMIT did not return the organization details");
+  const present = (key: string) => {
+    const value = (company as Json)[key];
+    return typeof value === "string" && value.trim().length > 0;
+  };
+  return Object.fromEntries(SUMIT_COMPANY_PRESENCE_FIELDS.map((key) => [key, present(key)])) as Record<(typeof SUMIT_COMPANY_PRESENCE_FIELDS)[number], boolean>;
+}

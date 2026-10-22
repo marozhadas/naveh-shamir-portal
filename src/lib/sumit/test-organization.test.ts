@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { getSumitCompanyName } from "./client";
+import { getSumitCompanyDetailsPresence, getSumitCompanyName } from "./client";
 import { SUMIT_TEST_ORGANIZATION_MARKER, isSumitTestOrganizationName } from "./test-organization";
 
 const fetchMock = vi.fn();
@@ -47,5 +47,21 @@ describe("recognising the test organization (SUMIT documents: 'בדיקות' is 
     reply({ Status: 0, Data: { Company: { Name: null } } });
     expect(await getSumitCompanyName()).toEqual({ name: null });
     expect(isSumitTestOrganizationName((await (async () => { reply({ Status: 0, Data: { Company: { Name: "" } } }); return getSumitCompanyName(); })()).name)).toBe(false);
+  });
+});
+
+describe("organization details: presence only", () => {
+  it("returns full/missing booleans and never a value", async () => {
+    reply({ Status: 0, Data: { Company: { Name: "עסק בדיקות", CorporateNumber: "999999998", Phone: "050-1234567", Fax: "", English_Phone: null, EmailAddress: "owner@example.com" } } });
+    const presence = await getSumitCompanyDetailsPresence();
+    expect(presence).toEqual({ CorporateNumber: true, Phone: true, Fax: false, English_Phone: false, EmailAddress: true, DocumentsEmailAddress: false });
+    expect(JSON.stringify(presence)).not.toMatch(/999999998|050-1234567|owner@example.com/);
+  });
+
+  it("a blank or whitespace-only value counts as missing; an unreadable reply is an error", async () => {
+    reply({ Status: 0, Data: { Company: { CorporateNumber: "   ", Phone: "" } } });
+    expect(await getSumitCompanyDetailsPresence()).toMatchObject({ CorporateNumber: false, Phone: false });
+    reply({ Status: 0, Data: {} });
+    await expect(getSumitCompanyDetailsPresence()).rejects.toMatchObject({ kind: "invalid-response" });
   });
 });

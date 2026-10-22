@@ -39,11 +39,29 @@ and the help-center articles [5893615 payments.js](https://help.sumit.co.il/he/a
 |---|---|---|
 | 1 | What `BusinessError` means on `payments/charge`; whether `ValidPayment: false` means nothing was captured; the values of `Payment.Status` | One good result proves nothing. Observed in the lab; **the app stays conservative** (BusinessError throws `rejected`; `ValidPayment:false` is `unconfirmed`; no `failed` outcome exists) until there is enough evidence. |
 | 2 | How to tell an authorise-only payment from a captured one on `get` / `list`; whether a hold remains | Lab step `authorise-only` (field-level comparison of `charge` / `get` / `list`). |
-| 3 | `Payment.Amount` unit and VAT, `Currency` format; document (type, VAT line) | Lab steps `charge-saved` and `charge-vat-false`, compared with the SUMIT UI. With VATIncluded=false a captured payment is `unconfirmed` anyway. |
+| 3 | `Payment.Amount` unit and VAT, `Currency` format; document (type, VAT line) | **Partly observed (D4-D6):** with `VATIncluded = true`, 39 NIS total incl. VAT, `Currency = 0` = NIS, in the test organization. Still open: `VATIncluded = false` (lab step `charge-vat-false`, approval needed) and production defaults. With VATIncluded=false a captured payment is `unconfirmed` anyway. |
 | 4 | Does `setforcustomer` validate the card or only store it (support: "only saves the details"); behaviour of an invalid / used token | Lab steps `save-card`, `null-token`. |
 | 5 | UPAY CVV exemption on a saved-card charge; effect of `PreventStandingOrder` / `MerchantNumber` | **Cannot be tested in the test organization** (no UPAY there). Needs SUMIT's written answer or a deliberate, separately approved first production charge. |
-| 6 | Default `DocumentType`; `DocumentID` for a draft document; `SendDocumentByEmail` needing an email on the customer | Lab steps (documents compared in the UI). |
+| 6 | Default `DocumentType`; `DocumentID` for a draft document; `SendDocumentByEmail` needing an email on the customer | **Partly observed (D5, D7):** a tax invoice / receipt was created for the captured charge (UI), and its id came in `Data.DocumentID`. Still open: draft documents (`authorise-only`), `SendDocumentByEmail`, and whether the default type is stable (we do not send `DocumentType`). |
 | 7 | A documented DECLINE scenario in the test terminal; any API field that identifies a test organization | **Blocked:** no documented decline card/amount (support does not know one). No card number is guessed. Question to SUMIT: which card or amount declines in the test terminal? Identity is attested by documented signals only (below). |
+
+## D. Observed in the TEST organization (lab runs of 2026-10-22)
+
+Observations from the test organization only. **They are not statements about production defaults or about SUMIT's guarantees.** One run is one observation; the app's conservative handling (C1) is unchanged.
+
+| # | Observation | Source | Status |
+|---|---|---|---|
+| D1 | `save-card` (documented test card, last four 0772): `setforcustomer` returned a customer id and a payment-method id; `getforcustomer` showed the same last four. | lab recording | observed once |
+| D2 | `replace-card` (second documented card, last four 1333): the customer id stayed the same, the new card became the active one, the old card became inactive, and **the payment-method id changed**. Do not store a payment-method id as permanent. | lab recording | observed once; matches support's answer (A) |
+| D3 | The FIRST `charge-saved` request was answered with HTTP 200 and `Status = BusinessError`, message "Missing organization details (Corporate Number / Phone Number)". No payment object, no payment id. So a `BusinessError` can be a configuration / validation error and not a bank decline (C1 stays: the app treats it as `rejected` and does not retry). | lab recording | observed once |
+| D4 | After the organization's business number and phone were filled in (checked read-only: both returned filled, values not recorded), ONE new `charge-saved` request (VAT-included, 39 NIS, saved card ending 1333, `SendDocumentByEmail` off, no card data sent) was answered `Status = 000`, `ValidPayment = true`, `Amount = 39`, `Currency = 0`. | lab recording | observed once |
+| D5 | **VAT, observed in the test organization:** with `VATIncluded = true` the final amount was 39 NIS including VAT. In the SUMIT UI the created document is a tax invoice / receipt (חשבונית מס/קבלה) number 10000: 33.05 NIS before VAT, VAT 18% = 5.95 NIS, total 39 NIS, card ending 1333 (checked by the account owner in the UI). | lab recording + SUMIT UI | observed once; **not a claim about production defaults** |
+| D6 | **Currency, observed:** `Currency = 0` in the response matched the display in NIS in the UI. The meaning of the code `0` is not documented in the response itself; it is taken from this one match only. | lab recording + SUMIT UI | observed once |
+| D7 | **Where the document id is:** in the CHARGE response it arrived in `Data.DocumentID` (with `Data.DocumentNumber`); `Payment.DocumentID` was `0` there. In the READ-BACK (`payments/get`) it arrived in `Payment.DocumentID`. So the app must not read the document id from `Payment.DocumentID` of the charge response. | lab recording | observed once |
+| D8 | The read-back (`payments/get`) agreed with the charge on id, amount, currency, `Status` and `ValidPayment`. It differed in `Date` (precision only: microseconds vs seconds), in `StatusDescription` (the charge said "מאושר (קוד 000)", the read-back only " (קוד 000)" - **do not rely on the description text**) and in `DocumentID` (D7). The app classifies a read-back as `unconfirmed`, by design. | lab recording | observed once |
+| D9 | The organization's business number and phone are required before SUMIT will issue the document / accept the charge (D3, D4). The read-only `orgdetails` lab step reports only filled / missing. | lab recording | observed |
+
+Not covered by D: the document type was checked in the UI only for this one run (the API does not return it); the test-terminal mark; `VATIncluded = false`; authorise-only; a decline; the UPAY CVV exemption.
 
 ## How the organization is attested (without printing secrets)
 
@@ -88,6 +106,7 @@ Budget: the test organization has about 100 operations and 400 API calls per mon
 
 ## What still blocks Stage 2B
 
-- The lab results for C1-C4 and C6 (and enough evidence for them - one run is not proof), before any revenue recognition or grace logic.
+- More lab evidence for C1, C2, C4 and the open parts of C3 / C6 (one run is not proof), before any revenue recognition or grace logic. Still approval-gated lab steps: `charge-vat-false`, `authorise-only`, `no-method`, `null-token`.
 - C5 (UPAY CVV exemption) before production.
-- The product decisions: whether 39 / 49 NIS include VAT, and the document type.
+- The product decisions: whether 39 / 49 NIS include VAT (the test organization showed 39 incl. VAT when `VATIncluded = true` is sent - a product decision is still needed for what we promise customers), and the document type.
+- Reading the document id from `Data.DocumentID` of the charge response (D7), and not storing a payment-method id as permanent (D2).

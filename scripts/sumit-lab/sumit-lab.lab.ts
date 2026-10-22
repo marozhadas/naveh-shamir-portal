@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createSumitCustomer, getSumitCompanyName, getSumitPayment, getSumitPaymentMethod, listSumitPayments, setSumitPaymentMethod } from "@/lib/sumit/client";
+import { createSumitCustomer, getSumitCompanyDetailsPresence, getSumitCompanyName, getSumitPayment, getSumitPaymentMethod, listSumitPayments, setSumitPaymentMethod } from "@/lib/sumit/client";
 import { SUMIT_BASE_URL, getSumitConfig, getSumitConfigurationProblems, type SumitConfig } from "@/lib/sumit/config";
 import { createSumitPaymentProvider } from "@/lib/sumit/sumit-payment-provider";
 import { isSumitTestOrganizationName } from "@/lib/sumit/test-organization";
@@ -452,6 +452,28 @@ describe("4. reconcile (READ-ONLY: payments/list and payments/get only - never a
     summaries.reconcile = summary;
     report("reconcile", summary);
     expect(recorder.exchanges.filter((entry) => entry.path === "/billing/payments/charge/")).toEqual([]);
+  });
+});
+
+describe("5. organization details (READ-ONLY): are the fields SUMIT needs for documents filled? Booleans only - no value is read out, printed or recorded", () => {
+  it.skipIf(process.env.SUMIT_LAB_READONLY !== "orgdetails")("orgdetails: CorporateNumber and Phone - full or missing", async (context) => {
+    if (!state.identityOk) {
+      report("orgdetails", { skipped: "needs a passed identity check" });
+      context.skip();
+      return;
+    }
+    recorder.setStep("orgdetails");
+    const presence = await getSumitCompanyDetailsPresence();
+    const required = { CorporateNumber: presence.CorporateNumber, Phone: presence.Phone };
+    const summary = {
+      requiredForDocuments: { CorporateNumber: required.CorporateNumber ? "full" : "missing", Phone: required.Phone ? "full" : "missing" },
+      bothFull: required.CorporateNumber && required.Phone,
+      neighbouringFields: Object.fromEntries(Object.entries(presence).filter(([key]) => key !== "CorporateNumber" && key !== "Phone").map(([key, value]) => [key, value ? "full" : "missing"])),
+      valuesShown: false,
+      valuesRecorded: false,
+    };
+    summaries.orgdetails = summary;
+    report("orgdetails", summary);
   });
 });
 

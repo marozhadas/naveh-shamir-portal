@@ -97,7 +97,8 @@ describe("every request our client builds matches the official SUMIT schema", ()
       "/website/companies/getdetails/",
     ]);
     const source = readFileSync(path.resolve(__dirname, "client.ts"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
-    const used = [...source.matchAll(/post\(\s*config,\s*"(\/[^"]+)"/g)].map((match) => match[1]).sort();
+    // the read-only organization endpoint is called by two helpers (name, presence), so compare the distinct set
+    const used = [...new Set([...source.matchAll(/post\(\s*config,\s*"(\/[^"]+)"/g)].map((match) => match[1]))].sort();
     expect(used).toEqual(Object.keys(endpoints).sort());
   });
 
