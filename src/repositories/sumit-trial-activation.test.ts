@@ -158,6 +158,7 @@ describe("approving a registration with a saved SUMIT card", () => {
     registration().plan_tier = "premium";
     expect(await run()).toMatchObject({ success: true });
     expect(subscriptions()[0]).toMatchObject({ plan_id: "premium", billing_interval: "yearly", next_billing_at: "2026-11-21T10:00:00.000Z" });
+    expect(registration()).toMatchObject({ status: "approved", active_plan_id: "premium" }); // the live plan follows the chosen tier, in the same update as the approval
     expect(Number(subscriptions()[0].price_amount_ils)).toBeGreaterThan(0);
   });
 
