@@ -216,16 +216,46 @@ export async function runScenarios(): Promise<Array<{ name: string; pass: boolea
   await t.sleep(700);
   check("coming back: identified as saved, no form, still exactly one save", !document.getElementById("sumit-card-form") && /כבר נשמר/.test(document.body.textContent ?? "") && h.actionCalls.length === 1 && h.createTokenCalls.length === 1, { actions: h.actionCalls.length });
 
-  // 13. not saved -> the form; the check failing -> the form (never a false 'saved')
+  // 13. not saved -> the form ONLY on that explicit answer; a failing check -> a message and "try again", NEVER the form
   await fresh();
   check("not saved: the form is shown after the read-only check (React strict mode may run it twice in development)", !!document.getElementById("sumit-card-form") && h.savedCheckCalls >= 1 && !/כבר נשמר/.test(document.body.textContent ?? ""));
+  const retryButton = () => [...document.querySelectorAll("button")].find((b) => b.textContent === "נסה שוב");
+  const unknownShown = () => !document.getElementById("sumit-card-form") && /לא הצלחנו לבדוק אם אמצעי תשלום כבר נשמר/.test(document.body.textContent ?? "") && !!retryButton() && !/אמצעי התשלום כבר נשמר/.test(document.body.textContent ?? "");
   for (const mode of ["error", "throw"] as const) {
     h.unmount();
     h.savedCheckMode = mode;
     h.mount();
     await t.sleep(700);
-    check("the check says " + mode + ": the form is shown, no 'already saved' claim", !!document.getElementById("sumit-card-form") && !/כבר נשמר/.test(document.body.textContent ?? ""));
+    check("the check says " + mode + ": a message and 'try again' - NO form, no 'already saved' claim", unknownShown(), document.body.textContent?.slice(0, 120));
+    check("the check says " + mode + ": nothing is tokenized, saved or completed", h.createTokenCalls.length === 0 && h.actionCalls.length === 0 && h.completed === 0);
   }
+  // 'try again' runs one more check; while it keeps failing the form stays away
+  const callsBeforeRetry = h.savedCheckCalls;
+  retryButton()?.click();
+  await t.sleep(500);
+  check("'try again' while the check still fails: another read-only check ran and still no form", h.savedCheckCalls === callsBeforeRetry + 1 && unknownShown(), { before: callsBeforeRetry, after: h.savedCheckCalls });
+  // the check recovers with an explicit not-saved -> now (and only now) the form appears
+  h.savedCheckMode = "normal";
+  retryButton()?.click();
+  await t.sleep(500);
+  check("'try again' answered not-saved: the form appears", !!document.getElementById("sumit-card-form") && !retryButton());
+  // the check recovers and the card WAS saved meanwhile -> 'already saved', no form
+  h.unmount();
+  h.savedCheckMode = "error";
+  h.cardSaved = true;
+  h.mount();
+  await t.sleep(700);
+  h.savedCheckMode = "normal";
+  retryButton()?.click();
+  await t.sleep(500);
+  check("'try again' answered saved: 'already saved', no form, no save", !document.getElementById("sumit-card-form") && /אמצעי התשלום כבר נשמר/.test(document.body.textContent ?? "") && h.actionCalls.length === 0 && h.createTokenCalls.length === 0);
+  // a slow/failed check never lets a form appear in between: while checking there is no form either
+  h.unmount();
+  h.cardSaved = false;
+  h.savedCheckMode = "normal";
+  h.mount();
+  check("while the check is running there is no form", !document.getElementById("sumit-card-form"));
+  await t.sleep(700);
 
   // 14. no card-brand marks, and the provider named is SUMIT
   await fresh();

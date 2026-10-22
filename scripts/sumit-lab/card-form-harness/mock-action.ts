@@ -35,7 +35,15 @@ export async function saveSumitPaymentMethodForRegistrationAction(input: Input):
     registrationIdShape: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.registrationId),
   });
   if (h.actionMode === "throw") throw new Error("network down (mock)");
-  if (h.actionMode === "slow") await new Promise((resolve) => window.setTimeout(resolve, 1500));
+  if (h.actionMode === "slow") {
+    // 1.5 s that a hidden (background) tab cannot stretch: a MessageChannel ping-pong is not throttled like a timer
+    await new Promise<void>((resolve) => {
+      const end = performance.now() + 1500;
+      const channel = new MessageChannel();
+      channel.port1.onmessage = () => (performance.now() >= end ? resolve() : channel.port2.postMessage(0));
+      channel.port2.postMessage(0);
+    });
+  }
   if (h.actionMode === "error") return { status: "error", message: "לא הצלחנו לשמור את אמצעי התשלום (הודעת בדיקה). לא בוצע חיוב." };
   h.cardSaved = true; // the mocked server saved the card (even if the page that asked is already gone)
   return { status: "success" };

@@ -209,9 +209,16 @@ describe("coming back to step 6 after the card was already saved", () => {
     expect(stepSource).toContain("getSumitCardSavedStatusAction({ registrationId })");
   });
 
-  it("when saved it says so and offers 'continue' - no form, no save call; if the check fails it shows the form", () => {
-    expect(stepSource).toContain('result.status === "saved" ? "saved" : "ask"');
-    expect(stepSource).toMatch(/\(\) => \{\s*if \(!cancelled\) setStatus\("ask"\);/);
+  it("when saved it says so and offers 'continue' - no form, no save call; the form appears ONLY on an explicit not-saved", () => {
+    expect(stepSource).toContain('result.status === "saved" ? "saved" : result.status === "not-saved" ? "ask" : "unknown"');
+    expect(stepSource).toMatch(/\(\) => \{\s*if \(!cancelled\) setStatus\("unknown"\);/);
+    expect(stepSource.match(/setStatus\("ask"\)/g)).toBeNull();
+    // a failed check shows the message and 'try again' - and 'try again' runs one more read-only check
+    expect(stepSource).toContain("CARD_STATUS_ERROR");
+    expect(stepSource).toContain("CARD_STATUS_RETRY");
+    expect(stepSource).toContain("setAttempt((value) => value + 1)");
+    expect(copy.CARD_STATUS_ERROR).toMatch(/לא נציג את טופס הכרטיס/);
+    expect(copy.CARD_STATUS_RETRY).toBe("נסה שוב");
     expect(stepSource).not.toMatch(/saveSumitPaymentMethodForRegistrationAction|requestToken|CreateToken/);
     expect(stepSource.indexOf("<SumitCardForm")).toBeGreaterThan(stepSource.indexOf('status === "saved"'));
     expect(copy.CARD_ALREADY_SAVED).toMatch(/כבר נשמר/);

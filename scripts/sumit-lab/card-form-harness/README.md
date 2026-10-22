@@ -9,12 +9,12 @@ node scripts/sumit-lab/card-form-harness/server.mjs
 Open the printed `http://127.0.0.1:4179/` and run, in the page's console:
 
 ```js
-await window.__runScenarios()   // [{ name, pass }] - 40 checks, see scenarios.ts
+await window.__runScenarios()   // [{ name, pass }] - 46 checks, see scenarios.ts
 ```
 
 Scenarios: success with a double click and a submit (one attempt, one save, only `registrationId`/`token`/`payer`/`consent` sent, no card data in what the action received, card wiped), server-action error and throw followed by a retry, payments.js refusal, a double answer, the timeout (its 20 s is shortened to 300 ms by the harness) followed by a LATE valid answer and a retry, removal of the form before payments.js answers (a late answer must not save), removal during the save, browser-side validation, and jQuery loading.
 
-Also covered: coming back to step 6 after the card was already saved on the server (a normal save, or a save that finished after the page was left): the wrapper identifies "already saved", shows no form and starts no save; a failing check shows the form and never claims "saved"; no card-brand marks are shown.
+Also covered: coming back to step 6 after the card was already saved on the server (a normal save, or a save that finished after the page was left): the wrapper identifies "already saved", shows no form and starts no save; a failing check (error answer or failed call) shows a message and "try again" - NEVER the form, and never claims "saved"; the form appears only on an explicit not-saved; no card-brand marks are shown.
 
 ## Real payments.js against the TEST organization (server action still a mock)
 

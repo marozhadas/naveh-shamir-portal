@@ -7,8 +7,26 @@ import type { Harness, PendingCall } from "./harness-state";
 let nextToken = 0;
 const newToken = () => `00000000-0000-4000-8000-${String(++nextToken).padStart(12, "0")}`; // uuid-shaped, not a real token
 const originalSetTimeout = window.setTimeout.bind(window);
+// A wait that a BACKGROUND browser tab cannot slow down (hidden tabs throttle timers to 1 s; a MessageChannel ping-pong is not throttled).
+// Used for the mocked answers and for the test helpers' sleeps, so the scenarios behave the same in a visible or a hidden tab.
+const sleepUnthrottled = (ms: number) =>
+  new Promise<void>((resolve) => {
+    const end = performance.now() + ms;
+    const channel = new MessageChannel();
+    channel.port1.onmessage = () => (performance.now() >= end ? resolve() : channel.port2.postMessage(0));
+    channel.port2.postMessage(0);
+  });
 // the form's 20 s wait for payments.js is shortened to 300 ms so the browser test does not sit still; all other delays are untouched
-if (new URLSearchParams(location.search).get("real") !== "1") window.setTimeout = ((handler: TimerHandler, delay?: number, ...args: unknown[]) => originalSetTimeout(handler, delay === 20000 ? 300 : delay, ...args)) as typeof window.setTimeout; // (not in real mode: the real network needs the real 20 s)
+// (not in real mode: the real network needs the real 20 s). The shortened wait is unthrottled too, so a hidden tab gives the same result.
+if (new URLSearchParams(location.search).get("real") !== "1") {
+  window.setTimeout = ((handler: TimerHandler, delay?: number, ...args: unknown[]) => {
+    if (delay === 20000 && typeof handler === "function") {
+      void sleepUnthrottled(300).then(() => handler(...args));
+      return 0; // a stale timer firing later is harmless: the attempt it belongs to has already settled
+    }
+    return originalSetTimeout(handler, delay, ...args);
+  }) as typeof window.setTimeout;
+}
 
 let root: Root | null = null;
 // REAL mode (?real=1): SUMIT's real payments.js is loaded by the form itself, with the CompanyID and public key of the TEST organization from the local server
@@ -123,9 +141,9 @@ if (!REAL) (window as unknown as { OfficeGuy: unknown }).OfficeGuy = {
         if (og) og.value = token;
         settings.ResponseCallback({ Status: 0, UserErrorMessage: null, TechnicalErrorDetails: null, Data: { SingleUseToken: token } });
       };
-      if (h.scenario === "ok") originalSetTimeout(() => { pending.settledBy = "ok"; answer(); }, 120);
-      else if (h.scenario === "twice") originalSetTimeout(() => { pending.settledBy = "twice"; answer(); answer(); }, 120);
-      else if (h.scenario === "refused") originalSetTimeout(() => { pending.settledBy = "refused"; settings.ResponseCallback({ Status: 1, UserErrorMessage: "raw SUMIT text that must never be shown", TechnicalErrorDetails: null, Data: null }); }, 120);
+      if (h.scenario === "ok") void sleepUnthrottled(120).then(() => { pending.settledBy = "ok"; answer(); });
+      else if (h.scenario === "twice") void sleepUnthrottled(120).then(() => { pending.settledBy = "twice"; answer(); answer(); });
+      else if (h.scenario === "refused") void sleepUnthrottled(120).then(() => { pending.settledBy = "refused"; settings.ResponseCallback({ Status: 1, UserErrorMessage: "raw SUMIT text that must never be shown", TechnicalErrorDetails: null, Data: null }); });
       // "silent": never answers (the real script is silent when the request cannot be sent); tests answer late through __h.answerLate
       return false;
     },
@@ -161,7 +179,7 @@ const t = {
   cardLengths: () => ({ number: q<HTMLInputElement>("#sumit-card-number").value.length, month: q<HTMLInputElement>("#sumit-card-month").value.length, year: q<HTMLInputElement>("#sumit-card-year").value.length, cvv: q<HTMLInputElement>("#sumit-card-cvv").value.length }),
   errorText: () => document.querySelector("[role=alert]")?.textContent ?? null,
   ogTokenLength: () => document.querySelector<HTMLInputElement>("#sumit-card-form input[name=og-token]")?.value.length ?? null,
-  sleep: (ms: number) => new Promise((resolve) => originalSetTimeout(resolve, ms)),
+  sleep: (ms: number) => sleepUnthrottled(ms),
   snapshot: () => ({ createTokenCalls: h.createTokenCalls.length, actionCalls: h.actionCalls.length, completed: h.completed, error: document.getElementById("sumit-card-form") ? t.errorText() : "(form removed)", buttonDisabled: document.getElementById("sumit-card-form") ? (t.button()?.disabled ?? null) : null }),
 };
 (window as unknown as { __t: typeof t }).__t = t;

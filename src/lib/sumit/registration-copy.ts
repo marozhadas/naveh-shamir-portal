@@ -32,6 +32,9 @@ export const SUMMARY_TRIAL_LINE = "שלב ניסיוני: לא מתחילה תק
 export const CARD_STATUS_CHECKING = "בודקים אם אמצעי תשלום כבר נשמר…";
 export const CARD_ALREADY_SAVED = "אמצעי התשלום כבר נשמר עבור ההרשמה הזו. לא נדרשת פעולה נוספת. לא בוצע חיוב, לא נוצר מנוי ולא התחילה תקופת ניסיון.";
 export const CARD_ALREADY_SAVED_CONTINUE = "המשך";
+/** The check itself failed: we do not know whether a card was saved, so no form is offered until an explicit "not saved" arrives. */
+export const CARD_STATUS_ERROR = "לא הצלחנו לבדוק אם אמצעי תשלום כבר נשמר עבור ההרשמה הזו. כדי לא לשמור פעמיים, לא נציג את טופס הכרטיס לפני שהבדיקה תצליח. לא בוצע חיוב.";
+export const CARD_STATUS_RETRY = "נסה שוב";
 
 /** Step 6, above the form. */
 export const STEP6_INTRO = "פרטי העסק נשמרו וההרשמה ממתינה לאישור הצוות. כדי להשלים את שלב אמצעי התשלום (שלב ניסיוני), הזינו כרטיס. לא מתבצע חיוב, לא נוצר מנוי ולא מתחילה תקופת ניסיון.";
