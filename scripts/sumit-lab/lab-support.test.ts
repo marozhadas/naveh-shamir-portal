@@ -205,6 +205,19 @@ describe("the charge-saved step is one guarded request with no retry", () => {
   });
 });
 
+describe("the reconcile step is read-only", () => {
+  const lab = readFileSync(path.join(__dirname, "sumit-lab.lab.ts"), "utf8");
+  const step = lab.slice(lab.indexOf('describe("4. reconcile'), lab.indexOf('describe("secrets never reach the output"'));
+  const stepCode = step.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+  it("only lists and reads payments: no charge, no customer, no payment-method, no tokenization, no raw write, and it is off unless SUMIT_LAB_READONLY=reconcile", () => {
+    expect(step).toContain('process.env.SUMIT_LAB_READONLY !== "reconcile"');
+    expect(stepCode).toMatch(/listSumitPayments\(/);
+    expect(stepCode).toMatch(/getSumitPayment\(/);
+    expect(stepCode).not.toMatch(/provider\.charge|createSumitPaymentProvider|createSumitCustomer|setSumitPaymentMethod|removeSumitPaymentMethod|tokenizeTestCard|rawPost\(|DRY_RUN/);
+  });
+});
+
 describe("diffPayments", () => {
   it("reports keys on one side only and differing values", () => {
     expect(diffPayments({ A: 1, B: 2, C: 3 }, { A: 1, B: 9, D: 4 })).toEqual({ onlyInFirst: ["C"], onlyInSecond: ["D"], differing: ["B"] });

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createSumitCustomer, getSumitCompanyName, getSumitPaymentMethod, listSumitPayments, setSumitPaymentMethod } from "@/lib/sumit/client";
+import { createSumitCustomer, getSumitCompanyName, getSumitPayment, getSumitPaymentMethod, listSumitPayments, setSumitPaymentMethod } from "@/lib/sumit/client";
 import { SUMIT_BASE_URL, getSumitConfig, getSumitConfigurationProblems, type SumitConfig } from "@/lib/sumit/config";
 import { createSumitPaymentProvider } from "@/lib/sumit/sumit-payment-provider";
 import { isSumitTestOrganizationName } from "@/lib/sumit/test-organization";
@@ -15,6 +15,7 @@ import {
   diffPayments,
   installRecorder,
   last4,
+  latestAttemptTime,
   loadLabEnv,
   maxCalls,
   redact,
@@ -385,6 +386,72 @@ describe("3. data-changing steps (each needs SUMIT_LAB_APPROVED=<name> and a pas
     summaries.decline = summary;
     report("decline", summary);
     expect(approved.has("decline")).toBe(false);
+  });
+});
+
+describe("4. reconcile (READ-ONLY: payments/list and payments/get only - never a charge, never a change)", () => {
+  it.skipIf(process.env.SUMIT_LAB_READONLY !== "reconcile")("reconcile: is there a payment of the lab customer that matches the charge-saved attempt? Absence in the list is NOT proof that nothing happened", async (context) => {
+    if (!state.identityOk || !state.customerId) {
+      report("reconcile", { skipped: "needs a passed identity check and the lab customer id (SUMIT_LAB_CUSTOMER_ID)" });
+      context.skip();
+      return;
+    }
+    recorder.setStep("reconcile");
+    const attempt = latestAttemptTime("charge-saved");
+    if (!attempt) {
+      report("reconcile", { skipped: "no earlier recording of a charge-saved attempt to reconcile" });
+      context.skip();
+      return;
+    }
+    const SIX_HOURS = 6 * 3600_000;
+    const dateFrom = new Date(attempt.getTime() - SIX_HOURS);
+    const dateTo = new Date(attempt.getTime() + SIX_HOURS);
+    const expectedAgorot = 3900;
+
+    // a bounded read of the list (a few pages at most); reading more pages is NOT a retry of anything
+    const payments: Awaited<ReturnType<typeof listSumitPayments>>["payments"] = [];
+    let pagesRead = 0;
+    let moreAvailable = false;
+    for (let startIndex = 0; pagesRead < 5; pagesRead += 1) {
+      const page = await listSumitPayments({ dateFrom, dateTo, startIndex });
+      payments.push(...page.payments);
+      moreAvailable = page.hasNextPage;
+      if (!page.hasNextPage || page.payments.length === 0) break;
+      startIndex += page.payments.length;
+    }
+    pagesRead += 1;
+
+    const brief = (payment: (typeof payments)[number]) => ({ id: payment.id, valid: payment.valid, amountAgorot: payment.amountAgorot, date: payment.date, customerId: payment.customerId, status: payment.status, documentId: payment.documentId });
+    const forCustomer = payments.filter((payment) => payment.customerId === state.customerId);
+    const customerAndAmount = forCustomer.filter((payment) => payment.amountAgorot === expectedAgorot);
+    const nearAttempt = customerAndAmount.filter((payment) => payment.date !== null && Math.abs(new Date(payment.date).getTime() - attempt.getTime()) <= 30 * 60_000);
+
+    // one read-back per matching payment (at most 3), only when a candidate exists
+    const readBacks: Array<Record<string, unknown>> = [];
+    for (const candidate of customerAndAmount.slice(0, 3)) {
+      const read = await getSumitPayment(candidate.id);
+      const getRaw = rawPayment("/billing/payments/get/");
+      readBacks.push({ ...brief(read), rawCurrency: getRaw?.Currency, rawStatusDescription: getRaw?.StatusDescription, rawValidPayment: getRaw?.ValidPayment });
+    }
+
+    const summary = {
+      attemptStartedUtc: attempt.toISOString(),
+      windowFromUtc: dateFrom.toISOString(),
+      windowToUtc: dateTo.toISOString(),
+      pagesRead,
+      moreAvailableAfterLastPage: moreAvailable,
+      paymentsInWindow: payments.length,
+      paymentsOfTheLabCustomer: forCustomer.map(brief),
+      matchCustomerAndAmount: customerAndAmount.map(brief),
+      matchCustomerAmountAndTimeWithin30Minutes: nearAttempt.map(brief),
+      readBacks,
+      conclusion: customerAndAmount.length > 0
+        ? "A payment of the lab customer for the expected amount EXISTS in SUMIT: the charge request that SUMIT answered with an error may have been processed. Reconcile before anything else."
+        : "NOT FOUND in the list. This does NOT prove that nothing was charged (the list's date semantics and completeness are not documented); it is one piece of evidence only.",
+    };
+    summaries.reconcile = summary;
+    report("reconcile", summary);
+    expect(recorder.exchanges.filter((entry) => entry.path === "/billing/payments/charge/")).toEqual([]);
   });
 });
 

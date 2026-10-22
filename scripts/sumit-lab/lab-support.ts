@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { vi } from "vitest";
 
@@ -185,4 +185,21 @@ export function diffPayments(left: Record<string, unknown> | null, right: Record
     else if (JSON.stringify(a[key]) !== JSON.stringify(b[key])) out.differing.push(key);
   }
   return out;
+}
+
+/** The start time of the newest recorded run that approved `step`, read from the recording's file name (UTC). Null when there is none. */
+export function latestAttemptTime(step: string, dir = OUTPUT_DIR): Date | null {
+  if (!existsSync(dir)) return null;
+  const names = readdirSync(dir).filter((name) => name.endsWith("-run.json")).sort().reverse();
+  for (const name of names) {
+    try {
+      const run = JSON.parse(readFileSync(path.join(dir, name), "utf8")) as { approved?: string[] };
+      if (!run.approved?.includes(step)) continue;
+      const match = /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z-run\.json$/.exec(name);
+      if (match) return new Date(`${match[1]}T${match[2]}:${match[3]}:${match[4]}.${match[5]}Z`);
+    } catch {
+      // an unreadable recording is simply skipped
+    }
+  }
+  return null;
 }
