@@ -99,6 +99,36 @@ describe("requestToken (one attempt, exactly one answer)", () => {
   });
 });
 
+describe("requestToken cancellation (the form was removed)", () => {
+  it("an already aborted signal: 'cancelled' and CreateToken is never called", async () => {
+    const payments = makePayments((settings) => settings.ResponseCallback({ Status: 0, Data: { SingleUseToken: TOKEN } }));
+    const controller = new AbortController();
+    controller.abort();
+    expect(await requestToken(base(payments, makeForm(), { signal: controller.signal }))).toEqual({ status: "cancelled" });
+    expect(payments.calls).toHaveLength(0);
+  });
+
+  it("aborting while waiting resolves 'cancelled'; the late answer is ignored and cannot yield a token", async () => {
+    let late: (() => void) | null = null;
+    const form = makeForm("");
+    const payments = makePayments((settings) => { late = () => { form.og!.value = TOKEN; settings.ResponseCallback({ Status: 0, Data: { SingleUseToken: TOKEN } }); }; });
+    const controller = new AbortController();
+    const promise = requestToken(base(payments, form, { signal: controller.signal }));
+    controller.abort();
+    expect(await promise).toEqual({ status: "cancelled" });
+    late!();
+    expect(await promise).toEqual({ status: "cancelled" });
+  });
+
+  it("aborting after the answer changes nothing", async () => {
+    const payments = makePayments((settings) => settings.ResponseCallback({ Status: 0, Data: { SingleUseToken: TOKEN } }));
+    const controller = new AbortController();
+    const result = await requestToken(base(payments, makeForm(), { signal: controller.signal }));
+    controller.abort();
+    expect(result).toEqual({ status: "ok", token: TOKEN });
+  });
+});
+
 describe("normalizeCard", () => {
   const now = new Date("2026-10-22T10:00:00Z");
 

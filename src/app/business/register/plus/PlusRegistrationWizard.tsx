@@ -20,7 +20,7 @@ import {
 } from "./validation";
 import type { PlusBusinessRegistrationInput } from "@/types/business-plus-registration";
 import { SumitCardForm } from "@/components/business-dashboard/SumitCardForm/SumitCardForm";
-import { REVIEW_PAYMENT_CONSENT, REVIEW_PAYMENT_NOTE, STEP6_INTRO } from "@/lib/sumit/registration-copy";
+import { REVIEW_BILLING_LEGEND, REVIEW_PAYMENT_CONSENT, REVIEW_PAYMENT_CONSENT_ERROR, REVIEW_PAYMENT_CONSENT_LABEL, REVIEW_PAYMENT_NOTE, STEP6_INTRO } from "@/lib/sumit/registration-copy";
 import type { SumitRegistrationPayment } from "@/lib/sumit/registration-access";
 import { BILLING_INTERVALS, BILLING_INTERVAL_LABEL, LAUNCH_PRICE_LABEL, TRIAL_DAYS, formatPriceWithInterval, getCurrentPrice, type BillingInterval } from "@/data/subscription-pricing";
 import styles from "./plus-wizard.module.css";
@@ -114,7 +114,8 @@ const FIELD_LABEL: Record<string, string> = {
 };
 
 /** Human label for an error key shown in a step's error summary — services/hours get a dynamic, position-aware label instead of a static lookup. */
-function labelForErrorKey(key: string): string {
+function labelForErrorKey(key: string, paymentEnabled = false): string {
+  if (key === "trialConsent" && paymentEnabled) return REVIEW_PAYMENT_CONSENT_LABEL;
   if (key.startsWith("service-title-")) return `שירות ${Number(key.split("-")[2]) + 1} — שם השירות`;
   if (key.startsWith("service-desc-")) return `שירות ${Number(key.split("-")[2]) + 1} — תיאור`;
   if (key.startsWith("service-price-")) return `שירות ${Number(key.split("-")[2]) + 1} — מחיר`;
@@ -688,7 +689,7 @@ export function PlusRegistrationWizard({ planId, initialBillingInterval = "month
                     focusAndReveal(errorKeyToElementId(key));
                   }}
                 >
-                  {labelForErrorKey(key)}
+                  {labelForErrorKey(key, paymentEnabled)}
                 </a>
               </li>
             ))}
@@ -1600,7 +1601,7 @@ function ReviewStep({ values, planId, errors, onEdit, onChangeConsent, paymentEn
       <div className={styles.reviewSection}>
         <p className={styles.reviewLabel}>מסלול {planId === "plus" ? "Plus" : "Premium"}</p>
         <fieldset className={styles.intervalFieldset}>
-          <legend className={styles.reviewLabel}>בחרו מסלול חיוב ({TRIAL_DAYS} ימי ניסיון חינם בשני המסלולים)</legend>
+          <legend className={styles.reviewLabel}>{paymentEnabled ? REVIEW_BILLING_LEGEND : `בחרו מסלול חיוב (${TRIAL_DAYS} ימי ניסיון חינם בשני המסלולים)`}</legend>
           {BILLING_INTERVALS.map((interval) => {
             const price = getCurrentPrice(planId, interval);
             return (
@@ -1696,7 +1697,7 @@ function ReviewStep({ values, planId, errors, onEdit, onChangeConsent, paymentEn
           </label>
           {errors.trialConsent && (
             <p id="trialConsent-error" className={styles.fieldErrorMessage} role="alert">
-              {errors.trialConsent}
+              {paymentEnabled ? REVIEW_PAYMENT_CONSENT_ERROR : errors.trialConsent}
             </p>
           )}
         </div>

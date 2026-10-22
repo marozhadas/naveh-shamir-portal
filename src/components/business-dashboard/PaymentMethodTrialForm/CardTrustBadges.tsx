@@ -6,7 +6,7 @@ import styles from "./PaymentMethodTrialForm.module.css";
  * form) plus the usual card-brand marks. The marks are simple generic badges, not official logo files.
  * Confirm with PayMe which cards the account accepts and drop any brand that is not accepted.
  */
-export function CardTrustBadges() {
+export function CardTrustBadges({ providerName = "PayMe" }: { providerName?: string } = {}) {
   return (
     <div className={styles.trust}>
       <ul className={styles.trustList} aria-label="אבטחת התשלום">
@@ -16,7 +16,7 @@ export function CardTrustBadges() {
         </li>
         <li className={styles.trustItem}>
           <ShieldCheck size={15} aria-hidden="true" />
-          סליקה מאובטחת באמצעות PayMe
+          סליקה מאובטחת באמצעות {providerName}
         </li>
       </ul>
 

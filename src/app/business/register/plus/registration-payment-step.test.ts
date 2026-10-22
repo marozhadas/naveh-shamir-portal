@@ -83,6 +83,21 @@ describe("the words: a card is only SAVED - no automatic trial, no charge date i
     expect(success).not.toContain("באופן אוטומטי (30 ימים");
   });
 
+  it("step 5 (review) promises no trial while step 6 follows: legend, consent, error text and error-summary label", () => {
+    const code = strip(wizard);
+    expect(code).toContain("REVIEW_BILLING_LEGEND");
+    expect(code).toContain("paymentEnabled ? REVIEW_PAYMENT_CONSENT_ERROR : errors.trialConsent");
+    expect(code).toContain('key === "trialConsent" && paymentEnabled) return REVIEW_PAYMENT_CONSENT_LABEL');
+    expect(code).toContain("labelForErrorKey(key, paymentEnabled)");
+    // the "30 days" wording survives ONLY on the branch without the card step
+    expect(code).toContain(": `בחרו מסלול חיוב (${TRIAL_DAYS} ימי ניסיון חינם בשני המסלולים)`");
+    expect(code).toContain(': "אני מאשר/ת להפעיל את 30 ימי הניסיון לאחר אישור העסק."');
+    expect(code).toContain("paymentEnabled ? REVIEW_BILLING_LEGEND :");
+    for (const text of [copy.REVIEW_BILLING_LEGEND, copy.REVIEW_PAYMENT_CONSENT_ERROR, copy.REVIEW_PAYMENT_CONSENT_LABEL, copy.REVIEW_PAYMENT_CONSENT, copy.REVIEW_PAYMENT_NOTE]) {
+      expect(text).not.toMatch(/30|90|ימי ניסיון חינם|להפעיל את תקופת הניסיון|אוטומטי/);
+    }
+  });
+
   it("the card form describes where the card goes truthfully: not an iframe, not 'the portal never sees it' by accident", () => {
     expect(copy.CARD_FORM_SECURITY_NOTE).toContain("SUMIT");
     expect(copy.CARD_FORM_SECURITY_NOTE).toContain("אסימון חד-פעמי");
@@ -140,6 +155,17 @@ describe("the SUMIT card form only SAVES the card", () => {
     expect(code).toMatch(/attempt\.status === "refused"/);
     expect(code).toMatch(/attempt\.status !== "ok"/);
     expect(strip(read("../../../../lib/sumit/payments-js.ts"))).toMatch(/TOKEN_TIMEOUT_MS/);
+  });
+
+  it("the form is honest about its provider and about being removed mid-attempt", () => {
+    expect(code).toContain('<CardTrustBadges providerName="SUMIT" />');
+    expect(code).not.toMatch(/PayMe/);
+    // an attempt is cancellable, the unmount aborts it, and nothing runs after the form is gone
+    expect(code).toContain("new AbortController()");
+    expect(code).toContain("attemptRef.current?.abort()");
+    expect(code).toContain('attempt.status === "cancelled" || !mountedRef.current) return;');
+    expect(code.indexOf('attempt.status === "cancelled"')).toBeLessThan(code.indexOf("await saveSumitPaymentMethodForRegistrationAction"));
+    expect(code).toContain("if (!mountedRef.current) return; // removed during the save");
   });
 
   it("the loader brings its own jQuery (payments.js needs it), sets only window.jQuery, and loads the SUMIT script once", () => {

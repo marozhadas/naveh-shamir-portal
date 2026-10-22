@@ -36,7 +36,9 @@ export type TokenAttempt =
   /** SUMIT answered, but not with a token (e.g. the card details were refused). */
   | { status: "refused" }
   /** No answer within the timeout, or the script is unavailable / threw: nothing is known about the card. */
-  | { status: "no-answer" };
+  | { status: "no-answer" }
+  /** The caller gave up (the form was removed) before an answer: whatever arrives later is ignored and must not start anything. */
+  | { status: "cancelled" };
 
 /** The one-time token out of a payments.js answer, or null. A card-number-looking string is never accepted as a token. */
 export function tokenFromResponse(response: unknown): string | null {
@@ -49,8 +51,8 @@ export function tokenFromResponse(response: unknown): string | null {
 
 /**
  * One tokenization attempt: clears a stale og-token first, calls CreateToken once, and resolves exactly once - with the token, a
- * refusal, or "no-answer" after the timeout (the script gives no callback on a network failure). A late answer after the timeout is
- * ignored. Never throws. Nothing here logs or stores the token or the card.
+ * refusal, "no-answer" after the timeout (the script gives no callback on a network failure) or "cancelled" when the caller's signal
+ * aborts. A late answer after the timeout or the cancellation is ignored. Never throws. Nothing here logs or stores the token or the card.
  */
 export function requestToken(options: {
   payments: PaymentsJsGlobal | undefined;
@@ -59,12 +61,15 @@ export function requestToken(options: {
   form: { querySelector: (selector: string) => { value: string } | null };
   formSelector: string;
   timeoutMs?: number;
+  /** Aborted when the form goes away: the attempt ends as "cancelled" and a late answer is ignored. */
+  signal?: AbortSignal;
   setTimer?: (callback: () => void, ms: number) => unknown;
   clearTimer?: (handle: unknown) => void;
 }): Promise<TokenAttempt> {
   const { payments, companyId, apiPublicKey, form, formSelector } = options;
   const setTimer = options.setTimer ?? ((callback: () => void, ms: number) => setTimeout(callback, ms));
   const clearTimer = options.clearTimer ?? ((handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>));
+  if (options.signal?.aborted) return Promise.resolve({ status: "cancelled" });
   if (!payments?.Payments || typeof payments.Payments.CreateToken !== "function") return Promise.resolve({ status: "no-answer" });
 
   // a value left in the hidden field makes CreateToken skip the request silently
@@ -74,15 +79,18 @@ export function requestToken(options: {
   return new Promise<TokenAttempt>((resolve) => {
     let settled = false;
     let timer: unknown = null;
+    const onAbort = () => finish({ status: "cancelled" });
     const finish = (attempt: TokenAttempt) => {
       if (settled) return;
       settled = true;
       if (timer !== null) clearTimer(timer);
+      options.signal?.removeEventListener("abort", onAbort);
       // the hidden field must not keep the token
       const field = form.querySelector("input[name='og-token']");
       if (field) field.value = "";
       resolve(attempt);
     };
+    options.signal?.addEventListener("abort", onAbort, { once: true });
     timer = setTimer(() => finish({ status: "no-answer" }), options.timeoutMs ?? TOKEN_TIMEOUT_MS);
     try {
       payments.Payments.CreateToken({

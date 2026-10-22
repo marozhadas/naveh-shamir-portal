@@ -18,6 +18,11 @@ export const REVIEW_PAYMENT_NOTE = "בשלב הבא ניתן לשמור אמצע
 /** The consent checkbox of step 5, when step 6 follows. */
 export const REVIEW_PAYMENT_CONSENT = "אני מאשר/ת לשמור את אמצעי התשלום. ידוע לי שלא מתבצע חיוב ושלא נוצר מנוי או תקופת ניסיון בשלב זה.";
 
+/** Step 5, when step 6 follows: the billing-track legend, the consent's error text and its label in the error summary (the schema's own texts promise "30 days"). */
+export const REVIEW_BILLING_LEGEND = "בחרו מסלול חיוב (שלב ניסיוני: לא מתבצע חיוב ולא מתחילה תקופת ניסיון)";
+export const REVIEW_PAYMENT_CONSENT_ERROR = "יש לאשר את שמירת אמצעי התשלום";
+export const REVIEW_PAYMENT_CONSENT_LABEL = "אישור שמירת אמצעי התשלום";
+
 /** Step 6, above the form. */
 export const STEP6_INTRO = "פרטי העסק נשמרו וההרשמה ממתינה לאישור הצוות. כדי להשלים את שלב אמצעי התשלום (שלב ניסיוני), הזינו כרטיס. לא מתבצע חיוב, לא נוצר מנוי ולא מתחילה תקופת ניסיון.";
 

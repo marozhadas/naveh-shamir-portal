@@ -40,6 +40,8 @@ type CardRefs = { number: HTMLInputElement | null; month: HTMLInputElement | nul
 export function SumitCardForm({ companyId, apiPublicKey, registrationId, onCompleted }: SumitCardFormProps) {
   const paymentsRef = useRef<PaymentsJsGlobal | null>(null);
   const busyRef = useRef(false);
+  const mountedRef = useRef(false);
+  const attemptRef = useRef<AbortController | null>(null);
   const cardRefs = useRef<CardRefs>({ number: null, month: null, year: null, cvv: null });
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState(false);
@@ -49,6 +51,16 @@ export function SumitCardForm({ companyId, apiPublicKey, registrationId, onCompl
   const [payer, setPayer] = useState({ firstName: "", lastName: "", email: "", phone: "" });
   const [payerErrors, setPayerErrors] = useState<PayerFieldErrors>({});
   const [cardErrors, setCardErrors] = useState<CardFieldErrors>({});
+
+  // When the form goes away, an attempt that is still waiting for payments.js is cancelled: its late answer must not start a save.
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      attemptRef.current?.abort();
+      attemptRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,13 +110,19 @@ export function SumitCardForm({ companyId, apiPublicKey, registrationId, onCompl
       if (refs.year) refs.year.value = card.card.year;
       if (refs.cvv) refs.cvv.value = card.card.cvv;
 
+      const controller = new AbortController();
+      attemptRef.current = controller;
       const attempt = await requestToken({
+        signal: controller.signal,
         payments: paymentsRef.current ?? undefined,
         companyId,
         apiPublicKey,
         form: { querySelector: (selector) => document.querySelector<HTMLInputElement>(`#${FORM_ID} ${selector}`) },
         formSelector: `#${FORM_ID}`,
       });
+      if (attemptRef.current === controller) attemptRef.current = null;
+      // the form was removed while waiting: nothing more happens (no save, no message, no navigation)
+      if (attempt.status === "cancelled" || !mountedRef.current) return;
       if (attempt.status === "refused") {
         setError(REFUSED_MESSAGE);
         return;
@@ -122,6 +140,7 @@ export function SumitCardForm({ companyId, apiPublicKey, registrationId, onCompl
         payer: { firstName: payer.firstName, lastName: payer.lastName, email: payer.email, phone: payer.phone },
         consent,
       });
+      if (!mountedRef.current) return; // removed during the save: no navigation, no message
       if (outcome.status === "success") {
         onCompleted();
         return;
@@ -130,10 +149,10 @@ export function SumitCardForm({ companyId, apiPublicKey, registrationId, onCompl
     } catch {
       // a real communication / server failure of the server action (tokenization problems are handled above)
       clearCard();
-      setError(`${COMMUNICATION_ERROR_MESSAGE}${RE_ENTER_MESSAGE}`);
+      if (mountedRef.current) setError(`${COMMUNICATION_ERROR_MESSAGE}${RE_ENTER_MESSAGE}`);
     } finally {
       busyRef.current = false;
-      setBusy(false);
+      if (mountedRef.current) setBusy(false);
     }
   }, [apiPublicKey, clearCard, companyId, consent, onCompleted, payer, registrationId]);
 
@@ -204,7 +223,7 @@ export function SumitCardForm({ companyId, apiPublicKey, registrationId, onCompl
         </div>
         {cardErrors.month && <p className={styles.fieldError}>{cardErrors.month}</p>}
         <p className={styles.secure}>{CARD_FORM_SECURITY_NOTE}</p>
-        <CardTrustBadges />
+        <CardTrustBadges providerName="SUMIT" />
       </div>
 
       <label className={styles.consent}>
