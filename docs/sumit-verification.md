@@ -86,6 +86,21 @@ Read from SUMIT's public script (https://app.sumit.co.il/scripts/payments.js, ~2
 
 Not tested: the form inside the real wizard with a real signed-in owner (it writes a real registration to the live database), the real payments.js inside the real form, an ID-number (citizenid) requirement under UPAY in production, behaviour when SUMIT's script host is blocked, and what a re-used one-time token does. Known edge: if the form is removed while the save is already running, the card IS saved on the server but no completion / navigation happens in the browser.
 
+## E. Registration card-save check in Preview (2026-10-22) - PASSED
+
+A test registration was completed in the Preview deployment against the SUMIT TEST organization with the documented test card ending 0772. Verified read-only (database + `getforcustomer`), twice: right after the save and again after revisiting the completion page.
+
+| Check | Result |
+|---|---|
+| Registration | `pending`, `trial_status = not-started`; not approved |
+| Card rows | exactly ONE `billing_payment_methods` row for the registration (and one SUMIT row in the whole table): `provider = sumit`, `provider_token` null, SUMIT customer id, SUMIT payment-method id, card mask ending 0772 - nothing else |
+| Events | exactly one `payment_method_added` (`business_events_log`; metadata keys: `stage`, `provider`); no `billing_events` |
+| Subscription / transactions | none |
+| SUMIT Test | the customer has one ACTIVE card ending 0772, the same payment-method id as the row, and the method's customer id equals the row's customer id |
+| Revisit of the completion page (after a refresh) | shows "הכרטיס נשמר" with no form; afterwards the row, its payment-method id, the event count and the SUMIT card were unchanged - no second save |
+
+Scope and limits: one test registration, TEST organization, the documented test card only; nothing was charged. It shows the save path works end to end; it does not show anything about approval, subscriptions, charging or production. The link "this SUMIT customer belongs to this registration" rests on the stored customer id (the API does not return our `ExternalIdentifier` on this read).
+
 ## How the organization is attested (without printing secrets)
 
 1. In SUMIT, switch to the TEST business (the business selector in the sidebar; "בדיקות" is added to its name, shown in red). Open https://app.sumit.co.il/developers/keys/ **while in that business** and copy the CompanyID and the keys into `.env.local` yourself. Nothing is pasted in chat.
