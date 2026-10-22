@@ -47,10 +47,10 @@ describe("the buyer_key (the saved Hosted Fields token) stays server-side", () =
     for (const payload of upserts) expect(payload).toContain("provider_customer_id: null, provider_payment_method_id: null");
   });
 
-  it("is never selected for the admin: the admin helper selects only the card mask", () => {
+  it("is never selected for the admin: the admin helper selects only the provider, the mask and the SUMIT customer id", () => {
     const service = read(path.join(SRC, "repositories/supabase-subscription-service.ts"));
     const helper = service.slice(service.indexOf("export async function getSavedPaymentMethodInfo"), service.indexOf("export type CancelForRejectionResult"));
-    expect(helper).toContain('.select("card_mask")');
+    expect(helper).toContain('.select("provider, card_mask, provider_customer_id")');
     expect(helper).not.toContain("provider_token");
   });
 

@@ -122,7 +122,7 @@ function resetAll() {
   db.registration = { ...REGISTRATION };
   db.existingSubscription = null;
   db.paymeSubscription = null;
-  db.paymentMethod = { provider_token: TOKEN, card_mask: "411111******1111" };
+  db.paymentMethod = { provider: "payme", provider_token: TOKEN, provider_customer_id: null, card_mask: "411111******1111" };
   db.ownerExists = true;
   db.subscriptionInsertError = null;
   db.registrationUpdateError = null;
@@ -398,9 +398,28 @@ describe("the admin can see that a card is ready - and only its mask", () => {
   it("returns whether a card exists and the mask, never the token", async () => {
     const { getSavedPaymentMethodInfo } = await import("./supabase-subscription-service");
     const info = await getSavedPaymentMethodInfo(REGISTRATION_ID);
-    expect(info).toEqual({ hasPaymentMethod: true, cardMask: "411111******1111" });
+    expect(info).toEqual({ hasPaymentMethod: true, cardMask: "411111******1111", provider: "payme" });
     expect(JSON.stringify(info)).not.toContain(TOKEN);
     db.paymentMethod = null;
-    expect(await getSavedPaymentMethodInfo(REGISTRATION_ID)).toEqual({ hasPaymentMethod: false, cardMask: null });
+    expect(await getSavedPaymentMethodInfo(REGISTRATION_ID)).toEqual({ hasPaymentMethod: false, cardMask: null, provider: null });
+  });
+
+  it("a SUMIT card is recognised by provider and SUMIT customer id - no token needed - and only its mask is returned", async () => {
+    const { getSavedPaymentMethodInfo } = await import("./supabase-subscription-service");
+    db.paymentMethod = { provider: "sumit", provider_token: null, provider_customer_id: "7000000001", provider_payment_method_id: "7000000002", card_mask: "XXXXXXXXXXXX0772" };
+    const info = await getSavedPaymentMethodInfo(REGISTRATION_ID);
+    expect(info).toEqual({ hasPaymentMethod: true, cardMask: "XXXXXXXXXXXX0772", provider: "sumit" });
+    expect(JSON.stringify(info)).not.toMatch(/7000000001|7000000002/); // ids stay server-side
+  });
+
+  it("a SUMIT row without a valid customer id, or a row of an unknown provider, is NOT a usable card", async () => {
+    const { getSavedPaymentMethodInfo } = await import("./supabase-subscription-service");
+    const none = { hasPaymentMethod: false, cardMask: null, provider: null };
+    db.paymentMethod = { provider: "sumit", provider_token: null, provider_customer_id: null, card_mask: "XXXXXXXXXXXX0772" };
+    expect(await getSavedPaymentMethodInfo(REGISTRATION_ID)).toEqual(none);
+    db.paymentMethod = { provider: "sumit", provider_token: null, provider_customer_id: "abc", card_mask: "XXXXXXXXXXXX0772" };
+    expect(await getSavedPaymentMethodInfo(REGISTRATION_ID)).toEqual(none);
+    db.paymentMethod = { provider: "other", provider_customer_id: "1", card_mask: "x" };
+    expect(await getSavedPaymentMethodInfo(REGISTRATION_ID)).toEqual(none);
   });
 });

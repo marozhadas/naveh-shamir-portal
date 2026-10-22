@@ -565,7 +565,8 @@ function SubscriptionRow({ sub }: { sub: RevenueSubscription }) {
       <td>{pilotRow ? "פיילוט" : "רגיל"} · {sub.trialDays ?? (pilotRow ? 90 : 30)} ימים</td>
       <td>{SUBSCRIPTION_STATUS_HE[sub.status]}</td>
       <td>{fmtDate(sub.trialEndsAt)}</td>
-      <td>{sub.nextBillingAt ? fmtDate(sub.nextBillingAt) : "—"}</td>
+      {/* A SUMIT trial carries only a PLANNED date (the end of the trial); billing is not connected, so no billing date is shown. */}
+      <td>{sub.nextBillingAt && sub.paymentProvider !== "sumit" ? fmtDate(sub.nextBillingAt) : "—"}</td>
       <td>{sub.hasPaymentMethod ? "מוגדר" : "לא מוגדר"}</td>
       <td>{fmtDate(sub.lastPaymentSucceededAt)}</td>
       <td>{fmtDate(sub.lastPaymentFailedAt)}</td>

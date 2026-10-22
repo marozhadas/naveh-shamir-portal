@@ -13,6 +13,7 @@ import { BusinessPlanControl } from "./BusinessPlanControl";
 import { BusinessOfferControl } from "./BusinessOfferControl";
 import { BillingTestSection } from "./BillingTestSection";
 import { getSavedPaymentMethodInfo } from "@/repositories/supabase-subscription-service";
+import { describeSavedPaymentMethod } from "@/lib/admin/describe-saved-payment-method";
 import { getOffer } from "@/data/subscription-offers";
 import { BusinessSlugControl } from "./BusinessSlugControl";
 import { BusinessManagementLinkControl } from "./BusinessManagementLinkControl";
@@ -132,11 +133,7 @@ export default async function AdminBusinessDetailPage({ params }: BusinessDetail
           <h2 id="payment-method-heading" className={styles.sectionTitle}>
             אמצעי תשלום
           </h2>
-          <p className={styles.description}>
-            {savedMethod.hasPaymentMethod
-              ? `נשמר אמצעי תשלום (${savedMethod.cardMask ?? "כרטיס"}). לא בוצע חיוב. הוא ישמש ליצירת המנוי ברגע שתאשרו את העסק.`
-              : "לא נשמר אמצעי תשלום לעסק הזה."}
-          </p>
+          <p className={styles.description}>{describeSavedPaymentMethod(savedMethod, registration.status, registration.offer_code)}</p>
         </section>
       )}
 
@@ -328,7 +325,7 @@ export default async function AdminBusinessDetailPage({ params }: BusinessDetail
           businessName={registration.business_name}
           activation={
             registration.plan_tier !== "free" && savedMethod
-              ? { hasPaymentMethod: savedMethod.hasPaymentMethod, cardMask: savedMethod.cardMask, offerLabel: getOffer(registration.offer_code).groupLabel, trialDays: getOffer(registration.offer_code).trialDays }
+              ? { hasPaymentMethod: savedMethod.hasPaymentMethod, cardMask: savedMethod.cardMask, provider: savedMethod.provider, offerLabel: getOffer(registration.offer_code).groupLabel, trialDays: getOffer(registration.offer_code).trialDays }
               : null
           }
         />

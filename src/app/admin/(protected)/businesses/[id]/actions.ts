@@ -32,6 +32,7 @@ import { decideOfferChange } from "@/domain/decide-offer-change";
 import { getOffer, type OfferCode } from "@/data/subscription-offers";
 import { isValidBusinessSlug } from "@/utils/business-slug";
 import { activateRegistrationOnApproval, cancelPayMeSubscriptionForRejection, getSavedPaymentMethodInfo } from "@/repositories/supabase-subscription-service";
+import { activateSumitTrialOnApproval } from "@/repositories/sumit-trial-activation";
 import { decideApprovalPath } from "@/domain/decide-registration-approval";
 import { recordSlugRedirect } from "@/repositories/business-slug-redirect-repository";
 import { checkBusinessManagementEligibility, BUSINESS_MANAGEMENT_INELIGIBILITY_MESSAGE } from "@/utils/business-management-access";
@@ -73,6 +74,7 @@ const ACTIVATION_FAILURE_MESSAGE: Record<string, string> = {
   "payme-not-configured": "הסליקה אינה מוגדרת, ולכן לא ניתן ליצור מנוי. העסק נשאר ממתין ולא פורסם.",
   "already-exists": "כבר קיים מנוי לעסק הזה. העסק נשאר ממתין.",
   "invalid-plan": "החבילה, מסלול החיוב או קבוצת ההטבה של העסק אינם תקינים. העסק נשאר ממתין ולא פורסם.",
+  "approve-failed-sumit": "האישור לא הושלם: תקופת הניסיון לא נשמרה והעסק נשאר ממתין ולא פורסם. לא בוצע חיוב. אפשר לנסות שוב.",
   "payme-rejected": "יצירת המנוי ב-PayMe נכשלה. העסק נשאר ממתין, לא פורסם, לא התחילה תקופת ניסיון ולא נרשמה הכנסה. אפשר לנסות שוב.",
   "approve-failed": "האישור לא הושלם: המנוי בוטל והעסק נשאר ממתין ולא פורסם. אפשר לנסות שוב.",
   "unknown-error": "האישור נכשל. העסק נשאר ממתין ולא פורסם. אפשר לנסות שוב.",
@@ -99,13 +101,24 @@ export async function approveRegistrationAction(registrationId: string): Promise
   if (!registration) throw new Error("ההרשמה לא נמצאה.");
 
   const savedMethod = await getSavedPaymentMethodInfo(registrationId);
-  const path = decideApprovalPath({ planTier: registration.plan_tier, hasPaymentMethod: savedMethod.hasPaymentMethod, paymeEnv: getPayMeConfig()?.env ?? null });
+  const path = decideApprovalPath({ planTier: registration.plan_tier, hasPaymentMethod: savedMethod.hasPaymentMethod, paymeEnv: getPayMeConfig()?.env ?? null, paymentMethodProvider: savedMethod.provider });
   if (path === "blocked-payme-not-configured") return { status: "error", message: APPROVAL_BLOCKED_MESSAGE[path], code: PAYMENTS_TEMPORARILY_UNAVAILABLE };
   if (path === "blocked-no-payment-method") return { status: "error", message: APPROVAL_BLOCKED_MESSAGE[path] };
 
   let trialDays: number | null = null;
   let offerCode: string | null = null;
-  if (path === "activate") {
+  let sumitTrial = false;
+  if (path === "activate-sumit-trial") {
+    // A saved SUMIT card: approving starts the trial and publishes. No payment-provider call, no charge (activateSumitTrialOnApproval).
+    const activation = await activateSumitTrialOnApproval(registrationId, adminId);
+    if (!activation.success) {
+      const key = activation.reason === "approve-failed" ? "approve-failed-sumit" : activation.reason;
+      return { status: "error", message: ACTIVATION_FAILURE_MESSAGE[key] ?? ACTIVATION_FAILURE_MESSAGE["unknown-error"] };
+    }
+    trialDays = activation.trialDays;
+    offerCode = activation.offerCode;
+    sumitTrial = true;
+  } else if (path === "activate") {
     const activation = await activateRegistrationOnApproval(registrationId, adminId);
     if (!activation.success) return { status: "error", message: ACTIVATION_FAILURE_MESSAGE[activation.reason] ?? ACTIVATION_FAILURE_MESSAGE["unknown-error"] };
     trialDays = activation.trialDays;
@@ -120,7 +133,7 @@ export async function approveRegistrationAction(registrationId: string): Promise
     action: "business-approved",
     entityType: "business-registration",
     entityId: registrationId,
-    metadata: { businessName: registration.business_name, ...(trialDays !== null ? { trialStarted: true, trialDays, offerCode } : {}) },
+    metadata: { businessName: registration.business_name, ...(trialDays !== null ? { trialStarted: true, trialDays, offerCode } : {}), ...(sumitTrial ? { provider: "sumit", charged: false } : {}) },
   });
 
   revalidateBusinessViews(registrationId);

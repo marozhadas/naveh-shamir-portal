@@ -105,6 +105,7 @@ describe("static guard rails: nothing new can open PayMe", () => {
       "lib/admin/live-readiness.ts",
       "lib/business-owner/payment-resume.ts",
       "repositories/sumit-payment-method-service.ts", // only the pure plan builder (see the next test)
+      "repositories/sumit-trial-activation.ts", // only the pure plan builder (see the next test)
       "repositories/supabase-subscription-service.ts",
     ]);
   });

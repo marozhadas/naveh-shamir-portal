@@ -42,6 +42,9 @@ vi.mock("@/repositories/supabase-subscription-service", () => ({
   activateRegistrationOnApproval: (...args: unknown[]) => activate(...args),
 }));
 
+const activateSumit = vi.fn();
+vi.mock("@/repositories/sumit-trial-activation", () => ({ activateSumitTrialOnApproval: (...args: unknown[]) => activateSumit(...args) }));
+
 const ID = "11111111-1111-1111-1111-111111111111";
 const pending = (overrides: Record<string, unknown> = {}) => ({ id: ID, business_name: "עסק בדיקה", status: "pending", plan_tier: "plus", offer_code: "launch_standard", ...overrides });
 
@@ -123,6 +126,56 @@ describe("approveRegistrationAction - the admin's approval IS the activation", (
     getSavedPaymentMethodInfo.mockResolvedValue({ hasPaymentMethod: false, cardMask: null });
     expect((await approve()).status).toBe("success");
     expect(updateStatus).toHaveBeenCalledWith(ID, "approved");
+    expect(activate).not.toHaveBeenCalled();
+  });
+});
+
+describe("approveRegistrationAction - a saved SUMIT card: the approval starts the TRIAL only (no charge, no payment-provider call)", () => {
+  beforeEach(() => {
+    for (const fn of [getRegistrationById, getRegistrationSubscriptionRow, updateStatus, recordAuditLog, resolveNotification, getSavedPaymentMethodInfo, activate, activateSumit]) fn.mockReset();
+    getRegistrationById.mockResolvedValue(pending());
+    getSavedPaymentMethodInfo.mockResolvedValue({ hasPaymentMethod: true, cardMask: "XXXXXXXXXXXX0772", provider: "sumit" });
+    activateSumit.mockResolvedValue({ success: true, subscription: {}, offerCode: "launch_standard", trialDays: 30, nextBillingAt: "2026-11-21T10:00:00.000Z" });
+  });
+
+  async function approve() {
+    const { approveRegistrationAction } = await import("./actions");
+    return approveRegistrationAction(ID);
+  }
+
+  it.each([["sandbox"], ["live"], [null]] as const)("works whatever PayMe's state is (%s): SUMIT does not depend on PayMe, and the PayMe activation is never used", async (env) => {
+    paymeEnv.value = env as "sandbox" | "live" | null;
+    expect(await approve()).toEqual({ status: "success", trialStarted: true, trialDays: 30 });
+    expect(activateSumit).toHaveBeenCalledWith(ID, "admin-1");
+    expect(activate).not.toHaveBeenCalled();
+    expect(updateStatus).not.toHaveBeenCalled(); // the activation approves, atomically with the trial row
+    expect(resolveNotification).toHaveBeenCalled();
+    expect(recordAuditLog.mock.calls[0][0]).toMatchObject({ action: "business-approved", metadata: { trialStarted: true, trialDays: 30, offerCode: "launch_standard", provider: "sumit", charged: false } });
+  });
+
+  it("Pilot: 90 days, from the offer on the business", async () => {
+    activateSumit.mockResolvedValue({ success: true, subscription: {}, offerCode: "pilot_2026", trialDays: 90, nextBillingAt: "2027-01-20T10:00:00.000Z" });
+    expect(await approve()).toEqual({ status: "success", trialStarted: true, trialDays: 90 });
+  });
+
+  it("every failure keeps the business pending and says so; nothing is resolved or audited; a failed approval does not talk about PayMe", async () => {
+    for (const reason of ["not-found", "not-pending", "no-owner", "invalid-slug", "no-payment-method", "already-exists", "invalid-plan", "approve-failed", "unknown-error"]) {
+      activateSumit.mockResolvedValue({ success: false, reason });
+      const result = await approve();
+      expect(result.status, reason).toBe("error");
+      expect(result.status === "error" && result.message.length > 10, reason).toBe(true);
+      expect(result.status === "error" && result.message, reason).not.toMatch(/payme/i);
+    }
+    expect(updateStatus).not.toHaveBeenCalled();
+    expect(resolveNotification).not.toHaveBeenCalled();
+    expect(recordAuditLog).not.toHaveBeenCalled();
+  });
+
+  it("a PayMe card still follows the PayMe rules (blocked while PayMe is not configured)", async () => {
+    paymeEnv.value = null;
+    getSavedPaymentMethodInfo.mockResolvedValue({ hasPaymentMethod: true, cardMask: "411111******1111", provider: "payme" });
+    expect((await approve()).status).toBe("error");
+    expect(activateSumit).not.toHaveBeenCalled();
     expect(activate).not.toHaveBeenCalled();
   });
 });

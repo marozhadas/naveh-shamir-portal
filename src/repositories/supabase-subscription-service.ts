@@ -537,13 +537,23 @@ async function readPaymentResumeState(ownerId: string) {
   return { rows, cards: new Set((cards ?? []).map((row) => row.business_registration_id)), subscriptions: new Set((subscriptions ?? []).map((row) => row.business_registration_id)) };
 }
 
-export type SavedPaymentMethodInfo = { hasPaymentMethod: boolean; cardMask: string | null };
+export type SavedPaymentMethodInfo = { hasPaymentMethod: boolean; cardMask: string | null; /** Which provider holds the card; null when there is none. */ provider: "payme" | "sumit" | null };
 
-/** Admin view of a registration's saved card: ONLY whether one exists and its mask. The token is never selected here. */
+/**
+ * Admin view of a registration's saved card: whether one exists, which provider holds it, and its mask. The token is never selected
+ * here. A SUMIT card counts only with a SUMIT customer id (the card itself lives at SUMIT; no token is involved); a PayMe card is
+ * recognised by its row as before.
+ */
 export async function getSavedPaymentMethodInfo(registrationId: string): Promise<SavedPaymentMethodInfo> {
-  if (!isSupabaseAdminConfigured()) return { hasPaymentMethod: false, cardMask: null };
-  const { data } = await createAdminSupabaseClient().from("billing_payment_methods").select("card_mask").eq("business_registration_id", registrationId).eq("provider", "payme").maybeSingle();
-  return { hasPaymentMethod: Boolean(data), cardMask: data?.card_mask ?? null };
+  if (!isSupabaseAdminConfigured()) return { hasPaymentMethod: false, cardMask: null, provider: null };
+  const { data } = await createAdminSupabaseClient().from("billing_payment_methods").select("provider, card_mask, provider_customer_id").eq("business_registration_id", registrationId).maybeSingle();
+  if (!data) return { hasPaymentMethod: false, cardMask: null, provider: null };
+  if (data.provider === "sumit") {
+    const hasCustomer = typeof data.provider_customer_id === "string" && /^[0-9]{1,15}$/.test(data.provider_customer_id);
+    return hasCustomer ? { hasPaymentMethod: true, cardMask: data.card_mask ?? null, provider: "sumit" } : { hasPaymentMethod: false, cardMask: null, provider: null };
+  }
+  if (data.provider === "payme") return { hasPaymentMethod: true, cardMask: data.card_mask ?? null, provider: "payme" };
+  return { hasPaymentMethod: false, cardMask: null, provider: null };
 }
 
 export type CancelForRejectionResult = { success: true; hadSubscription: boolean } | { success: false; reason: "payme-error" };

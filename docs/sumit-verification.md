@@ -101,6 +101,15 @@ A test registration was completed in the Preview deployment against the SUMIT TE
 
 Scope and limits: one test registration, TEST organization, the documented test card only; nothing was charged. It shows the save path works end to end; it does not show anything about approval, subscriptions, charging or production. The link "this SUMIT customer belongs to this registration" rests on the stored customer id (the API does not return our `ExternalIdentifier` on this read).
 
+## F. Stage 2B-1: admin approval starts a TRIAL for a saved SUMIT card (code + tests; NOT yet run in Preview)
+
+- `decideApprovalPath` has a new path `activate-sumit-trial` (card provider = `sumit`), independent of PayMe's state. `activateSumitTrialOnApproval` (`src/repositories/sumit-trial-activation.ts`) writes a LOCAL subscription row (`payment_provider = sumit`, `provider_subscription_id = NULL`, `status = trialing`) and approves + publishes the business. It imports no payment provider and makes no network call.
+- Trial policy is the existing one, unchanged: the length comes from the offer stored on the business (`launch_standard` = 30 days, `pilot_2026` = 90), counted from the approval, snapshotted on the row. `next_billing_at` = the end of the trial (a PLANNED date; nothing reads it to charge).
+- Idempotent: `UNIQUE(business_registration_id)` makes a concurrent second approval lose (`already-exists`, touches nothing); a later approval finds the business no longer pending. The approve step is guarded by `status = pending`; if it fails the subscription row we wrote is removed.
+- Cannot enter automatic billing: nothing charges; a SUMIT row has no `provider_subscription_id`, so the existing hourly job `expire_due_trials` ends the trial at `trial_ends_at` with no grace window (no charge). The owner page shows no billing date for it, and the admin revenue table shows "—" for a SUMIT row's next-billing date.
+- Admin sees SUMIT card info from provider + mask only (last four digits), with the approval dialog and the card section saying: no charge, trial days from the offer, billing not connected.
+- Known gaps (not part of this stage): rejecting a business AFTER approval does not touch its SUMIT trial row (the PayMe cancel path is PayMe-only) or the card at SUMIT; the card-less trial path for real owners; the first charge, cron, retries, grace and revenue recognition (Stage 2C+).
+
 ## How the organization is attested (without printing secrets)
 
 1. In SUMIT, switch to the TEST business (the business selector in the sidebar; "בדיקות" is added to its name, shown in red). Open https://app.sumit.co.il/developers/keys/ **while in that business** and copy the CompanyID and the keys into `.env.local` yourself. Nothing is pasted in chat.

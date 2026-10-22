@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState, useTransition } from "reac
 import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { approveRegistrationAction, rejectRegistrationAction, type RejectActionState } from "./actions";
+import { describeApprovalActivation, type ApprovalActivationView } from "@/lib/admin/describe-saved-payment-method";
 import styles from "./detail.module.css";
 
 const INITIAL_REJECT_STATE: RejectActionState = { error: null, success: false };
@@ -12,7 +13,7 @@ type ApproveRejectPanelProps = {
   registrationId: string;
   businessName: string;
   /** Present for a paid business: approving it starts the trial. Null for a free registration (approving only publishes). */
-  activation: { hasPaymentMethod: boolean; cardMask: string | null; offerLabel: string; trialDays: number } | null;
+  activation: ApprovalActivationView | null;
 };
 
 export function ApproveRejectPanel({ registrationId, businessName, activation }: ApproveRejectPanelProps) {
@@ -69,11 +70,7 @@ export function ApproveRejectPanel({ registrationId, businessName, activation }:
             העסק &quot;{businessName}&quot; יפורסם מיידית בארכיון העסקים הציבורי באתר. ניתן יהיה לשנות סטטוס זה גם בהמשך.
           </p>
           {activation && (
-            <p className={styles.dialogText}>
-              {activation.hasPaymentMethod
-                ? `האישור מפעיל גם את תקופת הניסיון: ייווצר מנוי ב-PayMe (${activation.offerLabel}, ${activation.trialDays} ימים), והחיוב הראשון יתבצע בסיומה. אמצעי התשלום השמור: ${activation.cardMask ?? "כרטיס שמור"}. ההטבה (רגיל או פיילוט) נעולה מרגע האישור.`
-                : "לעסק אין אמצעי תשלום שמור. אם הסליקה פעילה, האישור יידחה."}
-            </p>
+            <p className={styles.dialogText}>{describeApprovalActivation(activation)}</p>
           )}
           {approveError && (
             <p className={styles.error} role="alert">
