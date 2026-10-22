@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local SUMIT test lab recordings (redacted, local only)
+scripts/sumit-lab/output/

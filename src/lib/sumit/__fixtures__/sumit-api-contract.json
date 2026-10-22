@@ -1009,6 +1009,58 @@
    ],
    "summary": "List payments",
    "description": null
+  },
+  "/website/companies/getdetails/": {
+   "request": {
+    "Credentials": {
+     "CompanyID": true,
+     "APIKey": true
+    }
+   },
+   "responseData": {
+    "Company": {
+     "Name": true,
+     "EmailAddress": true,
+     "DocumentsEmailAddress": true,
+     "Country": true,
+     "Address": true,
+     "Phone": true,
+     "Fax": true,
+     "Title": true,
+     "CorporateNumber": true,
+     "English_Name": true,
+     "English_Address": true,
+     "English_Country": true,
+     "English_Phone": true,
+     "English_Fax": true,
+     "English_Title": true,
+     "CompanyType": {
+      "$enum": [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8,
+       9,
+       10,
+       11
+      ]
+     },
+     "Logo": true,
+     "Website": true
+    }
+   },
+   "responseEnvelope": [
+    "Status",
+    "UserErrorMessage",
+    "TechnicalErrorDetails",
+    "Data"
+   ],
+   "description": null
   }
  }
 }

@@ -1,57 +1,93 @@
-# SUMIT - what is verified, what is blocked, and what to ask SUMIT support
+# SUMIT - what is verified, what support said, and what still waits for a test
 
-Rule used here: only what SUMIT's OWN documentation says is "verified". Anything else is **blocked for verification** and the code
-must not rely on it. Sources: the official OpenAPI (`https://api.sumit.co.il/swagger/v1/swagger.json`, vendored as property names in
-`src/lib/sumit/__fixtures__/sumit-api-contract.json`), https://app.sumit.co.il/developers/api/, and the help-center articles
-[5893615 payments.js](https://help.sumit.co.il/he/articles/5893615), [5840939 testing](https://help.sumit.co.il/he/articles/5840939),
+Rule used here: only SUMIT's OWN statements count. Three buckets, never mixed:
+
+- **A. Explicitly confirmed by SUMIT support** (reply of 2026-10-22) - may be relied on.
+- **B. Hedged / partial answers** - NOT a basis for changing the code.
+- **C. Pending a test in the TEST organization** - or unanswered. The code keeps its conservative handling until a test gives enough evidence.
+
+Sources: the official OpenAPI (`https://api.sumit.co.il/swagger/v1/swagger.json`, vendored as property names in
+`src/lib/sumit/__fixtures__/sumit-api-contract.json` - field NAMES only, it proves no business behaviour), https://app.sumit.co.il/developers/api/,
+and the help-center articles [5893615 payments.js](https://help.sumit.co.il/he/articles/5893615), [5840939 testing](https://help.sumit.co.il/he/articles/5840939),
 [15291230 test configuration](https://help.sumit.co.il/he/articles/15291230), [5832877 test cards](https://help.sumit.co.il/he/articles/5832877),
 [5833033 charging with the API](https://help.sumit.co.il/he/articles/5833033), [5792403 saved cards](https://help.sumit.co.il/he/articles/5792403).
 
-The contract fixture checks FIELD NAMES only. It does not prove any business behaviour.
+## A. Explicitly confirmed by SUMIT support
 
-## Verified (official)
+| Topic | What support said | Effect on the code |
+|---|---|---|
+| Saving a payment method takes no credit frame | "הפעולה רק שומרת את הפרטים בלי שמירת מסגרת" | `setforcustomer` is a save, not an authorisation. (Whether it also VALIDATES the card is not said - see C.) |
+| A new card becomes the active card | "כן אם תבצעי שמירת טוקן חדש כשיש כרטיס, הכרטיס החדש יעודכן להיות הכרטיס הפעיל" | Replacing a card = one more `setforcustomer`. To be observed in the test. |
+| A saved card is charged without sending the card again | "כן אין צורך להעביר שוב את פרטי האשראי" | The `charge` request carries only the customer and the items (already what the code sends). |
+| payments.js is supported with UPAY | "כן נתמך במסגרת השימוש ב-UPAY" | The approval question (old Q9) is answered. The card fields still sit in our page, so our own PCI duties remain (SUMIT's article). |
+| Amount fields are decimals | `UnitPrice` and `Total` are `double` and accept decimals; the unit price is per product and the total is quantity x unit price | Documents the item-level meaning only. **It does not say how `Payment.Amount`, VAT or `Currency` behave** - see C. |
+| How to check that a save succeeded | In the SUMIT UI the customer card shows an active card ending in the same four digits | Used by the lab (last-four comparison + the UI check). |
+| Scope of support | SUMIT does not explain schemas/responses; it recommends trying every case in a test organization. `Try it out` in the API docs RUNS the operation for real, also from the UI | All behaviour questions go to the test organization. |
+
+## B. Hedged or partial answers (not a basis for changes)
+
+| Topic | The answer | Why it is not enough |
+|---|---|---|
+| Token validity and re-use | "אין לטוקן תוקף **למיטב ידיעתי** וניתן להשתמש בו כל הזמן בלי הגבלה" | Hedged ("to my knowledge"). The code keeps treating the `SingleUseToken` as single-use: used once, never stored, never reused. Nothing changes until SUMIT states it in writing or a test shows it. |
+| A null token | "תתקבל שגיאה, תבדקי בארגון בדיקות" | Expectation only. The lab observes the real answer (`null-token`). |
+| Idempotency | "אני לא מכירה שיש מזהה ייחודי בקריאה עצמה", with a link to the payment-page parameters (article 5836159) | **No idempotency mechanism is confirmed for `payments/charge`.** That article is about payment PAGES; a link to it is NOT evidence that those parameters are supported by `payments/charge`. So: no automatic retry of an uncertain result, ever (proved by `src/lib/sumit/no-retry.test.ts`). |
+| Other charge behaviours of a saved card | "לגבי השאר תצטרכי לבדוק בארגון בדיקות" | CVV exemption in the default setup, `PreventStandingOrder`, `MerchantNumber`: untested (and the test organization has no UPAY). |
+
+## C. Pending a test in the test organization / no answer
+
+| # | Open question | How it will be examined |
+|---|---|---|
+| 1 | What `BusinessError` means on `payments/charge`; whether `ValidPayment: false` means nothing was captured; the values of `Payment.Status` | One good result proves nothing. Observed in the lab; **the app stays conservative** (BusinessError throws `rejected`; `ValidPayment:false` is `unconfirmed`; no `failed` outcome exists) until there is enough evidence. |
+| 2 | How to tell an authorise-only payment from a captured one on `get` / `list`; whether a hold remains | Lab step `authorise-only` (field-level comparison of `charge` / `get` / `list`). |
+| 3 | `Payment.Amount` unit and VAT, `Currency` format; document (type, VAT line) | Lab steps `charge-saved` and `charge-vat-false`, compared with the SUMIT UI. With VATIncluded=false a captured payment is `unconfirmed` anyway. |
+| 4 | Does `setforcustomer` validate the card or only store it (support: "only saves the details"); behaviour of an invalid / used token | Lab steps `save-card`, `null-token`. |
+| 5 | UPAY CVV exemption on a saved-card charge; effect of `PreventStandingOrder` / `MerchantNumber` | **Cannot be tested in the test organization** (no UPAY there). Needs SUMIT's written answer or a deliberate, separately approved first production charge. |
+| 6 | Default `DocumentType`; `DocumentID` for a draft document; `SendDocumentByEmail` needing an email on the customer | Lab steps (documents compared in the UI). |
+| 7 | A documented DECLINE scenario in the test terminal; any API field that identifies a test organization | **Blocked:** no documented decline card/amount (support does not know one). No card number is guessed. Question to SUMIT: which card or amount declines in the test terminal? Identity is attested by documented signals only (below). |
+
+## How the organization is attested (without printing secrets)
+
+1. In SUMIT, switch to the TEST business (the business selector in the sidebar; "בדיקות" is added to its name, shown in red). Open https://app.sumit.co.il/developers/keys/ **while in that business** and copy the CompanyID and the keys into `.env.local` yourself. Nothing is pasted in chat.
+2. Set `SUMIT_TEST_COMPANY_ID` to that CompanyID and `SUMIT_COMPANY_ID` to the same value, `SUMIT_ENVIRONMENT=test`, `PAYMENTS_PROVIDER=sumit`. The app's configuration guard refuses anything else (a different CompanyID, an unset environment, production without the unlock).
+3. `npm run sumit:lab` (no approval needed) runs `preflight` OFFLINE (names of missing/invalid variables only, no network) and then `identity`, a READ-ONLY step: it reads only the organization's NAME and quotas, and passes only if the documented marker "בדיקות" is in the name. It prints PASS/FAIL, never the name's content or any key.
+4. Only after PASS do we approve data-changing steps, one by one, by name (`SUMIT_LAB_APPROVED=save-card,...`).
+
+## Test plan (local lab: `scripts/sumit-lab`, README there)
+
+| Lab step | Plan item | What it does |
+|---|---|---|
+| `save-card` | 1 | tokenizes a DOCUMENTED test card (support's recommended second card), creates/finds the lab customer, `setforcustomer`, `getforcustomer`; checks the returned ids and the last four digits |
+| `null-token` | 1 | `setforcustomer` with a null token: records SUMIT's answer |
+| `replace-card` | 2 | saves a second documented card; the new card must become the active one; also reads the inactive list |
+| `charge-saved` | 3 | VAT-included 39 NIS test charge of the SAVED card (no card data), then `get` + `list`; amount, currency, VAT and document are compared with the SUMIT UI |
+| `charge-vat-false` | 3 | VATIncluded=false: what amount does SUMIT charge? (the app must answer `unconfirmed`) |
+| `authorise-only` | 4 | AuthoriseOnly charge, then `get` and `list`; field-level diff against the captured payment |
+| `no-method` | 5 (documented scenario) | charge a customer with no saved card (a documented misuse, not a bank decline) |
+| `decline` | 5 | BLOCKED - no documented decline scenario; nothing is guessed |
+| (mock tests) | 6 | `no-retry.test.ts`: timeout, network failure, 5xx, TechnicalError, BusinessError, unreadable / inconsistent / not-valid payments - exactly ONE charge request in every case, no timer, no retry |
+
+Budget: the test organization has about 100 operations and 400 API calls per month; the lab stops at 30 calls per run (`SUMIT_LAB_MAX_CALLS`, at most 100).
+
+## Verified from the official OpenAPI and articles
 
 | Topic | What the docs say |
 |---|---|
-| `setforcustomer` request | `Credentials` and `Customer` required; `PaymentMethod` and `SingleUseToken` optional. `SingleUseToken` = "for all payment details (CardNumber, Expiration, CVV, CitizenID). Used primarily by the Payments JavaScript API"; the operation's note: "To generate a SingleUseToken use payments.js". |
-| `setforcustomer` response | `Data.CustomerID` and `Data.PaymentMethod` (the schema's `PaymentMethod.ID` is nullable). |
-| `charge` request | `Credentials`, `Customer`, `Items` required. `PaymentMethod`: "Leave this empty to use the customer payment method, or when using the SingleUseToken". Official article: a customer whose card is saved needs only the customer id and the billing details. **This describes `charge`; it says nothing about how `setforcustomer` treats a token or an existing method.** |
-| `charge` response | `Data.Payment` (`ID`, `CustomerID`, `Date`, `ValidPayment`, `Status`, `StatusDescription`, `Amount`, `Currency`, `PaymentMethod`, `AuthNumber`, `DocumentID` ...), plus `Data.DocumentID`, `DocumentNumber`, `CustomerID`, `DocumentDownloadURL`. |
-| Envelope | `Status` is `Success (0)`, `BusinessError (1)` or `TechnicalError (2)`; `UserErrorMessage` is "in a user readable format"; `TechnicalErrorDetails` is "Technical error details, let us know if you received this". |
-| Amounts (as documented) | `ChargeItem.UnitPrice`: "Single unit price in payment currency - Required field"; `Quantity` defaults to 1; `Total` optional; `Currency` empty = company default. `VATIncluded`: "Defaults to false". `VATRate`: empty = company default. The official example uses `UnitPrice: 50, Quantity: 2` (decimal numbers). |
-| Authorise only | `AuthoriseOnly`: "processed, or only validated ... could be used for testing the Charge action easily ... documents will be issued as Draft". `AuthorizeAmount`, `AutoCapture` (J4 / J5) exist. |
-| Documents | "All valid payments issue documents" by default (final or draft per `DraftDocument` / the application setting); `PreventDocumentCreation`; `DocumentType` empty = default; `SendDocumentByEmail`. The article: "once a charge is made we issue a document automatically". |
-| Test organization | A separate "test configuration" organization with its own test terminal; reached with its own CompanyID and keys (no separate API host or parameter is documented). No UPAY connection and no 3DS there; documents carry the fictitious business number 999999998; about 100 operations and 400 API calls per month. Test cards: article 5832877 (the two "fictitious" cards only pass validity checks). |
-| payments.js | Returns the token in the hidden field `og-token` (or via `Callback` / `ResponseCallback`); it needs jQuery. The official API article says that any flow in which a card number is entered on your page requires you to check your security obligations with the relevant parties, including the clearing companies. |
+| `setforcustomer` | Request: `Credentials`, `Customer` required; `PaymentMethod`, `SingleUseToken` optional. Response: `Data.CustomerID`, `Data.PaymentMethod` (its `ID` may be null). |
+| `charge` | Request: `Credentials`, `Customer`, `Items` required; `PaymentMethod` "Leave this empty to use the customer payment method, or when using the SingleUseToken" - this describes `charge` and says nothing about `setforcustomer`. Response: `Data.Payment` (`ID`, `ValidPayment`, `Status`, `StatusDescription`, `Amount`, `DocumentID` ...) and the document fields. |
+| Envelope | `Status`: `Success (0)`, `BusinessError (1)`, `TechnicalError (2)`; `TechnicalErrorDetails`: "let us know if you received this". |
+| Amounts | `UnitPrice` required (decimal), `Quantity` defaults to 1, `Total` optional, `Currency` empty = company default, `VATIncluded` defaults to false. |
+| Authorise only / documents | `AuthoriseOnly`: "processed, or only validated ... documents will be issued as Draft"; valid payments issue documents by default; `PreventDocumentCreation`, `DraftDocument`, `DocumentType`, `SendDocumentByEmail` exist. |
+| Test organization | Own organization and test terminal, same API address with its own CompanyID and keys (no separate host is documented); no UPAY, no 3DS; fictitious business number 999999998 on documents; "בדיקות" in the name; about 100 operations and 400 API calls a month; test cards in article 5832877. |
+| payments.js | Token in the hidden field `og-token` (or a callback); needs jQuery; any flow that enters a card number on our page carries our own security obligations. |
 
-## Blocked for verification (not documented - do not rely on it)
+## Remaining questions for SUMIT (the ones that cannot be tested)
 
-1. **What exactly does `BusinessError` mean on `payments/charge`?** Not defined. The code therefore never treats it as a certain refusal: it throws `rejected` (outcome unproven).
-2. **Does `ValidPayment: false` guarantee that nothing was captured?** Not defined (only "Indicates if the payment is valid"). The code therefore does NOT return a failure for it: the result is `unconfirmed` (reason `reported-not-valid`, `requiresReconciliation: true`). There is no `failed` outcome at all; no automatic retry, no dunning from it, no revenue.
-3. **How to tell an authorise-only payment from a captured one on `payments/get` / `list`.** No field is documented. The code never lets a read-back become "succeeded" (`unconfirmed`, mode `unknown`).
-4. **Amount unit and VAT.** Whether `Payment.Amount` is in shekels (decimal) and is the total including VAT; with `VATIncluded=false` whether it is price + VAT. The code requires an exact match only for a VAT-included price (that match is the only thing that can make a captured payment `succeeded`). With `VATIncluded=false` a captured, valid payment is ALWAYS `unconfirmed` (reason `amount-rules-unverified`), whatever the amount - a higher amount is plausible, not proven; a lower one throws.
-5. **`setforcustomer` behaviour:** does it validate the card or only store it; is the `SingleUseToken` consumed / how long is it valid; does it replace or add to an existing method; what does an invalid or used token return; is a null `PaymentMethod.ID` normal.
-6. **UPAY / CVV exemption** on a saved-card `charge`, and what `PreventStandingOrder` ("defaults to false") and `MerchantNumber` change. The test organization has no UPAY, so this cannot be tested there.
-7. **Idempotency:** `billing/payments/charge` has no request identifier in the schema (only `creditguy/gateway/transaction` has `UniqueIdentifier`).
-8. **The default `DocumentType`** for our organization, and whether `DocumentID` is populated for draft (authorise-only) documents.
-9. **How to produce a decline in the test terminal**, and whether any API field identifies an organization as a test organization.
-10. **Written approval to use payments.js** (card fields in our page) under the UPAY / clearing arrangement.
-
-## Questions for SUMIT support (ready to send)
-
-1. ב-`/billing/payments/charge/`: אילו מצבים מחזירים `Status: BusinessError` ואילו מחזירים `Status: Success` עם `ValidPayment: false` (כרטיס נדחה, כרטיס פג תוקף, אין אמצעי תשלום שמור, לקוח לא קיים, הרשאות שגויות, נדרש CVV)? האם `BusinessError` מבטיח שלא בוצע חיוב? האם `ValidPayment: false` מבטיח שלא נתפס סכום? מהם הערכים האפשריים של `Payment.Status`?
-2. ב-`/billing/payments/get/` וב-`/billing/payments/list/`: איזה שדה מבדיל בין חיוב שבוצע בפועל לבין `AuthoriseOnly`? האם `AuthoriseOnly` משאיר חסימה על הכרטיס, והאם הוא מופיע ברשימה?
-3. האם `Payment.Amount` הוא בשקלים (מספר עשרוני) וכולל מע"מ? כש-`VATIncluded=false`, האם הסכום שנגבה הוא `UnitPrice × Quantity` ועוד מע"מ? מהו פורמט `Payment.Currency` בתשובה?
-4. ב-`/billing/paymentmethods/setforcustomer/` עם `SingleUseToken`: האם הכרטיס מאומת מול שב"א או רק נשמר? האם הטוקן חד-פעמי ומה תוקפו? האם הכרטיס מחליף אמצעי תשלום קיים או מתווסף? מה מוחזר בטוקן לא תקין או משומש? האם `PaymentMethod.ID` יכול להיות null בהצלחה?
-5. בחיוב כרטיס שמור בלי CVV (פטור CVV של UPAY): האם `payments/charge` עם לקוח בלבד עובר דרך מוסד/מסוף שפטור מ-CVV בהגדרות ברירת המחדל? מה משנים `PreventStandingOrder` (ברירת מחדל false) ו-`MerchantNumber`? נבקש אישור בכתב.
-6. האם יש שדה בקריאת `payments/charge` שמונע חיוב כפול (מזהה בקשה ייחודי)? האם `Payment.ExternalIdentifier` ניתן להגדרה בחיוב?
-7. מהו `DocumentType` ברירת המחדל בארגון שלנו ואיפה הוא מוגדר? האם `DocumentID` מוחזר גם למסמך טיוטה? האם `SendDocumentByEmail` דורש כתובת מייל בכרטיס הלקוח?
-8. במסוף הבדיקות: איזה כרטיס או סכום מחזיר דחייה? האם יש שדה ב-API (למשל בפרטי החברה) שמזהה ארגון בדיקות?
-9. האם מותר להשתמש ב-`payments.js` (שדות הכרטיס בעמוד שלנו) במסגרת הסדר UPAY/הסליקה שלנו, או שמומלץ עמוד סליקה מתארח?
+1. איזה כרטיס בדיקה או סכום גורם לדחייה במסוף הבדיקות? (לא מתועד, ולכן לא ננחש מספרי כרטיס.)
+2. האם יש שדה ב-API שמזהה ארגון בדיקות? (כרגע מסתמכים על הסימון המתועד "בדיקות" בשם העסק ועל התאמת ה-CompanyID.)
+3. פטור CVV של UPAY בחיוב כרטיס שמור עם `payments/charge`: האם הוא חל בהגדרות ברירת המחדל, ומה משנים `PreventStandingOrder` ו-`MerchantNumber`? (לא ניתן לבדיקה בארגון בדיקות, אין בו UPAY.)
 
 ## What still blocks Stage 2B
 
-- Answers 1-3 (decline vs error semantics, authorise vs capture, amount/VAT) - before any revenue recognition or grace logic.
-- Answer 4 (what `setforcustomer` does with the token) - before the card step is built.
-- Answers 5 and 9 (UPAY CVV exemption, payments.js approval) - before production; they cannot be tested in the test organization.
+- The lab results for C1-C4 and C6 (and enough evidence for them - one run is not proof), before any revenue recognition or grace logic.
+- C5 (UPAY CVV exemption) before production.
 - The product decisions: whether 39 / 49 NIS include VAT, and the document type.

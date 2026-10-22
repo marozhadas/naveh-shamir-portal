@@ -15,6 +15,8 @@ import { getSumitConfig, type SumitConfig } from "./config";
  *   /billing/paymentmethods/remove/           delete it
  *   /billing/payments/charge/                 charge the customer's saved method (or only authorise, in a dry run)
  *   /billing/payments/get/  /billing/payments/list/   read payments back (for reconciliation)
+ *   /website/companies/getdetails/            read-only: the organization's name - used ONLY by the local test lab to attest that the
+ *                                             keys belong to the test organization (SUMIT adds "בדיקות" to a test organization's name)
  * Recurring (/billing/recurring/*) is deliberately never used: the portal owns the billing schedule.
  *
  * What is NEVER read from a reply: the card number, expiry, CVV, citizen id, Track2 or CreditCard_Token. The mappers below
@@ -304,4 +306,18 @@ export async function listSumitPayments(input: { dateFrom: Date; dateTo: Date; v
     payments.push(payment);
   }
   return { payments, hasNextPage: data.HasNextPage };
+}
+
+/**
+ * READ-ONLY: the organization's name. Used by the local test lab (scripts/sumit-lab) to attest, at run time, that the configured
+ * keys belong to the test organization: SUMIT documents that "בדיקות" is added to a test organization's name. No flow of the
+ * app calls this. Nothing but the (trimmed, length-limited) name is read.
+ */
+export async function getSumitCompanyName(): Promise<{ name: string | null }> {
+  const config = requireConfig();
+  const data = await post(config, "/website/companies/getdetails/", {});
+  const company = data.Company;
+  if (!company || typeof company !== "object") throw new PaymentProviderError("invalid-response", "SUMIT did not return the organization details");
+  const name = (company as Json).Name;
+  return { name: typeof name === "string" && name.trim() ? name.trim().slice(0, 200) : null };
 }

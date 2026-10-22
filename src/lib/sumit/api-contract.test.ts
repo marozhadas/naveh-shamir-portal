@@ -4,7 +4,7 @@ import path from "node:path";
 
 vi.mock("server-only", () => ({}));
 
-import { chargeSumitCustomer, createSumitCustomer, getSumitPayment, getSumitPaymentMethod, listSumitPayments, removeSumitPaymentMethod, setSumitPaymentMethod } from "./client";
+import { chargeSumitCustomer, createSumitCustomer, getSumitCompanyName, getSumitPayment, getSumitPaymentMethod, listSumitPayments, removeSumitPaymentMethod, setSumitPaymentMethod } from "./client";
 import contract from "./__fixtures__/sumit-api-contract.json";
 
 /**
@@ -45,7 +45,7 @@ beforeEach(() => {
   process.env.SUMIT_TEST_COMPANY_ID = "123456"; // the approved test organization = the configured one
   fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
     bodies.push({ path: String(url).replace("https://api.sumit.co.il", ""), body: JSON.parse(String(init.body)) });
-    return new Response(JSON.stringify({ Status: 0, Data: { CustomerID: 77, PaymentMethod: { ID: 5, CustomerID: 77, CreditCard_CardMask: "458045******4580" }, Payment: { ID: 900, ValidPayment: true, Amount: 39 }, Payments: [], HasNextPage: false } }), { status: 200, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ Status: 0, Data: { CustomerID: 77, PaymentMethod: { ID: 5, CustomerID: 77, CreditCard_CardMask: "458045******4580" }, Payment: { ID: 900, ValidPayment: true, Amount: 39 }, Payments: [], HasNextPage: false, Company: { Name: "עסק בדיקות" } } }), { status: 200, headers: { "Content-Type": "application/json" } });
   });
 });
 afterEach(() => {
@@ -56,7 +56,7 @@ afterEach(() => {
 const charge = { customerId: "77", amountAgorot: 3900, description: "Plus - Naveh Shamir", documentDescription: "Plus (sumit:sub-1:2026-11-20:1)", vatIncluded: true, sendDocumentByEmail: true };
 
 describe("every request our client builds matches the official SUMIT schema", () => {
-  it("covers all seven endpoints, in dry-run and live mode", async () => {
+  it("covers all eight endpoints, in dry-run and live mode", async () => {
     await createSumitCustomer({ externalId: "reg-1", name: "Noa Levi", email: "noa@example.com", phone: "0545218644" });
     await setSumitPaymentMethod({ customerId: "77", singleUseToken: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" });
     await getSumitPaymentMethod("77");
@@ -66,6 +66,7 @@ describe("every request our client builds matches the official SUMIT schema", ()
     await chargeSumitCustomer(charge); // live
     await getSumitPayment("900");
     await listSumitPayments({ dateFrom: new Date("2026-10-01T00:00:00Z"), dateTo: new Date("2026-10-02T00:00:00Z"), valid: true, startIndex: 0 });
+    await getSumitCompanyName();
 
     expect(bodies.map((entry) => entry.path)).toEqual([
       "/accounting/customers/create/",
@@ -76,6 +77,7 @@ describe("every request our client builds matches the official SUMIT schema", ()
       "/billing/payments/charge/",
       "/billing/payments/get/",
       "/billing/payments/list/",
+      "/website/companies/getdetails/",
     ]);
     for (const { path: endpoint, body } of bodies) {
       expect(endpoints[endpoint], endpoint).toBeDefined();
@@ -92,6 +94,7 @@ describe("every request our client builds matches the official SUMIT schema", ()
       "/billing/payments/charge/",
       "/billing/payments/get/",
       "/billing/payments/list/",
+      "/website/companies/getdetails/",
     ]);
     const source = readFileSync(path.resolve(__dirname, "client.ts"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
     const used = [...source.matchAll(/post\(\s*config,\s*"(\/[^"]+)"/g)].map((match) => match[1]).sort();
