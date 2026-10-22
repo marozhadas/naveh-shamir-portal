@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { ALLOWED_ORIGIN, CARD_A, CARD_B, DATA_CHANGING_STEPS, DEFAULT_MAX_CALLS, DOCUMENTED_TEST_CARDS, approvedSteps, diffPayments, installRecorder, last4, loadLabEnv, maxCalls, redact } from "./lab-support";
+import { ALLOWED_ORIGIN, CARD_A, CARD_B, DATA_CHANGING_STEPS, DEFAULT_MAX_CALLS, DOCUMENTED_TEST_CARDS, approvedSteps, diffPayments, installRecorder, last4, loadLabEnv, maxCalls, redact, redactResponse } from "./lab-support";
 
 /** Safety tests for the LOCAL lab itself (offline, no network). They run in the normal `npm test`. */
 
@@ -123,6 +123,45 @@ describe("the recorder", () => {
     await expect(fetch(`${ALLOWED_ORIGIN}c/`, { method: "POST", body: "{}" })).rejects.toThrow(/budget/);
     expect(recorder.calls()).toBe(2);
     expect(realFetch).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("organization and customer details never reach a recording", () => {
+  beforeEach(() => {
+    process.env.SUMIT_API_KEY = "secret-api-key-for-tests";
+  });
+
+  it("the organization-details responses keep only the envelope and the NAMES of the keys", () => {
+    const body = { Status: 0, UserErrorMessage: null, Data: { Company: { Name: "עסק בדיקות", EmailAddress: "owner@example.com", Phone: "050-1234567", CorporateNumber: "514000123" } } };
+    const stored = JSON.stringify(redactResponse("/website/companies/getdetails/", body));
+    for (const forbidden of ["עסק בדיקות", "owner@example.com", "050-1234567", "514000123"]) expect(stored, forbidden).not.toContain(forbidden);
+    expect(stored).toContain('"Status":0');
+    expect(stored).toContain("Company");
+    expect(JSON.stringify(redactResponse("/website/companies/listquotas/", { Status: 0, Data: { Data: [{ Quota: 400 }] } }))).not.toContain("400");
+  });
+
+  it("contact details, expiry and direct-debit data are redacted wherever they appear; ids, mask and amounts are kept", () => {
+    const stored = JSON.stringify(
+      redactResponse("/billing/paymentmethods/setforcustomer/", {
+        Status: 0,
+        Data: {
+          CustomerID: 77,
+          PaymentMethod: { ID: 5, CreditCard_ExpirationMonth: 5, CreditCard_ExpirationYear: 2031, CreditCard_CardMask: "532610******0772", CreditCard_LastDigits: "0772", DirectDebit_Account: 12345 },
+          Customer: { EmailAddress: "noa@example.com", Phone: "0545218644", Address: "Herzl 1", CompanyNumber: "123456789" },
+        },
+      }),
+    );
+    for (const forbidden of ["noa@example.com", "0545218644", "Herzl 1", "123456789", "2031", "12345"]) expect(stored, forbidden).not.toContain(forbidden);
+    for (const kept of ['"CustomerID":77', '"ID":5', "532610******0772", '"CreditCard_LastDigits":"0772"']) expect(stored, kept).toContain(kept);
+  });
+
+  it("the recorder stores a getdetails exchange in the omitted form", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ Status: 0, Data: { Company: { Name: "עסק בדיקות", EmailAddress: "owner@example.com" } } }), { status: 200 })));
+    const recorder = installRecorder(3);
+    await fetch(`${ALLOWED_ORIGIN}website/companies/getdetails/`, { method: "POST", body: JSON.stringify({ Credentials: { CompanyID: 1, APIKey: "secret-api-key-for-tests" } }) });
+    const stored = JSON.stringify(recorder.exchanges);
+    expect(stored).not.toMatch(/עסק בדיקות|owner@example.com|secret-api-key-for-tests/);
+    expect(stored).toContain("organization details omitted");
   });
 });
 

@@ -74,7 +74,25 @@ export function maxCalls(): number {
 
 // --- redaction -------------------------------------------------------------------------------------------------------------
 
-const SENSITIVE_KEY = /^(APIKey|APIPublicKey|CVV|SingleUseToken|CitizenID|Track2|CreditCard_(Number|CVV|Track2|Token|CitizenID))$/i;
+/**
+ * Keys whose VALUES never reach a recording: credentials, card data (number, CVV, expiry, token, citizen id) and contact / identity
+ * details of an organization or a customer. What is kept is what the lab needs to compare: ids, status, amounts, the card mask and
+ * the last four digits.
+ */
+const SENSITIVE_KEY =
+  /^(APIKey|APIPublicKey|CVV|SingleUseToken|CitizenID|Track2|CreditCard_(Number|CVV|Track2|Token|CitizenID|ExpirationMonth|ExpirationYear)|DirectDebit_.*|EmailAddress|DocumentsEmailAddress|Phone|Fax|Address|ZipCode|City|Country|CompanyNumber|CorporateNumber|Title|Website|Logo|English_.*)$/i;
+
+/** Endpoints whose response DATA is organization details: only the envelope and the NAMES of the keys are recorded, never the values. */
+const OMIT_DATA_PATHS = new Set(["/website/companies/getdetails/", "/website/companies/listquotas/"]);
+
+export function redactResponse(apiPath: string, body: unknown): unknown {
+  if (OMIT_DATA_PATHS.has(apiPath) && body && typeof body === "object") {
+    const envelope = body as Record<string, unknown>;
+    const data = envelope.Data && typeof envelope.Data === "object" ? (envelope.Data as Record<string, unknown>) : {};
+    return { Status: envelope.Status, UserErrorMessage: redact(envelope.UserErrorMessage), Data: "<organization details omitted>", DataKeys: Object.keys(data) };
+  }
+  return redact(body);
+}
 
 export function currentSecrets(): string[] {
   return [process.env.SUMIT_API_KEY, process.env.SUMIT_API_PUBLIC_KEY].filter((value): value is string => !!value && value.length >= 6);
@@ -123,7 +141,8 @@ export function installRecorder(limit: number) {
     } catch {
       body = "<non-JSON response>";
     }
-    exchanges.push({ step, path: url.slice(ALLOWED_ORIGIN.length - 1), httpStatus: response.status, request: redact(request), response: redact(body) });
+    const apiPath = url.slice(ALLOWED_ORIGIN.length - 1);
+    exchanges.push({ step, path: apiPath, httpStatus: response.status, request: redact(request), response: redactResponse(apiPath, body) });
     return response;
   });
 
