@@ -165,6 +165,46 @@ describe("organization and customer details never reach a recording", () => {
   });
 });
 
+describe("links are never recorded (a document or customer-page link can be a bearer link)", () => {
+  it("any URL value and the named link fields are replaced; ids, amounts and statuses stay", () => {
+    const stored = JSON.stringify(
+      redactResponse("/billing/payments/charge/", {
+        Status: 0,
+        Data: { Payment: { ID: 900, Amount: 39, ValidPayment: true, Note: "see https://app.sumit.co.il/x" }, DocumentID: 31, DocumentNumber: 12, DocumentDownloadURL: "https://app.sumit.co.il/documents/download?token=abc", CustomerHistoryURL: "https://app.sumit.co.il/c/1" },
+      }),
+    );
+    expect(stored).not.toMatch(/https?:\/\//);
+    expect(stored).not.toContain("token=abc");
+    for (const kept of ['"ID":900', '"Amount":39', '"ValidPayment":true', '"DocumentID":31', '"DocumentNumber":12']) expect(stored, kept).toContain(kept);
+  });
+});
+
+describe("the charge-saved step is one guarded request with no retry", () => {
+  const lab = readFileSync(path.join(__dirname, "sumit-lab.lab.ts"), "utf8");
+  const step = lab.slice(lab.indexOf('it.skipIf(!approved.has("charge-saved"))'), lab.indexOf('it.skipIf(!approved.has("charge-vat-false"))'));
+
+  it("sends exactly one charge call, inside a try/catch that stops - no loop, no second attempt, no reconciliation call on failure", () => {
+    expect(step.match(/provider\.charge\(/g)?.length).toBe(1);
+    expect(step).not.toMatch(/\b(for|while|do)\b\s*[({]/);
+    expect(step).toMatch(/UNCERTAIN - stopped/);
+    expect(step).toMatch(/expect\.fail\(/);
+  });
+
+  it("checks the test-organization guards and the 1333 card BEFORE the request, and charges in capture mode (not AuthoriseOnly) without touching production settings", () => {
+    expect(step.indexOf("guardsOk")).toBeLessThan(step.indexOf("provider.charge("));
+    expect(step).toContain("productionUnlockNotSet");
+    expect(step).toContain("activeLast4 === expectedLast4");
+    expect(step).toContain('process.env.SUMIT_DRY_RUN = "false"');
+    const stepCode = step.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    expect(stepCode).not.toMatch(/AuthoriseOnly|SUMIT_ALLOW_PRODUCTION\s*=[^=]|SUMIT_ENVIRONMENT\s*=[^=]/);
+  });
+
+  it("uses one read-back and does not list payments", () => {
+    expect(step.match(/provider\.getPayment\(/g)?.length).toBe(1);
+    expect(step).not.toContain("listSumitPayments");
+  });
+});
+
 describe("diffPayments", () => {
   it("reports keys on one side only and differing values", () => {
     expect(diffPayments({ A: 1, B: 2, C: 3 }, { A: 1, B: 9, D: 4 })).toEqual({ onlyInFirst: ["C"], onlyInSecond: ["D"], differing: ["B"] });
@@ -190,7 +230,9 @@ describe("static guard rails for the lab", () => {
     for (const name of labFiles) {
       const source = code(readFileSync(path.join(dir, name), "utf8"));
       expect(source, name).not.toMatch(/payme(?!nt)/i);
-      expect(source, name).not.toMatch(/SUMIT_ALLOW_PRODUCTION|SUPABASE|createAdminSupabaseClient/);
+      expect(source, name).not.toMatch(/SUPABASE|createAdminSupabaseClient/);
+      // the production unlock may only be READ, as a guard ("must not be set"); the lab never sets it
+      expect(source.replace(/process\.env\.SUMIT_ALLOW_PRODUCTION === undefined/g, ""), name).not.toMatch(/SUMIT_ALLOW_PRODUCTION/);
       expect(source, name).not.toMatch(/console\.(log|info|warn|error)\([^)]*(apiKey|apiPublicKey|process\.env)/);
     }
     const srcDir = path.resolve(dir, "..", "..", "src");

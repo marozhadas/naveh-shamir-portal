@@ -80,7 +80,7 @@ export function maxCalls(): number {
  * the last four digits.
  */
 const SENSITIVE_KEY =
-  /^(APIKey|APIPublicKey|CVV|SingleUseToken|CitizenID|Track2|CreditCard_(Number|CVV|Track2|Token|CitizenID|ExpirationMonth|ExpirationYear)|DirectDebit_.*|EmailAddress|DocumentsEmailAddress|Phone|Fax|Address|ZipCode|City|Country|CompanyNumber|CorporateNumber|Title|Website|Logo|English_.*)$/i;
+  /^(APIKey|APIPublicKey|CVV|SingleUseToken|CitizenID|Track2|CreditCard_(Number|CVV|Track2|Token|CitizenID|ExpirationMonth|ExpirationYear)|DirectDebit_.*|EmailAddress|DocumentsEmailAddress|Phone|Fax|Address|ZipCode|City|Country|CompanyNumber|CorporateNumber|Title|Website|Logo|DocumentDownloadURL|CustomerHistoryURL|English_.*)$/i;
 
 /** Endpoints whose response DATA is organization details: only the envelope and the NAMES of the keys are recorded, never the values. */
 const OMIT_DATA_PATHS = new Set(["/website/companies/getdetails/", "/website/companies/listquotas/"]);
@@ -102,7 +102,11 @@ export function redact(value: unknown, secrets: string[] = currentSecrets(), key
   if (key === "Credentials") return "<credentials omitted>";
   if (key === "CardNumber" && typeof value === "string") return `<card ****${value.slice(-4)}>`;
   if (SENSITIVE_KEY.test(key)) return value === null ? null : "<redacted>";
-  if (typeof value === "string") return secrets.some((secret) => value.includes(secret)) ? "<redacted>" : value;
+  // any link, anywhere inside a string, is dropped: a document or customer-page link can be a bearer link
+  if (typeof value === "string") {
+    const withoutLinks = value.replace(/https?:\/\/\S+/gi, "<url redacted>");
+    return secrets.some((secret) => withoutLinks.includes(secret)) ? "<redacted>" : withoutLinks;
+  }
   if (Array.isArray(value)) return value.map((entry) => redact(entry, secrets));
   if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([name, entry]) => [name, redact(entry, secrets, name)]));
   return value;

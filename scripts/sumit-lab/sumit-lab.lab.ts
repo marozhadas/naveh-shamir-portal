@@ -229,35 +229,100 @@ describe("3. data-changing steps (each needs SUMIT_LAB_APPROVED=<name> and a pas
     expect(summary.newCardIsActive).toBe(true);
   });
 
-  it.skipIf(!approved.has("charge-saved"))("charge-saved: a VAT-included test charge of the SAVED card (no card data sent) - compare amount, currency, VAT and document with the SUMIT UI", async () => {
-    if (!ready("charge-saved") || !state.customerId) return;
+  it.skipIf(!approved.has("charge-saved"))("charge-saved: ONE VAT-included 39 NIS test charge of the SAVED card (no card data sent), then a read-back; compare, never retry", async () => {
+    if (!ready("charge-saved")) return;
+    if (!state.customerId) {
+      report("charge-saved", { skipped: "no customer id: set SUMIT_LAB_CUSTOMER_ID to the lab customer's id (or run save-card first)" });
+      return;
+    }
+    // --- guards, BEFORE any charge request ---------------------------------------------------------------------------------
+    const config = state.config;
+    const guards = {
+      environmentIsTest: config?.environment === "test",
+      productionUnlockNotSet: process.env.SUMIT_ALLOW_PRODUCTION === undefined,
+      configuredOrganizationIsApprovedTestOrganization: getSumitConfigurationProblems().length === 0,
+      identityAttestedInThisRun: state.identityOk,
+    };
     recorder.setStep("charge-saved");
-    process.env.SUMIT_DRY_RUN = "false"; // a real charge - but on the TEST terminal of the test organization
+    const active = await getSumitPaymentMethod(state.customerId);
+    const activeLast4 = last4(active?.cardMask);
+    const expectedLast4 = last4(CARD_B.number);
+    const guardsOk = Object.values(guards).every(Boolean) && activeLast4 === expectedLast4;
+    if (!guardsOk) {
+      report("charge-saved", { aborted: "a guard failed - NO charge request was sent", guards, activeCardLast4: activeLast4, expectedCardLast4: expectedLast4 });
+      expect(guardsOk).toBe(true);
+      return;
+    }
+
+    // --- the single charge request (the app's own provider; real charge on the TEST terminal, not AuthoriseOnly) --------------
+    process.env.SUMIT_DRY_RUN = "false"; // in-process only, for this step; nothing persistent is changed
     const provider = createSumitPaymentProvider();
-    const result = await provider.charge({ customerId: state.customerId, amountAgorot: 3900, description: "Lab charge - Plus 39", uniqueKey: `lab:charge-saved:${runId}`, vatIncluded: true, sendDocumentByEmail: false });
-    const raw = rawPayment("/billing/payments/charge/");
-    state.capturedPayment = raw;
-    const readBack = await provider.getPayment(result.paymentId);
-    const list = await listSumitPayments({ dateFrom: new Date(Date.now() - 24 * 3600_000), dateTo: new Date(Date.now() + 3600_000) });
+    let result;
+    try {
+      result = await provider.charge({ customerId: state.customerId, amountAgorot: 3900, description: "Lab charge - Plus 39", uniqueKey: `lab:charge-saved:${runId}`, vatIncluded: true, sendDocumentByEmail: false });
+    } catch (error) {
+      // an uncertain outcome: STOP. No retry, no reconciliation call, nothing else is sent.
+      const outcome = { outcome: "UNCERTAIN - stopped, exactly one charge request was sent", errorKind: error instanceof PaymentProviderError ? error.kind : "unknown", detail: error instanceof PaymentProviderError ? error.detail : null, chargeRequestsSent: recorder.exchanges.filter((entry) => entry.path === "/billing/payments/charge/").length };
+      summaries["charge-saved"] = outcome;
+      report("charge-saved", outcome);
+      expect.fail("the charge outcome is uncertain; stopped without any retry");
+    }
+
+    const chargeRaw = rawPayment("/billing/payments/charge/");
+    const chargeData = (recorder.lastResponse("/billing/payments/charge/") as { Data?: Record<string, unknown> } | null)?.Data ?? {};
+    state.capturedPayment = chargeRaw;
+
+    // --- ONE read-back (documented: a read-back can never be 'succeeded') -------------------------------------------------------
+    let readBackStatus: string | null = null;
+    let getRaw: Record<string, unknown> | null = null;
+    let readBackError: string | null = null;
+    try {
+      readBackStatus = (await provider.getPayment(result.paymentId)).status;
+      getRaw = rawPayment("/billing/payments/get/");
+    } catch (error) {
+      readBackError = error instanceof PaymentProviderError ? error.kind : "unknown";
+    }
+    const same = (key: string) => (chargeRaw && getRaw ? JSON.stringify(chargeRaw[key]) === JSON.stringify(getRaw[key]) : null);
+
     const summary = {
+      guards,
+      activeCardLast4Charged: activeLast4,
+      chargeRequestsSent: recorder.exchanges.filter((entry) => entry.path === "/billing/payments/charge/").length,
       appStatus: result.status,
       appMode: result.mode,
-      appAmountAgorot: result.amountAgorot,
-      rawAmount: raw?.Amount,
-      rawCurrency: raw?.Currency,
-      rawValidPayment: raw?.ValidPayment,
-      rawStatus: raw?.Status,
-      rawStatusDescription: raw?.StatusDescription,
-      rawDocumentId: raw?.DocumentID,
-      documentUrlReturned: Boolean(result.documentUrl),
-      readBackStatus: readBack.status, // never 'succeeded' for a read-back
-      foundInTodaysList: list.payments.some((payment) => payment.id === result.paymentId),
-      compareInSumitUi: "same amount, currency, VAT line and a final document linked to payment " + result.paymentId,
+      requestedAmountNis: 39,
+      vatIncludedRequested: true,
+      // as SUMIT answered (raw, redacted copy of the charge response)
+      rawStatus: chargeRaw?.Status,
+      rawStatusDescription: chargeRaw?.StatusDescription,
+      rawValidPayment: chargeRaw?.ValidPayment,
+      rawPaymentId: chargeRaw?.ID,
+      rawAmount: chargeRaw?.Amount,
+      rawCurrency: chargeRaw?.Currency,
+      // documents: what the charge response itself carries (the document TYPE is not in it)
+      documentIdInPayment: chargeRaw?.DocumentID ?? null,
+      documentIdInData: chargeData.DocumentID ?? null,
+      documentNumber: chargeData.DocumentNumber ?? null,
+      documentLinkReturned: Boolean(result.documentUrl),
+      documentTypeVerifiedByApi: false,
+      // the read-back versus the charge answer
+      readBackStatusInApp: readBackStatus, // never 'succeeded' for a read-back
+      readBackError,
+      readBackSameId: same("ID"),
+      readBackSameAmount: same("Amount"),
+      readBackSameCurrency: same("Currency"),
+      readBackSameValidPayment: same("ValidPayment"),
+      readBackSameStatus: same("Status"),
+      readBackSameStatusDescription: same("StatusDescription"),
+      readBackSameDocumentId: same("DocumentID"),
+      fieldDiffChargeVsGet: diffPayments(chargeRaw, getRaw),
+      verification: "observed in ONE run; a field is 'verified' only where it was read from SUMIT's own answer - nothing here is inferred",
+      compareInSumitUi: "payment " + result.paymentId + ": test-terminal mark, amount 39, currency, VAT line, and the document type",
     };
     summaries["charge-saved"] = summary;
     report("charge-saved", summary);
     expect(result.status).toBe("succeeded");
-    expect(readBack.status).toBe("unconfirmed");
+    expect(readBackStatus).toBe("unconfirmed");
   });
 
   it.skipIf(!approved.has("charge-vat-false"))("charge-vat-false: VATIncluded=false - what amount does SUMIT charge? (our provider must answer 'unconfirmed')", async () => {
