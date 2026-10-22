@@ -566,6 +566,31 @@ describe("6. registration-save: the REAL save-a-card service against SUMIT Test,
   });
 });
 
+describe("6. card check (READ-ONLY): is a card active for the customer in SUMIT? getforcustomer only - nothing is created, changed or charged", () => {
+  it.skipIf(process.env.SUMIT_LAB_READONLY !== "cardcheck")("cardcheck: the customer's active card (ids and last four only)", async (context) => {
+    if (!state.identityOk || !state.customerId) {
+      report("cardcheck", { skipped: "needs a passed identity check and SUMIT_LAB_CUSTOMER_ID" });
+      context.skip();
+      return;
+    }
+    recorder.setStep("cardcheck");
+    const method = await getSumitPaymentMethod(state.customerId);
+    const expectedMethodId = process.env.SUMIT_LAB_EXPECT_METHOD_ID?.trim() || null;
+    const expectedLast4 = process.env.SUMIT_LAB_EXPECT_LAST4?.trim() || null;
+    const summary = {
+      customerId: state.customerId,
+      activeCardFound: method !== null,
+      methodCustomerIdMatches: method?.customerId === state.customerId,
+      methodId: method?.id ?? null,
+      methodIdMatchesExpected: expectedMethodId === null ? null : method?.id === expectedMethodId,
+      activeCardLast4: last4(method?.cardMask),
+      last4MatchesExpected: expectedLast4 === null ? null : last4(method?.cardMask) === expectedLast4,
+    };
+    summaries.cardcheck = summary;
+    report("cardcheck", summary);
+  });
+});
+
 describe("secrets never reach the output", () => {
   it("the recorded exchanges contain no key, card number, CVV or token", () => {
     const text = JSON.stringify(redact(recorder.exchanges));

@@ -231,6 +231,18 @@ describe("the organization-details step reports presence only", () => {
   });
 });
 
+describe("the card-check step is read-only", () => {
+  const lab = readFileSync(path.join(__dirname, "sumit-lab.lab.ts"), "utf8");
+  const step = lab.slice(lab.indexOf('describe("6. card check'), lab.indexOf('describe("secrets never reach the output"'));
+
+  it("is off unless SUMIT_LAB_READONLY=cardcheck and only calls getforcustomer", () => {
+    expect(step).toContain('process.env.SUMIT_LAB_READONLY !== "cardcheck"');
+    expect(step).toContain("getSumitPaymentMethod(");
+    const code = step.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(code).not.toMatch(/rawPost\(|provider\.|createSumitCustomer|setSumitPaymentMethod|removeSumitPaymentMethod|chargeSumitCustomer|tokenizeTestCard|SUMIT_DRY_RUN/);
+  });
+});
+
 describe("diffPayments", () => {
   it("reports keys on one side only and differing values", () => {
     expect(diffPayments({ A: 1, B: 2, C: 3 }, { A: 1, B: 9, D: 4 })).toEqual({ onlyInFirst: ["C"], onlyInSecond: ["D"], differing: ["B"] });
