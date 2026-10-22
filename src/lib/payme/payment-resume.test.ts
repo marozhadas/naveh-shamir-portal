@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickRegistrationAwaitingPayment, type PaymentResumeCandidate } from "./payment-resume";
+import { pickRegistrationAwaitingPayment, pickRegistrationWithSavedPaymentMethod, type PaymentResumeCandidate } from "./payment-resume";
 
 const USER = "user-1";
 const NOW = new Date("2026-10-12T10:00:00.000Z");
@@ -60,5 +60,27 @@ describe("pickRegistrationAwaitingPayment - who is offered 'complete the payment
   it("returns only ids, names and the plan - nothing about a card", () => {
     const offered = pick([{ ...row(), provider_token: "BUYER154-0987247Y-MLJ10OI7-LXRDNDYP" } as never]);
     expect(Object.keys(offered ?? {}).sort()).toEqual(["billingInterval", "businessName", "planTier", "registrationId"]);
+  });
+});
+
+describe("pickRegistrationWithSavedPaymentMethod - who is shown 'the card is saved'", () => {
+  const saved = (rows: PaymentResumeCandidate[], cards = new Set(["reg-1"]), subscriptions = none) => pickRegistrationWithSavedPaymentMethod(rows, USER, cards, subscriptions, NOW);
+
+  it("a paid, pending registration of this user WITH a saved payment method and no subscription is found - the opposite of 'awaiting'", () => {
+    expect(saved([row()])).toEqual({ registrationId: "reg-1", planTier: "plus", billingInterval: "monthly", businessName: "סטודיו נועה" });
+    expect(pick([row()], new Set(["reg-1"]))).toBeNull();
+  });
+
+  it("nothing is found without a saved card, with a subscription, for another user, or when the registration is not pending / not paid / not billable", () => {
+    expect(saved([row()], none)).toBeNull();
+    expect(saved([row()], new Set(["reg-1"]), new Set(["reg-1"]))).toBeNull();
+    expect(saved([row({ owner_id: "someone-else" })])).toBeNull();
+    for (const status of ["approved", "rejected", "suspended"]) expect(saved([row({ status })]), status).toBeNull();
+    expect(saved([row({ plan_tier: "free" })])).toBeNull();
+    expect(saved([row({ offer_code: "unknown-offer" })])).toBeNull();
+  });
+
+  it("returns only ids and the business name (no card data exists in the input)", () => {
+    expect(Object.keys(saved([row()])!).sort()).toEqual(["billingInterval", "businessName", "planTier", "registrationId"]);
   });
 });

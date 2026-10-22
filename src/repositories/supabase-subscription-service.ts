@@ -15,7 +15,7 @@ import type { BusinessRegistrationRow } from "@/types/business-registration";
 import { cancelPayMeSubscription, generatePayMeSubscription, parsePayMeDateTime } from "@/lib/payme/client";
 import { isValidSubPaymeId, paymeIterationType } from "@/lib/payme/payme-helpers";
 import { buildSubscriptionPlan, type SubscriptionPlan } from "@/lib/payme/build-subscription-plan";
-import { pickRegistrationAwaitingPayment, type PaymentResumeRegistration } from "@/lib/payme/payment-resume";
+import { pickRegistrationAwaitingPayment, pickRegistrationWithSavedPaymentMethod, type PaymentResumeRegistration } from "@/lib/payme/payment-resume";
 
 /**
  * The real, Supabase-backed half of SubscriptionRepository — everything here operates on
@@ -504,6 +504,17 @@ async function activatePayMeSubscription(input: ActivatePayMeSubscriptionInput):
  * creates nothing, and the card / subscription tables are asked for registration ids only (never the buyer_key).
  */
 export async function findRegistrationAwaitingPaymentMethod(ownerId: string): Promise<PaymentResumeRegistration | null> {
+  const state = await readPaymentResumeState(ownerId);
+  return state ? pickRegistrationAwaitingPayment(state.rows, ownerId, state.cards, state.subscriptions) : null;
+}
+
+/** READ ONLY: the owner's newest pending paid registration whose payment method is ALREADY saved (and that has no subscription), or null. Ids only. */
+export async function findRegistrationWithSavedPaymentMethod(ownerId: string): Promise<PaymentResumeRegistration | null> {
+  const state = await readPaymentResumeState(ownerId);
+  return state ? pickRegistrationWithSavedPaymentMethod(state.rows, ownerId, state.cards, state.subscriptions) : null;
+}
+
+async function readPaymentResumeState(ownerId: string) {
   if (!isSupabaseAdminConfigured()) return null;
   const admin = createAdminSupabaseClient();
   const { data: rows, error } = await admin
@@ -523,12 +534,7 @@ export async function findRegistrationAwaitingPaymentMethod(ownerId: string): Pr
   ]);
   if (cardsError || subscriptionsError) return null;
 
-  return pickRegistrationAwaitingPayment(
-    rows,
-    ownerId,
-    new Set((cards ?? []).map((row) => row.business_registration_id)),
-    new Set((subscriptions ?? []).map((row) => row.business_registration_id)),
-  );
+  return { rows, cards: new Set((cards ?? []).map((row) => row.business_registration_id)), subscriptions: new Set((subscriptions ?? []).map((row) => row.business_registration_id)) };
 }
 
 export type SavedPaymentMethodInfo = { hasPaymentMethod: boolean; cardMask: string | null };

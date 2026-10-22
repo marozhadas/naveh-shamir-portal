@@ -7,9 +7,13 @@ vi.mock("@/lib/supabase/server-client", () => ({ getSupabaseSessionUser: () => s
 const registrationPayment = vi.fn();
 vi.mock("@/lib/sumit/registration-access", () => ({ getSumitRegistrationPayment: (...args: unknown[]) => registrationPayment(...args) }));
 const find = vi.fn();
-vi.mock("@/repositories/supabase-subscription-service", () => ({ findRegistrationAwaitingPaymentMethod: (...args: unknown[]) => find(...args) }));
+const findSaved = vi.fn();
+vi.mock("@/repositories/supabase-subscription-service", () => ({
+  findRegistrationAwaitingPaymentMethod: (...args: unknown[]) => find(...args),
+  findRegistrationWithSavedPaymentMethod: (...args: unknown[]) => findSaved(...args),
+}));
 
-import { getPaymentResume } from "./payment-resume";
+import { getPaymentResume, getSavedCardNotice } from "./payment-resume";
 
 const REGISTRATION = { registrationId: "reg-1", planTier: "plus" as const, billingInterval: "monthly" as const, businessName: "סטודיו נועה" };
 const PAYMENT = { companyId: 123456, apiPublicKey: "public-key", testMode: true as const };
@@ -53,5 +57,35 @@ describe("getPaymentResume", () => {
   it("7/8/9. nothing to complete (already has a card, approved, free): nothing is offered", async () => {
     find.mockResolvedValue(null);
     expect(await getPaymentResume()).toBeNull();
+  });
+});
+
+describe("getSavedCardNotice (read only: 'the card is saved')", () => {
+  beforeEach(() => {
+    sessionUser.mockReset();
+    registrationPayment.mockReset();
+    findSaved.mockReset();
+    sessionUser.mockResolvedValue({ id: "user-1", email: "owner@example.com" });
+    registrationPayment.mockReturnValue(PAYMENT);
+    findSaved.mockResolvedValue(REGISTRATION);
+  });
+
+  it("for the gated owner whose registration already has its card: only the business name, found by the verified session user", async () => {
+    expect(await getSavedCardNotice()).toEqual({ businessName: "סטודיו נועה" });
+    expect(findSaved).toHaveBeenCalledWith("user-1");
+  });
+
+  it("nobody else learns anything: signed out, or not on the SUMIT test list -> null and nothing is read", async () => {
+    sessionUser.mockResolvedValue(null);
+    expect(await getSavedCardNotice()).toBeNull();
+    sessionUser.mockResolvedValue({ id: "user-2", email: "stranger@example.com" });
+    registrationPayment.mockReturnValue(null);
+    expect(await getSavedCardNotice()).toBeNull();
+    expect(findSaved).not.toHaveBeenCalled();
+  });
+
+  it("no saved card -> null", async () => {
+    findSaved.mockResolvedValue(null);
+    expect(await getSavedCardNotice()).toBeNull();
   });
 });

@@ -235,3 +235,17 @@ describe("no card-brand marks that were not verified", () => {
     expect(badges).toContain("{showBrands && (");
   });
 });
+
+describe("the card step says it is a card saved FOR TESTING ONLY, everywhere the owner reads about it", () => {
+  it("every text of the card step names the test purpose, the no-charge / no-subscription promise and no trial", () => {
+    for (const text of [copy.SAVE_ONLY_SUMMARY, copy.REGISTRATION_PAGE_DISCLAIMER, copy.REVIEW_PAYMENT_NOTE, copy.REVIEW_PAYMENT_CONSENT, copy.STEP6_INTRO, copy.CARD_FORM_LEAD, copy.CARD_FORM_CONSENT, copy.RESUME_NOTICE, copy.RESUME_TITLE, copy.CARD_ALREADY_SAVED, copy.SUCCESS_PAYMENT_SAVED]) {
+      expect(text).toContain("לבדיקה בלבד");
+      expect(text).not.toMatch(/באופן אוטומטי|30 ימים|90 ימים|מחיר השקה/);
+    }
+    for (const text of [copy.SAVE_ONLY_SUMMARY, copy.REGISTRATION_PAGE_DISCLAIMER, copy.REVIEW_PAYMENT_NOTE, copy.STEP6_INTRO, copy.CARD_FORM_LEAD, copy.RESUME_NOTICE]) {
+      expect(text).toMatch(/לא (מתבצע|יתבצע) חיוב/);
+      expect(text).toMatch(/לא (נוצר|ייווצר) מנוי/);
+    }
+    expect(copy.CARD_ALREADY_SAVED).toContain("הכרטיס נשמר");
+  });
+});

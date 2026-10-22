@@ -42,3 +42,28 @@ export function pickRegistrationAwaitingPayment(
   }
   return null;
 }
+
+/**
+ * The opposite question: has the owner's newest pending paid registration ALREADY got its payment method saved (and no subscription)?
+ * Used to show "the card is saved" instead of silently sending the owner away. Same eligibility as above except the card must exist.
+ * Pure, no I/O, no secrets - it sees registration ids only.
+ */
+export function pickRegistrationWithSavedPaymentMethod(
+  candidates: PaymentResumeCandidate[],
+  userId: string,
+  idsWithSavedPaymentMethod: ReadonlySet<string>,
+  idsWithSubscription: ReadonlySet<string>,
+  now: Date = new Date(),
+): PaymentResumeRegistration | null {
+  const eligible = candidates
+    .filter((row) => row.owner_id === userId && row.status === "pending" && (row.plan_tier === "plus" || row.plan_tier === "premium"))
+    .filter((row) => idsWithSavedPaymentMethod.has(row.id) && !idsWithSubscription.has(row.id))
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+
+  for (const row of eligible) {
+    const plan = buildSubscriptionPlan(row, now);
+    if (!plan.ok) continue;
+    return { registrationId: row.id, planTier: plan.plan.planId, billingInterval: plan.plan.interval, businessName: row.business_name };
+  }
+  return null;
+}

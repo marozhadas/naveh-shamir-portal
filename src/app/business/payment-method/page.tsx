@@ -5,9 +5,9 @@ import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/Button";
 import { defaultFooterSettings } from "@/editor/config/editor-defaults";
 import { getSupabaseSessionUser } from "@/lib/supabase/server-client";
-import { getPaymentResume, PAYMENT_METHOD_ROUTE } from "@/lib/business-owner/payment-resume";
+import { getPaymentResume, getSavedCardNotice, PAYMENT_METHOD_ROUTE } from "@/lib/business-owner/payment-resume";
 import { getSumitRegistrationPayment } from "@/lib/sumit/registration-access";
-import { RESUME_NOTICE } from "@/lib/sumit/registration-copy";
+import { CARD_ALREADY_SAVED, RESUME_NOTICE } from "@/lib/sumit/registration-copy";
 import { ResumePaymentStep } from "./ResumePaymentStep";
 import styles from "../trial/trial.module.css";
 
@@ -39,6 +39,32 @@ export default async function PaymentMethodPage() {
               <h1 className={styles.title}>השלמת אמצעי תשלום</h1>
               <p className={styles.notice} role="status">
                 הוספת אמצעי תשלום אינה זמינה כרגע.
+              </p>
+              <div className={styles.actionBox}>
+                <Button href="/business/dashboard" variant="secondary">
+                  לאזור האישי
+                </Button>
+              </div>
+            </div>
+          </main>
+          <Footer settings={defaultFooterSettings} />
+        </>
+      );
+    }
+    // The owner who may see this step and whose card is ALREADY saved gets that state - not the form, not a silent redirect.
+    const saved = await getSavedCardNotice();
+    if (saved) {
+      return (
+        <>
+          <a href="#main-content" className="skip-link">
+            דלגו לתוכן הראשי
+          </a>
+          <ConnectedHeader />
+          <main id="main-content">
+            <div className={styles.container}>
+              <h1 className={styles.title}>הכרטיס נשמר</h1>
+              <p className={styles.notice} role="status">
+                {CARD_ALREADY_SAVED} העסק &quot;{saved.businessName}&quot; ממשיך להמתין לאישור הצוות.
               </p>
               <div className={styles.actionBox}>
                 <Button href="/business/dashboard" variant="secondary">

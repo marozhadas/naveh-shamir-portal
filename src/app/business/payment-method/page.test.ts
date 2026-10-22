@@ -14,7 +14,8 @@ vi.mock("next/navigation", () => ({ redirect: (url: string) => redirect(url), us
 const sessionUser = vi.fn();
 vi.mock("@/lib/supabase/server-client", () => ({ getSupabaseSessionUser: () => sessionUser() }));
 const resume = vi.fn();
-vi.mock("@/lib/business-owner/payment-resume", () => ({ PAYMENT_METHOD_ROUTE: "/business/payment-method", getPaymentResume: () => resume() }));
+const savedNotice = vi.fn();
+vi.mock("@/lib/business-owner/payment-resume", () => ({ PAYMENT_METHOD_ROUTE: "/business/payment-method", getPaymentResume: () => resume(), getSavedCardNotice: () => savedNotice() }));
 const registrationPayment = vi.fn();
 vi.mock("@/lib/sumit/registration-access", () => ({ getSumitRegistrationPayment: (...args: unknown[]) => registrationPayment(...args) }));
 vi.mock("@/editor/connected/ConnectedHeader", () => ({ ConnectedHeader: () => null }));
@@ -37,6 +38,8 @@ describe("/business/payment-method - step 6 for an existing pending registration
     redirect.mockClear();
     sessionUser.mockReset();
     resume.mockReset();
+    savedNotice.mockReset();
+    savedNotice.mockResolvedValue(null);
     registrationPayment.mockReset();
     sessionUser.mockResolvedValue({ id: "user-1", email: "owner@example.com" });
     resume.mockResolvedValue(RESUME);
@@ -57,6 +60,30 @@ describe("/business/payment-method - step 6 for an existing pending registration
     // the notice says what really happens: a card is SAVED - no charge, no subscription, no trial (and promises no automatic trial)
     expect(html).toContain("לא יתבצע חיוב, לא ייווצר מנוי ולא תתחיל תקופת ניסיון");
     expect(html).not.toMatch(/באופן אוטומטי|תתחיל תקופת הניסיון לאחר/);
+  });
+
+  it("the card is ALREADY saved: the owner sees 'the card is saved' (for testing only) - no form, no silent redirect, nothing to save again", async () => {
+    resume.mockResolvedValue(null);
+    savedNotice.mockResolvedValue({ businessName: "סטודיו נועה" });
+    const html = await render();
+    expect(html).toContain("הכרטיס נשמר");
+    expect(html).toContain("לבדיקה בלבד");
+    expect(html).toContain("לא נדרשת פעולה נוספת");
+    expect(html).toContain("סטודיו נועה");
+    expect(html).not.toContain('data-step6="yes"');
+    expect(html).not.toMatch(/באופן אוטומטי|30 ימי/);
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it("an account outside the SUMIT test list gets neither the form nor the saved state: told it is unavailable, and no card question is asked", async () => {
+    resume.mockResolvedValue(null);
+    registrationPayment.mockReturnValue(null);
+    savedNotice.mockResolvedValue({ businessName: "should never show" });
+    const html = await render();
+    expect(html).toContain("אינה זמינה כרגע");
+    expect(html).not.toContain("should never show");
+    expect(html).not.toContain("הכרטיס נשמר");
+    expect(savedNotice).not.toHaveBeenCalled();
   });
 
   it("takes no id, price, trial or offer from the URL: the page has no parameters at all", () => {
