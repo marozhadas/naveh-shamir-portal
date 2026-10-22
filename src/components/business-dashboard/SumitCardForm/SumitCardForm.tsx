@@ -223,7 +223,7 @@ export function SumitCardForm({ companyId, apiPublicKey, registrationId, onCompl
         </div>
         {cardErrors.month && <p className={styles.fieldError}>{cardErrors.month}</p>}
         <p className={styles.secure}>{CARD_FORM_SECURITY_NOTE}</p>
-        <CardTrustBadges providerName="SUMIT" />
+        <CardTrustBadges providerName="SUMIT" showBrands={false} />
       </div>
 
       <label className={styles.consent}>

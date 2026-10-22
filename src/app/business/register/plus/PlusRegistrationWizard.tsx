@@ -19,7 +19,7 @@ import {
   type WizardErrors,
 } from "./validation";
 import type { PlusBusinessRegistrationInput } from "@/types/business-plus-registration";
-import { SumitCardForm } from "@/components/business-dashboard/SumitCardForm/SumitCardForm";
+import { SumitCardStep } from "@/components/business-dashboard/SumitCardForm/SumitCardStep";
 import { REVIEW_BILLING_LEGEND, REVIEW_PAYMENT_CONSENT, REVIEW_PAYMENT_CONSENT_ERROR, REVIEW_PAYMENT_CONSENT_LABEL, REVIEW_PAYMENT_NOTE, STEP6_INTRO } from "@/lib/sumit/registration-copy";
 import type { SumitRegistrationPayment } from "@/lib/sumit/registration-access";
 import { BILLING_INTERVALS, BILLING_INTERVAL_LABEL, LAUNCH_PRICE_LABEL, TRIAL_DAYS, formatPriceWithInterval, getCurrentPrice, type BillingInterval } from "@/data/subscription-pricing";
@@ -1453,7 +1453,7 @@ export function PlusRegistrationWizard({ planId, initialBillingInterval = "month
               שמירת אמצעי תשלום
             </h2>
             <p className={styles.stepIntro}>{STEP6_INTRO}</p>
-            <SumitCardForm
+            <SumitCardStep
               companyId={payment.companyId}
               apiPublicKey={payment.apiPublicKey}
               registrationId={submittedId}

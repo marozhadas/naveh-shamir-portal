@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { LAUNCH_PRICE_LABEL, TRIAL_DAYS, formatPriceWithInterval, type BillingInterval, type PriceSnapshot } from "@/data/subscription-pricing";
 import type { SumitRegistrationPayment } from "@/lib/sumit/registration-access";
+import { SUMMARY_TRIAL_LINE } from "@/lib/sumit/registration-copy";
 import { PlusRegistrationWizard } from "./PlusRegistrationWizard";
 import styles from "./plus-wizard.module.css";
 
@@ -79,7 +80,7 @@ export function RegistrationFlow({
           {formatPriceWithInterval(price.amountIls, interval)}
         </p>
         {price.isLaunchPrice && <p className={styles.summaryLaunchLabel}>{LAUNCH_PRICE_LABEL}</p>}
-        <p className={styles.summaryBillingNote}>{TRIAL_DAYS} ימי ניסיון חינם</p>
+        <p className={styles.summaryBillingNote}>{payment ? SUMMARY_TRIAL_LINE : `${TRIAL_DAYS} ימי ניסיון חינם`}</p>
         <ul className={styles.summaryFeatureList}>
           {features.map((feature, index) => (
             <li key={index}>{feature}</li>

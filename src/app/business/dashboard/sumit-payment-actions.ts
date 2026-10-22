@@ -2,7 +2,7 @@
 
 import { getSupabaseSessionUser } from "@/lib/supabase/server-client";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { saveSumitPaymentMethodForRegistration, type SaveSumitPaymentMethodResult } from "@/repositories/sumit-payment-method-service";
+import { getCardSavedStatusForRegistration, saveSumitPaymentMethodForRegistration, type SaveSumitPaymentMethodResult } from "@/repositories/sumit-payment-method-service";
 import { getSumitRegistrationPayment } from "@/lib/sumit/registration-access";
 import { PAYMENTS_TEMPORARILY_UNAVAILABLE, PAYMENTS_TEMPORARILY_UNAVAILABLE_MESSAGE } from "@/lib/payments/payments-unavailable";
 import { validatePayer } from "@/components/business-dashboard/PaymentMethodTrialForm/tokenize-payer";
@@ -78,4 +78,20 @@ export async function saveSumitPaymentMethodForRegistrationAction(input: { regis
       : { status: "error", message: MESSAGE[result.reason] ?? GENERIC_ERROR };
   }
   return { status: "success" };
+}
+
+export type SumitCardSavedState = { status: "saved" | "not-saved" | "error" };
+
+/**
+ * READ ONLY: has this owner's registration already got a saved card? The step-6 wrapper asks it before showing the form, so coming
+ * back after a save that finished on the server shows "already saved" instead of asking for the card again. Same access rule as the
+ * save (signed-in owner on SUMIT_TEST_EMAILS, test organization). It returns only a status - never an id, a mask or a token - and
+ * never starts a save: nothing is re-saved automatically.
+ */
+export async function getSumitCardSavedStatusAction(input: { registrationId: string }): Promise<SumitCardSavedState> {
+  const sessionUser = await getSupabaseSessionUser();
+  if (!sessionUser || !getSumitRegistrationPayment(sessionUser.email)) return { status: "error" };
+  if (!input || typeof input !== "object" || !hasOnlyKeys(input, ["registrationId"]) || typeof input.registrationId !== "string" || !UUID_PATTERN.test(input.registrationId)) return { status: "error" };
+  const result = await getCardSavedStatusForRegistration({ registrationId: input.registrationId, ownerId: sessionUser.id });
+  return { status: result.status };
 }

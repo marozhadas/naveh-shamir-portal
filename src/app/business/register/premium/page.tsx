@@ -7,7 +7,7 @@ import { BUSINESS_PLANS } from "@/data/business-plans";
 import { isBillingInterval } from "@/data/subscription-pricing";
 import { getSupabaseSessionUser } from "@/lib/supabase/server-client";
 import { getSumitRegistrationPayment } from "@/lib/sumit/registration-access";
-import { REGISTRATION_PAGE_DISCLAIMER } from "@/lib/sumit/registration-copy";
+import { REGISTRATION_PAGE_DISCLAIMER, registrationPriceLine } from "@/lib/sumit/registration-copy";
 import { registrationReturnPath } from "@/utils/safe-return-path";
 import { OwnerAuthGate } from "@/components/auth/OwnerAuthGate/OwnerAuthGate";
 import { RegistrationFlow } from "../plus/RegistrationFlow";
@@ -62,7 +62,7 @@ export default async function RegisterPremiumPage({ searchParams }: RegisterPrem
               מלאו את פרטי העסק, הוסיפו תמונות, שירותים ושעות פעילות, וקבלו עמוד עסק מלא עם תגית עסק מאומת ואזור אישי
               לניהול עצמאי.
             </p>
-            <p className={styles.priceLine}>30 ימי ניסיון חינם. מחירי Premium הם מחירי השקה.</p>
+            <p className={styles.priceLine}>{payment ? registrationPriceLine("Premium") : "30 ימי ניסיון חינם. מחירי Premium הם מחירי השקה."}</p>
             <p className={styles.disclaimer}>
               {payment
                 ? REGISTRATION_PAGE_DISCLAIMER

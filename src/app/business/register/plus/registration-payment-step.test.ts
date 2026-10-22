@@ -35,7 +35,7 @@ describe("registration wizard - step 6 (SUMIT card step: SAVE a card only)", () 
 
   it("step 6 renders the SUMIT card form for the saved registration and ends on the success page that says it waits for approval", () => {
     expect(wizard).toMatch(/\{step === 6 && payment && submittedId && \(/);
-    expect(wizard).toContain("<SumitCardForm");
+    expect(wizard).toContain("<SumitCardStep");
     expect(wizard).toContain("companyId={payment.companyId}");
     expect(wizard).toContain("apiPublicKey={payment.apiPublicKey}");
     expect(wizard).toContain("registrationId={submittedId}");
@@ -46,7 +46,7 @@ describe("registration wizard - step 6 (SUMIT card step: SAVE a card only)", () 
   });
 
   it("the step takes nothing from the browser except what the form sends: the wizard passes no price, key or secret", () => {
-    const usage = wizard.slice(wizard.indexOf("<SumitCardForm"), wizard.indexOf("/>", wizard.indexOf("<SumitCardForm")));
+    const usage = wizard.slice(wizard.indexOf("<SumitCardStep"), wizard.indexOf("/>", wizard.indexOf("<SumitCardStep")));
     expect(usage).not.toMatch(/amount|price|apiKey\b|secret/i);
   });
 });
@@ -158,7 +158,7 @@ describe("the SUMIT card form only SAVES the card", () => {
   });
 
   it("the form is honest about its provider and about being removed mid-attempt", () => {
-    expect(code).toContain('<CardTrustBadges providerName="SUMIT" />');
+    expect(code).toContain('<CardTrustBadges providerName="SUMIT" showBrands={false} />');
     expect(code).not.toMatch(/PayMe/);
     // an attempt is cancellable, the unmount aborts it, and nothing runs after the form is gone
     expect(code).toContain("new AbortController()");
@@ -177,5 +177,54 @@ describe("the SUMIT card form only SAVES the card", () => {
     expect(loaderCode).toMatch(/if \(!win\.jQuery\)/);
     expect(loaderCode).toMatch(/if \(!win\.OfficeGuy\)/);
     expect(readFileSync(path.resolve(__dirname, "../../../../../package.json"), "utf8")).toMatch(/"jquery": "3\.7\.1"/);
+  });
+});
+
+describe("the banner and the plan summary promise no trial while the card step is on", () => {
+  it("Plus and Premium pages and the summary card switch to the save-only wording when the card step exists", () => {
+    const plus = read("./page.tsx");
+    const premium = read("../premium/page.tsx");
+    const flow = read("./RegistrationFlow.tsx");
+    expect(plus).toContain('{payment ? REGISTRATION_BADGE : "30 ימי ניסיון חינם"}');
+    expect(plus).toContain('{payment ? registrationPriceLine("Plus") : "30 ימי ניסיון חינם. מחירי Plus הם מחירי השקה."}');
+    expect(premium).toContain('{payment ? registrationPriceLine("Premium") : "30 ימי ניסיון חינם. מחירי Premium הם מחירי השקה."}');
+    expect(flow).toContain("{payment ? SUMMARY_TRIAL_LINE : `${TRIAL_DAYS} ימי ניסיון חינם`}");
+  });
+
+  it("the replacement texts say there is no trial and no charge, and carry no day count", () => {
+    for (const text of [copy.REGISTRATION_BADGE, copy.registrationPriceLine("Plus"), copy.registrationPriceLine("Premium"), copy.SUMMARY_TRIAL_LINE]) {
+      expect(text).not.toMatch(/30|90|ימי ניסיון חינם|אוטומטי/);
+    }
+    expect(copy.registrationPriceLine("Plus")).toMatch(/לא מתחילה תקופת ניסיון ולא מתבצע חיוב/);
+    expect(copy.SUMMARY_TRIAL_LINE).toMatch(/לא מתחילה תקופת ניסיון ולא מתבצע חיוב/);
+  });
+});
+
+describe("coming back to step 6 after the card was already saved", () => {
+  const stepSource = strip(readFileSync(path.resolve(__dirname, "../../../../components/business-dashboard/SumitCardForm/SumitCardStep.tsx"), "utf8"));
+
+  it("the wizard and the resume page both go through the wrapper that asks the server first", () => {
+    expect(wizard).toContain("<SumitCardStep");
+    expect(strip(read("../../payment-method/ResumePaymentStep.tsx"))).toContain("<SumitCardStep");
+    expect(stepSource).toContain("getSumitCardSavedStatusAction({ registrationId })");
+  });
+
+  it("when saved it says so and offers 'continue' - no form, no save call; if the check fails it shows the form", () => {
+    expect(stepSource).toContain('result.status === "saved" ? "saved" : "ask"');
+    expect(stepSource).toMatch(/\(\) => \{\s*if \(!cancelled\) setStatus\("ask"\);/);
+    expect(stepSource).not.toMatch(/saveSumitPaymentMethodForRegistrationAction|requestToken|CreateToken/);
+    expect(stepSource.indexOf("<SumitCardForm")).toBeGreaterThan(stepSource.indexOf('status === "saved"'));
+    expect(copy.CARD_ALREADY_SAVED).toMatch(/כבר נשמר/);
+    expect(copy.CARD_ALREADY_SAVED).toMatch(/לא נדרשת פעולה נוספת/);
+    expect(copy.CARD_ALREADY_SAVED).not.toMatch(/אוטומטי|30|90/);
+  });
+});
+
+describe("no card-brand marks that were not verified", () => {
+  it("the SUMIT form shows the trust line only; the shared badges keep their marks for the legacy form", () => {
+    expect(form).toContain("showBrands={false}");
+    const badges = readFileSync(path.resolve(__dirname, "../../../../components/business-dashboard/PaymentMethodTrialForm/CardTrustBadges.tsx"), "utf8");
+    expect(badges).toContain("showBrands = true");
+    expect(badges).toContain("{showBrands && (");
   });
 });

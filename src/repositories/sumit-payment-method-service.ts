@@ -120,3 +120,20 @@ export async function saveSumitPaymentMethodForRegistration(input: SaveSumitPaym
   await admin.from("business_events_log").insert({ business_registration_id: input.registrationId, event_type: "payment_method_added", actor_id: input.ownerId, metadata: { provider: "sumit", stage: "registration" } });
   return { success: true };
 }
+
+export type CardSavedStatus = { status: "saved" } | { status: "not-saved" } | { status: "error" };
+
+/**
+ * READ ONLY: has a card already been saved for THIS owner's registration? Used when the owner comes back to step 6 (a reload, the
+ * wizard restored from the session, a save that finished on the server after the page was left) so the form is not shown again as
+ * if nothing had happened. It reads the single row of the registration (any provider) and returns only whether it exists - never
+ * the token, the customer id or the mask. It creates, changes and sends nothing.
+ */
+export async function getCardSavedStatusForRegistration(input: { registrationId: string; ownerId: string }, deps: { admin?: RegistrationAdminClient } = {}): Promise<CardSavedStatus> {
+  if (!UUID_PATTERN.test(input.registrationId) || !input.ownerId) return { status: "error" };
+  if (!deps.admin && !isSupabaseAdminConfigured()) return { status: "error" };
+  const admin = deps.admin ?? createAdminSupabaseClient();
+  const { data, error } = await admin.from("billing_payment_methods").select("id").eq("business_registration_id", input.registrationId).eq("owner_id", input.ownerId).maybeSingle();
+  if (error) return { status: "error" };
+  return data ? { status: "saved" } : { status: "not-saved" };
+}

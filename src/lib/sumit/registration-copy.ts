@@ -23,6 +23,16 @@ export const REVIEW_BILLING_LEGEND = "בחרו מסלול חיוב (שלב ני�
 export const REVIEW_PAYMENT_CONSENT_ERROR = "יש לאשר את שמירת אמצעי התשלום";
 export const REVIEW_PAYMENT_CONSENT_LABEL = "אישור שמירת אמצעי התשלום";
 
+/** The registration page's badge, price line and plan-summary line while the card step is on (the plain texts promise "30 free trial days"). */
+export const REGISTRATION_BADGE = "שלב ניסיוני";
+export const registrationPriceLine = (planName: string) => `מחירי ${planName} הם מחירי השקה. בשלב ניסיוני זה לא מתחילה תקופת ניסיון ולא מתבצע חיוב.`;
+export const SUMMARY_TRIAL_LINE = "שלב ניסיוני: לא מתחילה תקופת ניסיון ולא מתבצע חיוב";
+
+/** Coming back to step 6 after the card was already saved on the server: say so, and do not ask for it again. */
+export const CARD_STATUS_CHECKING = "בודקים אם אמצעי תשלום כבר נשמר…";
+export const CARD_ALREADY_SAVED = "אמצעי התשלום כבר נשמר עבור ההרשמה הזו. לא נדרשת פעולה נוספת. לא בוצע חיוב, לא נוצר מנוי ולא התחילה תקופת ניסיון.";
+export const CARD_ALREADY_SAVED_CONTINUE = "המשך";
+
 /** Step 6, above the form. */
 export const STEP6_INTRO = "פרטי העסק נשמרו וההרשמה ממתינה לאישור הצוות. כדי להשלים את שלב אמצעי התשלום (שלב ניסיוני), הזינו כרטיס. לא מתבצע חיוב, לא נוצר מנוי ולא מתחילה תקופת ניסיון.";
 

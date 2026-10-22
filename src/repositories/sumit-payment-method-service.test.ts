@@ -16,6 +16,8 @@ const db = {
   registration: null as Record<string, unknown> | null,
   existingSubscription: null as Record<string, unknown> | null,
   upsertError: null as null | { message: string },
+  existingCard: null as Record<string, unknown> | null,
+  cardReadError: null as null | { message: string },
 };
 
 function from(table: string) {
@@ -35,6 +37,7 @@ function from(table: string) {
         return { data: row, error: null };
       }
       if (table === "business_subscriptions") return { data: db.existingSubscription, error: null };
+      if (table === "billing_payment_methods") return { data: db.existingCard, error: db.cardReadError };
       return { data: null, error: null };
     },
     insert(payload: unknown) {
@@ -58,7 +61,7 @@ function from(table: string) {
 }
 vi.mock("@/lib/supabase/admin-client", () => ({ isSupabaseAdminConfigured: () => true, createAdminSupabaseClient: () => ({ from }) }));
 
-import { saveSumitPaymentMethodForRegistration } from "./sumit-payment-method-service";
+import { getCardSavedStatusForRegistration, saveSumitPaymentMethodForRegistration } from "./sumit-payment-method-service";
 
 const ENV_KEYS = ["PAYMENTS_PROVIDER", "SUMIT_COMPANY_ID", "SUMIT_API_KEY", "SUMIT_API_PUBLIC_KEY", "SUMIT_ENVIRONMENT", "SUMIT_TEST_COMPANY_ID", "SUMIT_ALLOW_PRODUCTION", "SUMIT_DRY_RUN", "SUMIT_TEST_EMAILS"] as const;
 function configureSumit(overrides: Partial<Record<(typeof ENV_KEYS)[number], string>> = {}) {
@@ -101,6 +104,8 @@ beforeEach(() => {
   db.registration = { ...REGISTRATION };
   db.existingSubscription = null;
   db.upsertError = null;
+  db.existingCard = null;
+  db.cardReadError = null;
   configureSumit();
 });
 afterEach(() => {
@@ -273,6 +278,41 @@ describe("failures", () => {
     expect(await saveSumitPaymentMethodForRegistration(input(), { provider })).toEqual({ success: false, reason: "unknown-error" });
     expect(provider.removePaymentMethod).toHaveBeenCalledWith("77");
     expect(ops("business_events_log", "insert")).toEqual([]);
+  });
+});
+
+describe("is a card already saved for this registration (read only)", () => {
+  const ask = (overrides: Partial<{ registrationId: string; ownerId: string }> = {}) => getCardSavedStatusForRegistration({ registrationId: REGISTRATION_ID, ownerId: OWNER, ...overrides });
+
+  it("saved: a row exists for the owner's registration - and only the status comes back (no id, mask, token)", async () => {
+    db.existingCard = { id: "row-1", provider_customer_id: "77", card_mask: "458045******4580", provider_token: null };
+    const result = await ask();
+    expect(result).toEqual({ status: "saved" });
+    expect(JSON.stringify(result)).not.toMatch(/77|4580|row-1/);
+  });
+
+  it("not saved: no row", async () => {
+    expect(await ask()).toEqual({ status: "not-saved" });
+  });
+
+  it("a read error or a malformed id is 'error' - never 'saved'", async () => {
+    db.cardReadError = { message: "db down" };
+    expect(await ask()).toEqual({ status: "error" });
+    db.cardReadError = null;
+    expect(await ask({ registrationId: "not-a-uuid" })).toEqual({ status: "error" });
+    expect(await ask({ ownerId: "" })).toEqual({ status: "error" });
+  });
+
+  it("reads only: no write of any kind", async () => {
+    await ask();
+    expect(log.filter((entry) => entry.op !== "select")).toEqual([]);
+  });
+
+  it("uses an injected database client when given one", async () => {
+    const calls: string[] = [];
+    const fake = { from: (table: string) => { calls.push(table); return from(table); } } as never;
+    await getCardSavedStatusForRegistration({ registrationId: REGISTRATION_ID, ownerId: OWNER }, { admin: fake });
+    expect(calls).toEqual(["billing_payment_methods"]);
   });
 });
 

@@ -52,7 +52,7 @@ describe("completing the card on the existing registration", () => {
   const form = readFileSync(path.resolve(__dirname, "../../../components/business-dashboard/SumitCardForm/SumitCardForm.tsx"), "utf8");
 
   it("3/4. uses the very same SUMIT card form and the same save-only action as step 6 (save a card: no charge, no subscription, no trial, no approval)", () => {
-    expect(step).toContain("SumitCardForm");
+    expect(step).toContain("SumitCardStep");
     expect(step).toContain("registrationId={registrationId}");
     expect(form).toMatch(/await saveSumitPaymentMethodForRegistrationAction\(\{/);
     const code = step.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");

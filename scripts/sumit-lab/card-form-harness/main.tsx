@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { SumitCardForm } from "@/components/business-dashboard/SumitCardForm/SumitCardForm";
+import { SumitCardStep } from "@/components/business-dashboard/SumitCardForm/SumitCardStep";
 import type { Harness, PendingCall } from "./harness-state";
 
 // --- the harness control plane (window.__h); everything below is a MOCK ----------------------------------------------------------
@@ -8,15 +8,25 @@ let nextToken = 0;
 const newToken = () => `00000000-0000-4000-8000-${String(++nextToken).padStart(12, "0")}`; // uuid-shaped, not a real token
 const originalSetTimeout = window.setTimeout.bind(window);
 // the form's 20 s wait for payments.js is shortened to 300 ms so the browser test does not sit still; all other delays are untouched
-window.setTimeout = ((handler: TimerHandler, delay?: number, ...args: unknown[]) => originalSetTimeout(handler, delay === 20000 ? 300 : delay, ...args)) as typeof window.setTimeout;
+if (new URLSearchParams(location.search).get("real") !== "1") window.setTimeout = ((handler: TimerHandler, delay?: number, ...args: unknown[]) => originalSetTimeout(handler, delay === 20000 ? 300 : delay, ...args)) as typeof window.setTimeout; // (not in real mode: the real network needs the real 20 s)
 
 let root: Root | null = null;
+// REAL mode (?real=1): SUMIT's real payments.js is loaded by the form itself, with the CompanyID and public key of the TEST organization from the local server
+const REAL = new URLSearchParams(location.search).get("real") === "1";
+const realConfig = REAL ? ((await (await fetch("/config.json")).json()) as { companyId: number; apiPublicKey: string }) : null;
 const h: Harness = {
   scenario: "ok",
   actionMode: "success",
   createTokenCalls: [],
   actionCalls: [],
   completed: 0,
+  cardSaved: false,
+  realTokenHashes: [],
+  actionTokenHashes: [],
+  realXhr: [],
+  realProps: realConfig,
+  savedCheckMode: "normal",
+  savedCheckCalls: 0,
   pending: [],
   producedTokens: [],
   jqueryBeforeMount: typeof (window as unknown as { jQuery?: unknown }).jQuery,
@@ -26,7 +36,7 @@ const h: Harness = {
     root = createRoot(document.getElementById("root")!);
     root.render(
       <StrictMode>
-        <SumitCardForm companyId={123456} apiPublicKey="harness-public-key" registrationId="55555555-5555-4555-8555-555555555555" onCompleted={() => { h.completed += 1; }} />
+        <SumitCardStep companyId={realConfig?.companyId ?? 123456} apiPublicKey={realConfig?.apiPublicKey ?? "harness-public-key"} registrationId="55555555-5555-4555-8555-555555555555" onCompleted={() => { h.completed += 1; }} />
       </StrictMode>,
     );
   },
@@ -49,8 +59,34 @@ const h: Harness = {
 };
 (window as unknown as { __h: Harness }).__h = h;
 
+// REAL mode: record what SUMIT's real script does on the network - host, path and status only - and a HASH of the token in SUMIT's answer
+async function sha256(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+if (REAL) {
+  const open = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (this: XMLHttpRequest, method: string, url: string | URL, ...rest: unknown[]) {
+    const text = String(url);
+    const entry: Harness["realXhr"][number] = { host: (text.match(/^https?:\/\/([^/]+)/) ?? [])[1] ?? location.host, path: text.replace(/^https?:\/\/[^/]+/, "").split("?")[0], status: null };
+    h.realXhr.push(entry);
+    this.addEventListener("loadend", () => {
+      entry.status = this.status;
+      if (/tokenizesingleuse/.test(entry.path)) {
+        try {
+          const token = JSON.parse(this.responseText)?.Data?.SingleUseToken;
+          if (typeof token === "string") void sha256(token).then((hash) => h.realTokenHashes.push(hash));
+        } catch {
+          // an unreadable answer simply records no hash
+        }
+      }
+    });
+    return open.apply(this, [method, url, ...rest] as never);
+  } as typeof XMLHttpRequest.prototype.open;
+}
+
 // --- a stand-in for SUMIT's payments.js: same contract as the real script (observed in the prototype), no network ----------------
-(window as unknown as { OfficeGuy: unknown }).OfficeGuy = {
+if (!REAL) (window as unknown as { OfficeGuy: unknown }).OfficeGuy = {
   Payments: {
     CreateToken(settings: { CompanyID: unknown; APIPublicKey: unknown; FormSelector: string; ResponseCallback: (response: unknown) => void }) {
       const form = document.querySelector<HTMLFormElement>(settings.FormSelector);

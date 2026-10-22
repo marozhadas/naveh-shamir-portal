@@ -14,13 +14,16 @@ vi.mock("@/lib/supabase/server-client", () => ({ getSupabaseSessionUser: () => s
 const rateLimit = vi.fn();
 vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: (...args: unknown[]) => rateLimit(...args) }));
 const save = vi.fn();
-vi.mock("@/repositories/sumit-payment-method-service", () => ({ saveSumitPaymentMethodForRegistration: (...args: unknown[]) => save(...args) }));
+const savedStatus = vi.fn();
+vi.mock("@/repositories/sumit-payment-method-service", () => ({ saveSumitPaymentMethodForRegistration: (...args: unknown[]) => save(...args), getCardSavedStatusForRegistration: (...args: unknown[]) => savedStatus(...args) }));
 
 const ENV = ["PAYMENTS_PROVIDER", "SUMIT_COMPANY_ID", "SUMIT_API_KEY", "SUMIT_API_PUBLIC_KEY", "SUMIT_ENVIRONMENT", "SUMIT_TEST_COMPANY_ID", "SUMIT_TEST_EMAILS", "SUMIT_DRY_RUN"] as const;
 
 beforeEach(() => {
   sessionUser.mockReset();
   save.mockReset();
+  savedStatus.mockReset();
+  savedStatus.mockResolvedValue({ status: "not-saved" });
   rateLimit.mockReset();
   sessionUser.mockResolvedValue({ id: "user-1", email: EMAIL });
   rateLimit.mockResolvedValue(true);
@@ -124,6 +127,39 @@ describe("saveSumitPaymentMethodForRegistrationAction (step 6: save a card, noth
       expect(JSON.stringify(result), reason).not.toContain(TOKEN);
       expect(result.message, reason).not.toContain(reason);
     }
+  });
+});
+
+describe("getSumitCardSavedStatusAction (read only: has the card of this registration been saved?)", () => {
+  async function status(input: unknown) {
+    const { getSumitCardSavedStatusAction } = await import("./sumit-payment-actions");
+    return getSumitCardSavedStatusAction(input as never);
+  }
+
+  it("asks the service with the verified session user and the registration id, and returns ONLY a status", async () => {
+    savedStatus.mockResolvedValue({ status: "saved" });
+    expect(await status({ registrationId: REGISTRATION_ID })).toEqual({ status: "saved" });
+    expect(savedStatus).toHaveBeenCalledWith({ registrationId: REGISTRATION_ID, ownerId: "user-1" });
+    savedStatus.mockResolvedValue({ status: "not-saved" });
+    expect(await status({ registrationId: REGISTRATION_ID })).toEqual({ status: "not-saved" });
+  });
+
+  it("never starts a save", async () => {
+    savedStatus.mockResolvedValue({ status: "saved" });
+    await status({ registrationId: REGISTRATION_ID });
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("not signed in, not on the SUMIT test list, a bad id or extra properties: 'error' and nothing is read", async () => {
+    sessionUser.mockResolvedValue(null);
+    expect(await status({ registrationId: REGISTRATION_ID })).toEqual({ status: "error" });
+    sessionUser.mockResolvedValue({ id: "user-2", email: "stranger@example.com" });
+    expect(await status({ registrationId: REGISTRATION_ID })).toEqual({ status: "error" });
+    sessionUser.mockResolvedValue({ id: "user-1", email: EMAIL });
+    expect(await status({ registrationId: "not-a-uuid" })).toEqual({ status: "error" });
+    expect(await status({ registrationId: REGISTRATION_ID, cardNumber: "4580458045804580" })).toEqual({ status: "error" });
+    expect(await status(null)).toEqual({ status: "error" });
+    expect(savedStatus).not.toHaveBeenCalled();
   });
 });
 

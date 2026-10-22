@@ -5,11 +5,27 @@ import { harness } from "./harness-state";
 type Input = { registrationId: string; token: string; payer: { firstName: string; lastName: string; email: string; phone: string }; consent: boolean };
 type State = { status: "idle" | "error" | "success"; message?: string; code?: string };
 
+// the mocked read-only check: has the card of this registration been saved? (answers from the mocked server's memory)
+export async function getSumitCardSavedStatusAction(input: { registrationId: string }): Promise<{ status: "saved" | "not-saved" | "error" }> {
+  const h = harness();
+  h.savedCheckCalls += 1;
+  if (h.savedCheckMode === "throw") throw new Error("network down (mock)");
+  if (h.savedCheckMode === "error" || !input?.registrationId) return { status: "error" };
+  return { status: h.cardSaved ? "saved" : "not-saved" };
+}
+
+async function sha256(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 export async function saveSumitPaymentMethodForRegistrationAction(input: Input): Promise<State> {
   const h = harness();
   const text = JSON.stringify(input);
   const payerText = JSON.stringify(input.payer ?? {});
+  if (typeof input.token === "string") h.actionTokenHashes.push(await sha256(input.token));
   h.actionCalls.push({
+    tokenLooksLikeUuid: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(input.token)),
     topKeys: Object.keys(input).sort(),
     payerKeys: Object.keys(input.payer ?? {}).sort(),
     tokenWasProducedByTheMock: h.producedTokens.includes(input.token),
@@ -21,5 +37,6 @@ export async function saveSumitPaymentMethodForRegistrationAction(input: Input):
   if (h.actionMode === "throw") throw new Error("network down (mock)");
   if (h.actionMode === "slow") await new Promise((resolve) => window.setTimeout(resolve, 1500));
   if (h.actionMode === "error") return { status: "error", message: "לא הצלחנו לשמור את אמצעי התשלום (הודעת בדיקה). לא בוצע חיוב." };
+  h.cardSaved = true; // the mocked server saved the card (even if the page that asked is already gone)
   return { status: "success" };
 }

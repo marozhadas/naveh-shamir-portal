@@ -28,6 +28,9 @@ export async function runScenarios(): Promise<Array<{ name: string; pass: boolea
     h.actionCalls.length = 0;
     h.pending.length = 0;
     h.completed = 0;
+    h.cardSaved = false;
+    h.savedCheckMode = "normal";
+    h.savedCheckCalls = 0;
     h.scenario = "ok";
     h.actionMode = "success";
     h.mount();
@@ -174,9 +177,112 @@ export async function runScenarios(): Promise<Array<{ name: string; pass: boolea
   await t.sleep(100);
   check("validation: empty form, no consent, bad CVV, past expiry - nothing is tokenized or saved", h.createTokenCalls.length === 0 && h.actionCalls.length === 0 && h.completed === 0, { calls: h.createTokenCalls.length });
 
-  // 10. jQuery came from the bundle, and only window.jQuery was set
+  // 10. coming back after the card was ALREADY saved on the server: identified, no form, nothing is saved again
+  await fresh();
+  h.cardSaved = true;
+  h.unmount();
+  h.mount();
+  await t.sleep(700);
+  check("already saved: the form is not shown, a notice says it is saved", !document.getElementById("sumit-card-form") && /כבר נשמר/.test(document.body.textContent ?? ""), document.body.textContent?.slice(0, 80));
+  check("already saved: nothing is tokenized or saved by itself", h.createTokenCalls.length === 0 && h.actionCalls.length === 0 && h.completed === 0);
+  const continueButton = [...document.querySelectorAll("button")].find((b) => b.textContent === "המשך");
+  continueButton?.click();
+  await t.sleep(100);
+  check("already saved: 'continue' completes the step without a save", h.completed === 1 && h.actionCalls.length === 0 && h.createTokenCalls.length === 0);
+
+  // 11. a normal save, then the owner comes back to the screen: saved is identified and the form does not return
+  await fresh();
+  t.fill();
+  await t.sleep(50);
+  click();
+  await t.sleep(700);
+  check("save finished on the server", h.cardSaved === true && h.actionCalls.length === 1 && h.completed === 1);
+  h.unmount();
+  h.mount();
+  await t.sleep(700);
+  check("coming back after a finished save: 'already saved', no form, no second save", !document.getElementById("sumit-card-form") && /כבר נשמר/.test(document.body.textContent ?? "") && h.actionCalls.length === 1 && h.createTokenCalls.length === 1, { actions: h.actionCalls.length });
+
+  // 12. the page was left while the save was still running; the server finished it; coming back identifies it - no automatic second save
+  await fresh();
+  h.actionMode = "slow";
+  t.fill();
+  await t.sleep(50);
+  click();
+  await t.sleep(400);
+  h.unmount();
+  await t.sleep(1800);
+  check("the server finished the save after the page was left", h.cardSaved === true && h.actionCalls.length === 1 && h.completed === 0);
+  h.mount();
+  await t.sleep(700);
+  check("coming back: identified as saved, no form, still exactly one save", !document.getElementById("sumit-card-form") && /כבר נשמר/.test(document.body.textContent ?? "") && h.actionCalls.length === 1 && h.createTokenCalls.length === 1, { actions: h.actionCalls.length });
+
+  // 13. not saved -> the form; the check failing -> the form (never a false 'saved')
+  await fresh();
+  check("not saved: the form is shown after the read-only check (React strict mode may run it twice in development)", !!document.getElementById("sumit-card-form") && h.savedCheckCalls >= 1 && !/כבר נשמר/.test(document.body.textContent ?? ""));
+  for (const mode of ["error", "throw"] as const) {
+    h.unmount();
+    h.savedCheckMode = mode;
+    h.mount();
+    await t.sleep(700);
+    check("the check says " + mode + ": the form is shown, no 'already saved' claim", !!document.getElementById("sumit-card-form") && !/כבר נשמר/.test(document.body.textContent ?? ""));
+  }
+
+  // 14. no card-brand marks, and the provider named is SUMIT
+  await fresh();
+  check("no card-brand marks are shown", document.querySelectorAll("svg[aria-label='Visa'], svg[aria-label='Mastercard'], svg[aria-label='American Express'], svg[aria-label='ישראכרט']").length === 0);
+  check("the trust line names SUMIT, not PayMe", /באמצעות SUMIT/.test(document.body.textContent ?? "") && !/PayMe/.test(document.body.textContent ?? ""));
+
+  // 15. jQuery came from the bundle, and only window.jQuery was set
   check("jQuery is loaded by the form (window.jQuery) and window.$ is not touched", typeof (window as unknown as { jQuery?: unknown }).jQuery === "function" && (window as unknown as { $?: unknown }).$ === undefined);
   return results;
 }
 
 (window as unknown as { __runScenarios: typeof runScenarios }).__runScenarios = runScenarios;
+
+/**
+ * REAL mode (page opened with ?real=1): the real SumitCardForm with SUMIT's REAL payments.js against the TEST organization, a
+ * documented test card, and the MOCKED server action. One tokenization only. Nothing is saved, nothing is charged: the action is a
+ * mock. The token is never printed or stored - only its SHA-256 is compared between SUMIT's answer and what the action received.
+ */
+const DOCUMENTED_TEST_CARD = { number: "5326107300020772", month: "05", year: "2031", cvv: "033" }; // SUMIT's recommended documented test card (help article 5832877)
+
+export async function runRealScenario(): Promise<Array<{ name: string; pass: boolean; detail?: unknown }>> {
+  const h = harness();
+  const t = helpers();
+  const results: Array<{ name: string; pass: boolean; detail?: unknown }> = [];
+  const check = (name: string, pass: boolean, detail?: unknown) => results.push(pass ? { name, pass } : { name, pass, detail });
+  const q = (selector: string) => document.querySelector(selector) as HTMLInputElement;
+
+  check("real mode: the page was opened with ?real=1 and has the test organization's config", h.realProps !== null && typeof h.realProps.companyId === "number" && typeof h.realProps.apiPublicKey === "string");
+  // wait for the form to be ready: jQuery from the bundle + SUMIT's real script loaded
+  for (let i = 0; i < 60 && !(document.getElementById("sumit-card-form") && t.button() && t.button()!.disabled === false); i += 1) await t.sleep(250);
+  check("the real payments.js was loaded by the form (OfficeGuy.Payments.CreateToken exists)", typeof (window as unknown as { OfficeGuy?: { Payments?: { CreateToken?: unknown } } }).OfficeGuy?.Payments?.CreateToken === "function");
+  check("the form is ready (button enabled)", !!t.button() && t.button()!.disabled === false);
+
+  t.fill(false, true);
+  q("#sumit-card-number").value = DOCUMENTED_TEST_CARD.number.replace(/(\d{4})/g, "$1 ").trim();
+  q("#sumit-card-month").value = String(Number(DOCUMENTED_TEST_CARD.month));
+  q("#sumit-card-year").value = DOCUMENTED_TEST_CARD.year.slice(2);
+  q("#sumit-card-cvv").value = DOCUMENTED_TEST_CARD.cvv;
+  await t.sleep(50);
+  const button = t.button()!;
+  button.click();
+  button.click(); // a double click, against the REAL script (which has no guard of its own)
+  (document.getElementById("sumit-card-form") as HTMLFormElement).requestSubmit();
+  for (let i = 0; i < 60 && h.completed === 0; i += 1) await t.sleep(250);
+  await t.sleep(500);
+
+  const tokenizeCalls = h.realXhr.filter((entry) => /tokenizesingleuse/.test(entry.path));
+  const action = h.actionCalls[0];
+  check("exactly ONE tokenization request went to SUMIT (double click + submit)", tokenizeCalls.length === 1 && tokenizeCalls[0].host === "api.sumit.co.il" && tokenizeCalls[0].status === 200, tokenizeCalls);
+  check("the token reached the mocked action exactly once", h.actionCalls.length === 1, h.actionCalls.length);
+  check("the token the action got is the one SUMIT's answer carried (hash equality) and it is uuid-shaped", h.realTokenHashes.length === 1 && h.actionTokenHashes.length === 1 && h.realTokenHashes[0] === h.actionTokenHashes[0] && action?.tokenLooksLikeUuid === true, { real: h.realTokenHashes.length, action: h.actionTokenHashes.length });
+  check("the action received only registrationId, token, payer, consent - no card data", JSON.stringify(action?.topKeys) === JSON.stringify(["consent", "payer", "registrationId", "token"]) && action?.containsTheTypedCardOrCvv === false && action?.anyDigitRunOfTwelveOrMore === false, action);
+  check("the step completed once", h.completed === 1, h.completed);
+  check("the card inputs and the hidden og-token field are empty afterwards", Object.values(t.cardLengths()).every((n) => n === 0) && t.ogTokenLength() === 0, t.cardLengths());
+  const hosts = [...new Set(performance.getEntriesByType("resource").map((entry) => new URL(entry.name).host))];
+  check("the page talked only to this local server, app.sumit.co.il (the script) and api.sumit.co.il (the token)", hosts.every((host) => host === location.host || host === "app.sumit.co.il" || host === "api.sumit.co.il"), hosts);
+  check("no request went to any other SUMIT endpoint (no customer, no card saved, no charge)", h.realXhr.every((entry) => /tokenizesingleuse/.test(entry.path)), h.realXhr.map((entry) => entry.path));
+  return results;
+}
+(window as unknown as { __runRealScenario: typeof runRealScenario }).__runRealScenario = runRealScenario;

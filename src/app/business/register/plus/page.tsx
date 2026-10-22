@@ -7,7 +7,7 @@ import { BUSINESS_PLANS } from "@/data/business-plans";
 import { isBillingInterval } from "@/data/subscription-pricing";
 import { getSupabaseSessionUser } from "@/lib/supabase/server-client";
 import { getSumitRegistrationPayment } from "@/lib/sumit/registration-access";
-import { REGISTRATION_PAGE_DISCLAIMER } from "@/lib/sumit/registration-copy";
+import { REGISTRATION_BADGE, REGISTRATION_PAGE_DISCLAIMER, registrationPriceLine } from "@/lib/sumit/registration-copy";
 import { registrationReturnPath } from "@/utils/safe-return-path";
 import { OwnerAuthGate } from "@/components/auth/OwnerAuthGate/OwnerAuthGate";
 import { RegistrationFlow } from "./RegistrationFlow";
@@ -56,12 +56,12 @@ export default async function RegisterPlusPage({ searchParams }: RegisterPlusPag
           </nav>
 
           <div className={styles.hero}>
-            <span className={styles.badge}>30 ימי ניסיון חינם</span>
+            <span className={styles.badge}>{payment ? REGISTRATION_BADGE : "30 ימי ניסיון חינם"}</span>
             <h1 className={styles.title}>בואו נבנה לעסק שלכם עמוד מלא</h1>
             <p className={styles.description}>
               מלאו את פרטי העסק, הוסיפו תמונות ושירותים, ואנחנו נכין את העמוד שלכם לאישור ולפרסום.
             </p>
-            <p className={styles.priceLine}>30 ימי ניסיון חינם. מחירי Plus הם מחירי השקה.</p>
+            <p className={styles.priceLine}>{payment ? registrationPriceLine("Plus") : "30 ימי ניסיון חינם. מחירי Plus הם מחירי השקה."}</p>
             <p className={styles.disclaimer}>
               {payment
                 ? REGISTRATION_PAGE_DISCLAIMER

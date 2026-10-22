@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { SumitCardForm } from "@/components/business-dashboard/SumitCardForm/SumitCardForm";
+import { SumitCardStep } from "@/components/business-dashboard/SumitCardForm/SumitCardStep";
 
 type ResumePaymentStepProps = {
   /** Found on the server from the signed-in owner (never from the URL); the server action checks ownership again. */
@@ -18,5 +18,5 @@ type ResumePaymentStepProps = {
  */
 export function ResumePaymentStep({ registrationId, companyId, apiPublicKey, planTier }: ResumePaymentStepProps) {
   const router = useRouter();
-  return <SumitCardForm companyId={companyId} apiPublicKey={apiPublicKey} registrationId={registrationId} onCompleted={() => router.push(`/business/register/success?plan=${planTier}&payment=saved`)} />;
+  return <SumitCardStep companyId={companyId} apiPublicKey={apiPublicKey} registrationId={registrationId} onCompleted={() => router.push(`/business/register/success?plan=${planTier}&payment=saved`)} />;
 }
