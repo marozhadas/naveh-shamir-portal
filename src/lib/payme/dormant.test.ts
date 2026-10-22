@@ -94,8 +94,8 @@ describe("static guard rails: nothing new can open PayMe", () => {
   it("only the known legacy modules import PayMe code: a NEW file that does so fails this test and must be reviewed", () => {
     const importers = production.filter((file) => !rel(file).startsWith("lib/payme/") && /@\/lib\/payme\//.test(text(file))).map(rel).sort();
     expect(importers).toEqual([
+      "app/admin/(protected)/businesses/[id]/BillingTestSection.tsx",
       "app/admin/(protected)/businesses/[id]/actions.ts",
-      "app/admin/(protected)/businesses/[id]/page.tsx",
       "app/admin/(protected)/revenue/page.tsx",
       "app/api/webhooks/payme/[secret]/route.ts",
       "app/business/dashboard/(chrome)/subscription/page.tsx",

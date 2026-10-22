@@ -11,8 +11,7 @@ import { ApproveRejectPanel } from "./ApproveRejectPanel";
 import { DeleteBusinessButton } from "./DeleteBusinessButton";
 import { BusinessPlanControl } from "./BusinessPlanControl";
 import { BusinessOfferControl } from "./BusinessOfferControl";
-import { BusinessBillingTestControl } from "./BusinessBillingTestControl";
-import { getPayMeConfig } from "@/lib/payme/config";
+import { BillingTestSection } from "./BillingTestSection";
 import { getSavedPaymentMethodInfo } from "@/repositories/supabase-subscription-service";
 import { getOffer } from "@/data/subscription-offers";
 import { BusinessSlugControl } from "./BusinessSlugControl";
@@ -160,12 +159,7 @@ export default async function AdminBusinessDetailPage({ params }: BusinessDetail
       )}
 
       {registration.plan_tier !== "free" && (
-        <BusinessBillingTestControl
-          businessId={registration.id}
-          enabled={registration.billing_test_enabled === true}
-          payMeEnv={getPayMeConfig()?.env ?? null}
-          hasPayMeSubscription={subscriptionRow?.payment_provider === "payme"}
-        />
+        <BillingTestSection businessId={registration.id} enabled={registration.billing_test_enabled === true} hasPayMeSubscription={subscriptionRow?.payment_provider === "payme"} />
       )}
 
       <BusinessSlugControl

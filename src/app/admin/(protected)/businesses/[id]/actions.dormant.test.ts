@@ -56,6 +56,34 @@ describe("the admin's PayMe billing-test switch while PayMe is dormant", () => {
     for (const key of KEYS) delete process.env[key];
   });
 
+  it("with PAYMENTS_PROVIDER=sumit (and a SUMIT test configuration) it refuses to switch the PayMe test ON or OFF and writes nothing", async () => {
+    process.env.PAYMENTS_PROVIDER = "sumit";
+    process.env.SUMIT_ENVIRONMENT = "test";
+    process.env.SUMIT_COMPANY_ID = "123456";
+    process.env.SUMIT_TEST_COMPANY_ID = "123456";
+    process.env.SUMIT_API_KEY = "secret-api-key-for-tests";
+    process.env.SUMIT_API_PUBLIC_KEY = "public-key-for-tests";
+    const { changeBusinessBillingTestAction } = await import("./actions");
+    for (const enabled of [true, false]) {
+      const result = await changeBusinessBillingTestAction({ businessId: BUSINESS_ID, enabled, reason: "בדיקה" });
+      expect(result, String(enabled)).toEqual({ status: "validation-error", message: "בדיקת הסליקה אינה זמינה: הסליקה עוברת ל-SUMIT." });
+    }
+    expect(getRegistrationById).not.toHaveBeenCalled();
+    expect(updateBillingTest).not.toHaveBeenCalled();
+    expect(recordAuditLog).not.toHaveBeenCalled();
+    for (const key of ["SUMIT_ENVIRONMENT", "SUMIT_COMPANY_ID", "SUMIT_TEST_COMPANY_ID", "SUMIT_API_KEY", "SUMIT_API_PUBLIC_KEY"]) delete process.env[key];
+    for (const key of KEYS) delete process.env[key];
+  });
+
+  it("the refusal comes right after the admin check and BEFORE the input is even read", async () => {
+    const { readFileSync } = await import("node:fs");
+    const source = readFileSync(new URL("./actions.ts", import.meta.url), "utf8");
+    const body = source.slice(source.indexOf("export async function changeBusinessBillingTestAction"));
+    expect(body.indexOf("await requireAdmin()")).toBeLessThan(body.indexOf("if (!isPayMeProviderActive())"));
+    expect(body.indexOf("if (!isPayMeProviderActive())")).toBeLessThan(body.indexOf("changeBusinessBillingTestSchema.safeParse"));
+    expect(body.indexOf("if (!isPayMeProviderActive())")).toBeLessThan(body.indexOf("getRegistrationById("));
+  });
+
   it("still requires an admin session first", async () => {
     isAdmin.mockResolvedValue(false);
     const { changeBusinessBillingTestAction } = await import("./actions");
