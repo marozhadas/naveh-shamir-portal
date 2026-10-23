@@ -38,3 +38,7 @@ export function describeSavedPaymentMethod(method: SavedPaymentMethodView, regis
 
   return `נשמר אמצעי תשלום (${method.cardMask ?? "כרטיס"}). לא בוצע חיוב. הוא ישמש ליצירת המנוי ברגע שתאשרו את העסק.`;
 }
+
+/** The explanation in the reject dialog of an APPROVED (public) business: it hides the business and ends a local, unbilled trial - nothing is charged. */
+export const REJECT_APPROVED_BUSINESS_EXPLANATION =
+  "הדחייה תסתיר את העסק מהאתר הציבורי ותסיים את מנוי הניסיון המקומי שלו ללא חיוב ובלי קריאה לספק הסליקה. כרטיס ה-SUMIT השמור לא יימחק. אם למנוי כבר בוצע חיוב, או שהוא אינו מנוי ניסיון נתמך, הדחייה תיחסם ויידרש טיפול ידני. סיבת הדחייה נשמרת.";

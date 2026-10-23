@@ -13,7 +13,7 @@ import { BusinessPlanControl } from "./BusinessPlanControl";
 import { BusinessOfferControl } from "./BusinessOfferControl";
 import { BillingTestSection } from "./BillingTestSection";
 import { getSavedPaymentMethodInfo } from "@/repositories/supabase-subscription-service";
-import { describeSavedPaymentMethod } from "@/lib/admin/describe-saved-payment-method";
+import { describeSavedPaymentMethod, REJECT_APPROVED_BUSINESS_EXPLANATION } from "@/lib/admin/describe-saved-payment-method";
 import { getAdminTrialStatusLabel } from "@/lib/admin/admin-trial-status";
 import { getOffer } from "@/data/subscription-offers";
 import { BusinessSlugControl } from "./BusinessSlugControl";
@@ -316,6 +316,16 @@ export default async function AdminBusinessDetailPage({ params }: BusinessDetail
               </Button>
             </form>
           )}
+        </section>
+      )}
+
+      {registration.status === "approved" && (
+        <section className={styles.section} aria-labelledby="hide-business-heading">
+          <h2 id="hide-business-heading" className={styles.sectionTitle}>
+            הסתרת העסק
+          </h2>
+          <p className={styles.description}>{REJECT_APPROVED_BUSINESS_EXPLANATION}</p>
+          <ApproveRejectPanel registrationId={registration.id} businessName={registration.business_name} activation={null} mode="approved" />
         </section>
       )}
 

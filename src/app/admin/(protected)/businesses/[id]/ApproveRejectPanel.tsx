@@ -4,7 +4,7 @@ import { useActionState, useEffect, useRef, useState, useTransition } from "reac
 import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { approveRegistrationAction, rejectRegistrationAction, type RejectActionState } from "./actions";
-import { describeApprovalActivation, type ApprovalActivationView } from "@/lib/admin/describe-saved-payment-method";
+import { describeApprovalActivation, REJECT_APPROVED_BUSINESS_EXPLANATION, type ApprovalActivationView } from "@/lib/admin/describe-saved-payment-method";
 import styles from "./detail.module.css";
 
 const INITIAL_REJECT_STATE: RejectActionState = { error: null, success: false };
@@ -14,9 +14,15 @@ type ApproveRejectPanelProps = {
   businessName: string;
   /** Present for a paid business: approving it starts the trial. Null for a free registration (approving only publishes). */
   activation: ApprovalActivationView | null;
+  /**
+   * "pending" (default): approve + reject. "approved": ONLY the reject button, for a business that is already public - the same
+   * server action (admin check, the trial / billing conditions and the PayMe / SUMIT cancellation all stay on the server).
+   */
+  mode?: "pending" | "approved";
 };
 
-export function ApproveRejectPanel({ registrationId, businessName, activation }: ApproveRejectPanelProps) {
+export function ApproveRejectPanel({ registrationId, businessName, activation, mode = "pending" }: ApproveRejectPanelProps) {
+  const approvedMode = mode === "approved";
   const approveDialogRef = useRef<HTMLDialogElement>(null);
   const rejectDialogRef = useRef<HTMLDialogElement>(null);
   const [isApproving, startApproveTransition] = useTransition();
@@ -46,21 +52,24 @@ export function ApproveRejectPanel({ registrationId, businessName, activation }:
   return (
     <>
       <div className={styles.actions}>
-        <Button
-          variant="accent"
-          icon={<Check size={16} aria-hidden="true" />}
-          onClick={() => {
-            setApproveError(null);
-            approveDialogRef.current?.showModal();
-          }}
-        >
-          אישור
-        </Button>
+        {!approvedMode && (
+          <Button
+            variant="accent"
+            icon={<Check size={16} aria-hidden="true" />}
+            onClick={() => {
+              setApproveError(null);
+              approveDialogRef.current?.showModal();
+            }}
+          >
+            אישור
+          </Button>
+        )}
         <Button variant="secondary" icon={<X size={16} aria-hidden="true" />} onClick={() => rejectDialogRef.current?.showModal()}>
-          דחייה
+          {approvedMode ? "דחיית העסק והסתרתו" : "דחייה"}
         </Button>
       </div>
 
+      {!approvedMode && (
       <dialog ref={approveDialogRef} className={styles.dialog} aria-labelledby="approve-dialog-title">
         <div className={styles.dialogBody}>
           <h2 id="approve-dialog-title" className={styles.dialogTitle}>
@@ -87,6 +96,7 @@ export function ApproveRejectPanel({ registrationId, businessName, activation }:
           </div>
         </div>
       </dialog>
+      )}
 
       <dialog ref={rejectDialogRef} className={styles.dialog} aria-labelledby="reject-dialog-title">
         <form
@@ -96,8 +106,9 @@ export function ApproveRejectPanel({ registrationId, businessName, activation }:
           className={styles.dialogBody}
         >
           <h2 id="reject-dialog-title" className={styles.dialogTitle}>
-            דחיית ההרשמה
+            {approvedMode ? "דחיית העסק והסתרתו" : "דחיית ההרשמה"}
           </h2>
+          {approvedMode && <p className={styles.dialogText}>{REJECT_APPROVED_BUSINESS_EXPLANATION}</p>}
           <label htmlFor="reject-reason" className={styles.dialogText}>
             סיבת הדחייה (תישמר ותוצג לצוות הפורטל)
           </label>
@@ -112,7 +123,7 @@ export function ApproveRejectPanel({ registrationId, businessName, activation }:
               ביטול
             </Button>
             <Button type="submit" variant="secondary" size="compact" disabled={isRejecting}>
-              {isRejecting ? "דוחה…" : "דחיית ההרשמה"}
+              {isRejecting ? "דוחה…" : approvedMode ? "דחיית העסק והסתרתו" : "דחיית ההרשמה"}
             </Button>
           </div>
         </form>

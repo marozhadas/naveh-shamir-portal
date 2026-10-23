@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
-vi.mock("@/lib/admin-session", () => ({ isAdminAuthenticated: async () => true, getAdminId: async () => "admin-1" }));
+const auth = { ok: true };
+vi.mock("@/lib/admin-session", () => ({ isAdminAuthenticated: async () => auth.ok, getAdminId: async () => "admin-1" }));
 vi.mock("@/lib/supabase/admin-client", () => ({ isSupabaseAdminConfigured: () => true, createAdminSupabaseClient: () => ({}) }));
 
 const order: string[] = [];
@@ -57,6 +58,7 @@ describe("rejectRegistrationAction - a business that went live through payment",
       order.push("payme-cancelled");
       return { success: true, hadSubscription: true };
     });
+    auth.ok = true;
     cancelSumitTrial.mockReset();
     cancelSumitTrial.mockImplementation(async () => {
       order.push("sumit-trial-checked");
@@ -125,6 +127,27 @@ describe("rejectRegistrationAction - a business that went live through payment",
     const { rejectRegistrationAction } = await import("./actions");
     expect(await rejectRegistrationAction(ID, { error: null, success: false }, reason("עסק בדיקה"))).toEqual({ error: null, success: true });
     expect(updateStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it("an APPROVED business (a public one) can be rejected through the same action: the trial is ended first, then the status", async () => {
+    getRegistrationById.mockResolvedValue({ id: ID, business_name: "עסק בדיקה", status: "approved" });
+    cancelSumitTrial.mockImplementation(async () => {
+      order.push("sumit-trial-canceled");
+      return { success: true, outcome: "canceled" };
+    });
+    const { rejectRegistrationAction } = await import("./actions");
+    expect(await rejectRegistrationAction(ID, { error: null, success: false }, reason("עסק בדיקה"))).toEqual({ error: null, success: true });
+    expect(order).toEqual(["payme-cancelled", "sumit-trial-canceled", "status-updated"]);
+    expect(updateStatus).toHaveBeenCalledWith(ID, "rejected", { rejection_reason: "עסק בדיקה" });
+  });
+
+  it("the admin check stays on the server: without an admin session nothing is cancelled or rejected", async () => {
+    auth.ok = false;
+    const { rejectRegistrationAction } = await import("./actions");
+    await expect(rejectRegistrationAction(ID, { error: null, success: false }, reason("עסק בדיקה"))).rejects.toThrow("Not authenticated");
+    expect(cancelForRejection).not.toHaveBeenCalled();
+    expect(cancelSumitTrial).not.toHaveBeenCalled();
+    expect(updateStatus).not.toHaveBeenCalled();
   });
 
   it("still needs a reason, and touches nothing without one", async () => {
