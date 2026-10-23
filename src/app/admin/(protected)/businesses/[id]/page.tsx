@@ -14,6 +14,7 @@ import { BusinessOfferControl } from "./BusinessOfferControl";
 import { BillingTestSection } from "./BillingTestSection";
 import { getSavedPaymentMethodInfo } from "@/repositories/supabase-subscription-service";
 import { describeSavedPaymentMethod } from "@/lib/admin/describe-saved-payment-method";
+import { getAdminTrialStatusLabel } from "@/lib/admin/admin-trial-status";
 import { getOffer } from "@/data/subscription-offers";
 import { BusinessSlugControl } from "./BusinessSlugControl";
 import { BusinessManagementLinkControl } from "./BusinessManagementLinkControl";
@@ -23,7 +24,6 @@ import { checkBusinessManagementEligibility, BUSINESS_MANAGEMENT_INELIGIBILITY_M
 import styles from "./detail.module.css";
 
 const PLAN_TIER_LABEL: Record<string, string> = { free: "חינמי", plus: "Plus", premium: "Premium" };
-const TRIAL_STATUS_LABEL: Record<string, string> = { "not-started": "טרם הופעל", active: "פעיל", ended: "הסתיים" };
 
 export const dynamic = "force-dynamic";
 
@@ -101,7 +101,7 @@ export default async function AdminBusinessDetailPage({ params }: BusinessDetail
             <>
               <div>
                 <dt>סטטוס חודש ניסיון</dt>
-                <dd>{TRIAL_STATUS_LABEL[registration.trial_status] ?? registration.trial_status}</dd>
+                <dd>{getAdminTrialStatusLabel(registration.trial_status, subscriptionRow)}</dd>
               </div>
               <div>
                 <dt>תמונות</dt>
