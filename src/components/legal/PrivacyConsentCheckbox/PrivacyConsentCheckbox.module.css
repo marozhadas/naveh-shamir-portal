@@ -5,10 +5,9 @@
   gap: 6px var(--space-2);
 }
 
+/* The browser's default checkbox size and margins - the same as every other checkbox in the forms (the wizard's consent rows), so this one is not larger than its neighbours. */
 .input {
-  width: 18px;
-  height: 18px;
-  margin-top: 3px;
+  margin: 3px 3px 3px 4px;
   accent-color: var(--color-brand-accent, #1e3857);
   cursor: pointer;
 }
