@@ -101,7 +101,7 @@ A test registration was completed in the Preview deployment against the SUMIT TE
 
 Scope and limits: one test registration, TEST organization, the documented test card only; nothing was charged. It shows the save path works end to end; it does not show anything about approval, subscriptions, charging or production. The link "this SUMIT customer belongs to this registration" rests on the stored customer id (the API does not return our `ExternalIdentifier` on this read).
 
-## F. Stage 2B-1: admin approval starts a TRIAL for a saved SUMIT card (code + tests; NOT yet run in Preview)
+## F. Stage 2B-1: admin approval starts a TRIAL for a saved SUMIT card (code + tests; the approval CLICK itself is not yet verified end to end - see G)
 
 - `decideApprovalPath` has a new path `activate-sumit-trial` (card provider = `sumit`), independent of PayMe's state. `activateSumitTrialOnApproval` (`src/repositories/sumit-trial-activation.ts`) writes a LOCAL subscription row (`payment_provider = sumit`, `provider_subscription_id = NULL`, `status = trialing`) and approves + publishes the business. It imports no payment provider and makes no network call.
 - Trial policy is the existing one, unchanged: the length comes from the offer stored on the business (`launch_standard` = 30 days, `pilot_2026` = 90), counted from the approval, snapshotted on the row. `next_billing_at` = the end of the trial (a PLANNED date; nothing reads it to charge).
@@ -110,6 +110,19 @@ Scope and limits: one test registration, TEST organization, the documented test 
 - Admin sees SUMIT card info from provider + mask only (last four digits), with the approval dialog and the card section saying: no charge, trial days from the offer, billing not connected.
 - Rejection (an approved business has its own "הסתרת העסק" section with one reject button): rejecting a business ends its UNBILLED SUMIT trial locally first (`cancelSumitTrialForRejection`: `canceled`, no provider call, no charge; re-runnable; a SUMIT subscription that is not an unbilled trial refuses the rejection for manual handling; a failure after the trial ended is reported as an error, never success). Details and the cleanup variant: `docs/sumit-test-business-hide-and-cleanup.md`.
 - Known gaps (not part of this stage): the card stays at SUMIT after a rejection (removed by hand / an approved lab step); the card-less trial path for real owners; the first charge, cron, retries, grace and revenue recognition (Stage 2C+).
+
+## G. Rejection test in Preview (2026-10-25) - PASSED; what it did and did NOT prove
+
+One SUMIT test business, Preview deployment `780a2d2`, read-only verification of the database, the public site and the SUMIT card afterwards.
+
+**Exercised through the real UI / real code path (Preview):**
+- the admin page of an approved business: SUMIT card text (last four, "no charge"), the trial-status line derived from the SUMIT subscription, the separate "הסתרת העסק" section with the reject dialog (delete button stays apart);
+- the reject action: `cancelSumitTrialForRejection` ran BEFORE the status change - the subscription became `canceled` (`canceled_at` set, `next_billing_at` cleared, still no provider id, no payment fields), exactly one `subscription_canceled` event (`provider: sumit`, `charged: false`), one `business-rejected` audit entry (`sumitTrialCanceled: true`), the business `rejected`, the notification resolved;
+- no `billing_transactions`, no `billing_events`; the saved card row untouched (same provider, same last four, `updated_at` unchanged, no token); the business is not public (profile page "not found", the old slug redirects to the same "not found", absent from the list and from the sitemap).
+
+**NOT exercised through the UI - created by a manual, one-time step:** the SUMIT trial subscription of that business was NOT created by the new approval path. The live site (still on the older code, which cannot see a SUMIT card) approved the business through the status-only path, so the subscription row and `active_plan_id = plus` were written by a guarded one-time SQL block (single transaction, row locked, all safety conditions checked, trial from `reviewed_at` for 30 days, event marked `repairedAfterLegacyApproval`). That block mirrors `activateSumitTrialOnApproval` by hand; it is not evidence that the function works against the real database.
+
+**Therefore still unverified end to end:** the admin's APPROVAL click on a pending business with a saved SUMIT card (`activateSumitTrialOnApproval` against the real database: trial row, `active_plan_id`, approve + publish in one flow, the event, the audit entry), a second click / two simultaneous clicks, and the failure paths. These are covered only by unit tests with an in-memory database. Also untested: Premium, a yearly track, the Pilot offer (90 days) and the owner's own pages. Nothing in G involves a charge, a SUMIT call or billing automation.
 
 ## How the organization is attested (without printing secrets)
 
