@@ -124,6 +124,8 @@ One SUMIT test business, Preview deployment `780a2d2`, read-only verification of
 
 **Therefore still unverified end to end:** the admin's APPROVAL click on a pending business with a saved SUMIT card (`activateSumitTrialOnApproval` against the real database: trial row, `active_plan_id`, approve + publish in one flow, the event, the audit entry), a second click / two simultaneous clicks, and the failure paths. These are covered only by unit tests with an in-memory database. Also untested: Premium, a yearly track, the Pilot offer (90 days) and the owner's own pages. Nothing in G involves a charge, a SUMIT call or billing automation.
 
+**The older test business (card-less trial):** hidden and its trial ended with ONE guarded SQL block (2026-10-25, owner-approved in chat; the admin UI could not be driven from here): every identity and safety condition was checked first (registration id, slug, name, creation time, owner with no other registrations, a single subscription with no provider and no payment data, no card, no transactions, no billing events, no reviews, only the trial_started event). Result: status rejected, subscription canceled, event + audit entries marked as manual, not public, no transactions. Not deleted.
+
 ## How the organization is attested (without printing secrets)
 
 1. In SUMIT, switch to the TEST business (the business selector in the sidebar; "בדיקות" is added to its name, shown in red). Open https://app.sumit.co.il/developers/keys/ **while in that business** and copy the CompanyID and the keys into `.env.local` yourself. Nothing is pasted in chat.
